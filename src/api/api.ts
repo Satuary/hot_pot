@@ -2,7 +2,7 @@ import request from '@/utils/request';
 
 // 常量配置
 export const APP_CONFIG = {
-  appid: 'wx83d751801e23f53d',
+  appid: 'wxdd83019598f922ec',
   host: 'https://cost.xx.com/api',
 };
 

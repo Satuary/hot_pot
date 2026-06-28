@@ -1,68 +1,74 @@
 <template>
   <view class="phone-login-page">
-    <NavBar title="" />
+    <!-- 返回按钮 -->
+    <view class="back-btn" @click="goBack">
+      <uni-icons type="left" size="22" color="#000000"></uni-icons>
+    </view>
     
-    <view class="content">
-      <!-- 返回按钮 -->
-      <view class="back-btn" @click="goBack">
-        <text class="arrow">←</text>
+    <!-- 标题 -->
+    <view class="title-area">
+      <text class="title">快捷登录</text>
+    </view>
+    
+    <!-- 表单 -->
+    <view class="form-area">
+      <!-- 手机号 -->
+      <view class="input-group">
+        <text class="input-label">手机号</text>
+        <view class="input-box">
+          <input
+            class="input-field"
+            type="number"
+            v-model="phone"
+            placeholder="请输入"
+            maxlength="11"
+            placeholder-class="placeholder"
+          />
+        </view>
       </view>
       
-      <!-- 标题 -->
-      <view class="title-area">
-        <text class="title">手机号登录</text>
-        <text class="subtitle">新用户自动注册</text>
-      </view>
-      
-      <!-- 表单 -->
-      <view class="form-area">
-        <!-- 手机号 -->
-        <view class="input-group">
-          <view class="input-box">
-            <text class="prefix">+86</text>
-            <input
-              class="input-field"
-              type="number"
-              v-model="phone"
-              placeholder="输入手机号"
-              maxlength="11"
-              placeholder-class="placeholder"
-            />
+      <!-- 验证码 -->
+      <view class="input-group">
+        <text class="input-label">验证码</text>
+        <view class="input-box">
+          <input
+            class="input-field"
+            type="number"
+            v-model="code"
+            placeholder="请输入"
+            maxlength="6"
+            placeholder-class="placeholder"
+          />
+          <view
+            class="code-trigger"
+            :class="{ disabled: countdown > 0 }"
+            @click="sendCode"
+          >
+            {{ countdown > 0 ? `${countdown}s` : '发送' }}
           </view>
         </view>
-        
-        <!-- 验证码 -->
-        <view class="input-group">
-          <view class="input-box">
-            <input
-              class="input-field"
-              type="number"
-              v-model="code"
-              placeholder="输入验证码"
-              maxlength="6"
-              placeholder-class="placeholder"
-            />
-            <view
-              class="code-trigger"
-              :class="{ disabled: countdown > 0 }"
-              @click="sendCode"
-            >
-              {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
-            </view>
-          </view>
-          <text v-if="countdown === 0" class="hint-text">测试验证码: 123456</text>
-        </view>
       </view>
       
-      <!-- 登录按钮 -->
-      <view class="action-area">
-        <view
-          class="submit-btn"
-          :class="{ active: canLogin }"
-          @click="handleLogin"
-        >
-          <text class="btn-text">登录</text>
+      <!-- 用户协议 -->
+      <view class="agreement-box" @click="toggleAgreement">
+        <view class="checkbox" :class="{ checked: agreed }">
+          <text v-if="agreed" class="check-icon">✓</text>
         </view>
+        <text class="agreement-text">已阅读并同意</text>
+        <text class="link" @click.stop="showUserAgreement">用户协议</text>
+        <text class="agreement-text">和</text>
+        <text class="link" @click.stop="showPrivacy">隐私政策</text>
+      </view>
+    </view>
+    
+    <!-- 登录按钮 -->
+    <view class="action-area">
+      <view
+        class="submit-btn"
+        :class="{ active: canLogin && agreed }"
+        @click="handleLogin"
+      >
+        <text class="btn-text">登录</text>
       </view>
     </view>
     
@@ -72,22 +78,26 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { phoneLogin, sendSmsCode } from '@/api/api';
 import { setToken, setUserInfo } from '@/utils/auth';
-import NavBar from '@/components/NavBar.vue';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 const phone = ref('');
 const code = ref('');
 const countdown = ref(0);
 const loading = ref(false);
+const agreed = ref(false);
+
+// 切换协议勾选
+const toggleAgreement = () => {
+  agreed.value = !agreed.value;
+};
 
 // 是否可以登录
 const canLogin = computed(() => {
   return phone.value.length === 11 && code.value.length === 6;
 });
 
-// 发送验证码 - 使用假数据
+// 发送验证码
 const sendCode = async () => {
   if (countdown.value > 0) return;
   
@@ -100,7 +110,6 @@ const sendCode = async () => {
   }
   
   try {
-    // 模拟 API 请求
     await new Promise(resolve => setTimeout(resolve, 500));
     
     uni.showToast({
@@ -109,7 +118,6 @@ const sendCode = async () => {
       duration: 3000,
     });
     
-    // 开始倒计时
     countdown.value = 60;
     const timer = setInterval(() => {
       countdown.value--;
@@ -125,11 +133,18 @@ const sendCode = async () => {
   }
 };
 
-// 登录 - 使用假数据
+// 登录
 const handleLogin = async () => {
   if (!canLogin.value) return;
   
-  // 验证测试验证码
+  if (!agreed.value) {
+    uni.showToast({
+      title: '请先同意用户协议和隐私政策',
+      icon: 'none',
+    });
+    return;
+  }
+  
   if (code.value !== '123456') {
     uni.showToast({
       title: '验证码错误 (请输入: 123456)',
@@ -142,10 +157,8 @@ const handleLogin = async () => {
   loading.value = true;
   
   try {
-    // 模拟 API 请求延迟
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // 假数据 - 已完善资料的用户
     const mockUserInfo = {
       id: 'user_002',
       nickname: '手机用户',
@@ -162,7 +175,6 @@ const handleLogin = async () => {
     
     const mockToken = 'mock_token_' + Date.now();
     
-    // 保存登录信息
     setToken(mockToken);
     setUserInfo(mockUserInfo);
     
@@ -171,7 +183,6 @@ const handleLogin = async () => {
       icon: 'success',
     });
     
-    // 跳转到主页
     setTimeout(() => {
       uni.switchTab({
         url: '/pages/tabBar/match',
@@ -192,21 +203,30 @@ const goBack = () => {
   uni.navigateBack();
 };
 
-// 返回微信登录
-const goToWechatLogin = () => {
-  uni.navigateBack();
+// 显示隐私政策
+const showPrivacy = () => {
+  uni.showModal({
+    title: '隐私政策',
+    content: '这里是隐私政策内容...',
+    showCancel: false,
+  });
+};
+
+// 显示用户协议
+const showUserAgreement = () => {
+  uni.showModal({
+    title: '用户协议',
+    content: '这里是用户协议内容...',
+    showCancel: false,
+  });
 };
 </script>
 
 <style lang="scss" scoped>
 .phone-login-page {
   min-height: 100vh;
-  background: #0D0D0D;
-}
-
-.content {
-  padding: 100rpx 50rpx 60rpx;
-  min-height: 100vh;
+  background: #FFFFFF;
+  padding: 60rpx 50rpx;
 }
 
 // 返回按钮
@@ -216,18 +236,7 @@ const goToWechatLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 50%;
   margin-bottom: 60rpx;
-  
-  .arrow {
-    font-size: 36rpx;
-    color: rgba(255, 255, 255, 0.8);
-  }
-  
-  &:active {
-    background: rgba(255, 255, 255, 0.08);
-  }
 }
 
 // 标题区域
@@ -235,123 +244,122 @@ const goToWechatLogin = () => {
   margin-bottom: 80rpx;
   
   .title {
-    display: block;
-    font-size: 52rpx;
-    font-weight: 700;
-    color: #FFFFFF;
-    margin-bottom: 16rpx;
-    letter-spacing: 1rpx;
-  }
-  
-  .subtitle {
-    display: block;
-    font-size: 26rpx;
-    color: rgba(255, 255, 255, 0.4);
+    font-size: 48rpx;
+    font-weight: 500;
+    color: #000000;
   }
 }
 
 // 表单区域
 .form-area {
-  margin-bottom: 60rpx;
-  
   .input-group {
-    margin-bottom: 36rpx;
+    margin-bottom: 60rpx;
+  }
+  
+  .input-label {
+    display: block;
+    font-size: 30rpx;
+    color: #333333;
+    margin-bottom: 20rpx;
   }
   
   .input-box {
     display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1rpx solid rgba(255, 255, 255, 0.08);
-    border-radius: 20rpx;
-    padding: 0 32rpx;
-    height: 100rpx;
-    transition: all 0.3s;
+    border-bottom: 1rpx solid #E5E5E5;
+    padding-bottom: 20rpx;
     
     &:focus-within {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 107, 61, 0.5);
+      border-bottom-color: #000000;
     }
-  }
-  
-  .prefix {
-    font-size: 30rpx;
-    color: rgba(255, 255, 255, 0.6);
-    margin-right: 20rpx;
-    padding-right: 20rpx;
-    border-right: 1rpx solid rgba(255, 255, 255, 0.1);
   }
   
   .input-field {
     flex: 1;
-    font-size: 30rpx;
-    color: #FFFFFF;
-    height: 100%;
+    font-size: 32rpx;
+    color: #000000;
+    height: 60rpx;
   }
   
   .placeholder {
-    color: rgba(255, 255, 255, 0.25);
+    color: #CCCCCC;
   }
   
   .code-trigger {
-    padding: 16rpx 28rpx;
-    background: rgba(255, 107, 61, 0.15);
-    border-radius: 12rpx;
-    font-size: 26rpx;
-    color: #FF6B3D;
+    padding: 12rpx 36rpx;
+    background: #E8E8E8;
+    border-radius: 30rpx;
+    font-size: 28rpx;
+    color: #FFFFFF;
     white-space: nowrap;
-    transition: all 0.2s;
-    
-    &:active:not(.disabled) {
-      background: rgba(255, 107, 61, 0.25);
-    }
     
     &.disabled {
-      opacity: 0.5;
-      color: rgba(255, 255, 255, 0.3);
-      background: rgba(255, 255, 255, 0.05);
+      background: #E8E8E8;
+      color: #FFFFFF;
     }
   }
   
-  .hint-text {
-    display: block;
-    margin-top: 16rpx;
-    font-size: 22rpx;
-    color: rgba(255, 255, 255, 0.3);
-    padding-left: 32rpx;
+  // 用户协议
+  .agreement-box {
+    display: flex;
+    align-items: center;
+    margin-top: 40rpx;
+    
+    .checkbox {
+      width: 32rpx;
+      height: 32rpx;
+      border: 2rpx solid #CCCCCC;
+      border-radius: 50%;
+      margin-right: 12rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      &.checked {
+        background: #000000;
+        border-color: #000000;
+      }
+      
+      .check-icon {
+        font-size: 20rpx;
+        color: #FFFFFF;
+      }
+    }
+    
+    .agreement-text {
+      font-size: 24rpx;
+      color: #666666;
+    }
+    
+    .link {
+      font-size: 24rpx;
+      color: #1890FF;
+      margin: 0 4rpx;
+    }
   }
 }
 
 // 操作区域
 .action-area {
-  margin-top: 80rpx;
+  margin-top: 100rpx;
   
   .submit-btn {
+    width: 100%;
     height: 96rpx;
     border-radius: 48rpx;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    transition: all 0.3s;
+    background: #000000;
     
     .btn-text {
       font-size: 32rpx;
-      color: rgba(255, 255, 255, 0.3);
+      color: #FFFFFF;
       font-weight: 500;
     }
     
-    &.active {
-      background: linear-gradient(135deg, #FF6B3D 0%, #E5533D 100%);
-      box-shadow: 0 8rpx 24rpx rgba(255, 107, 61, 0.35);
-      
-      .btn-text {
-        color: #FFFFFF;
-      }
-      
-      &:active {
-        transform: scale(0.97);
-      }
+    &:active {
+      opacity: 0.9;
     }
   }
 }
