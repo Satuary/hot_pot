@@ -1,0 +1,30 @@
+/* uni-app global SCSS variables */
+
+/* Hot Pot Theme Colors */
+$hp-primary: #FF6B3D;
+$hp-primary-dark: #E55A2B;
+$hp-bg-dark: #1A1A1A;
+$hp-bg-card: #242424;
+$hp-text-primary: #FFFFFF;
+$hp-text-secondary: #B0B0B0;
+
+/* Scrollbar hide */
+::-webkit-scrollbar {
+    display: none;
+    width: 0 !important;
+    height: 0 !important;
+    -webkit-appearance: none;
+    background: transparent;
+    color: transparent;
+}
+
+/* Utility */
+.flex-row {
+    display: flex;
+    align-items: center;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
