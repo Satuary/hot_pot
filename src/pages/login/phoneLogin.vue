@@ -7,7 +7,7 @@
     
     <!-- 标题 -->
     <view class="title-area">
-      <text class="title">快捷登录</text>
+      <text class="title">验证码登录</text>
     </view>
     
     <!-- 表单 -->
@@ -20,7 +20,7 @@
             class="input-field"
             type="number"
             v-model="phone"
-            placeholder="请输入"
+            placeholder="请输入手机号"
             maxlength="11"
             placeholder-class="placeholder"
           />
@@ -35,16 +35,16 @@
             class="input-field"
             type="number"
             v-model="code"
-            placeholder="请输入"
+            placeholder="请输入验证码"
             maxlength="6"
             placeholder-class="placeholder"
           />
           <view
             class="code-trigger"
-            :class="{ disabled: countdown > 0 }"
+            :class="{ disabled: countdown > 0 || sending }"
             @click="sendCode"
           >
-            {{ countdown > 0 ? `${countdown}s` : '发送' }}
+            {{ sending ? '发送中' : countdown > 0 ? `${countdown}s` : '发送' }}
           </view>
         </view>
       </view>
@@ -85,7 +85,46 @@ const phone = ref('');
 const code = ref('');
 const countdown = ref(0);
 const loading = ref(false);
+const sending = ref(false);
 const agreed = ref(false);
+
+// 模拟后端：发送短信验证码
+const mockSendSms = async (_phoneNumber: string) => {
+  await new Promise(resolve => setTimeout(resolve, 500));
+  // 模拟：所有手机号均可发送，返回成功
+  return { code: 0, message: '验证码已发送' };
+};
+
+// 模拟后端：手机号登录/注册
+const mockPhoneLogin = async (phoneNumber: string, smsCode: string) => {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // 模拟：验证码固定为 123456
+  if (smsCode !== '123456') {
+    throw new Error('验证码错误');
+  }
+
+  // 根据手机号模拟是新用户还是老用户
+  const isNewUser = phoneNumber.startsWith('139');
+
+  return {
+    token: 'mock_token_' + Date.now(),
+    isNewUser,
+    userInfo: {
+      id: 'user_' + phoneNumber.slice(-4),
+      nickname: isNewUser ? '新朋友' : '手机用户' + phoneNumber.slice(-4),
+      avatar: 'https://picsum.photos/201',
+      phone: phoneNumber,
+      gender: 'male' as const,
+      age: 0,
+      tags: [] as string[],
+      intro: '',
+      balance: isNewUser ? 0 : 50,
+      matchCount: 0,
+      isProfileComplete: !isNewUser,
+    },
+  };
+};
 
 // 切换协议勾选
 const toggleAgreement = () => {
@@ -99,7 +138,7 @@ const canLogin = computed(() => {
 
 // 发送验证码
 const sendCode = async () => {
-  if (countdown.value > 0) return;
+  if (countdown.value > 0 || sending.value) return;
   
   if (!phone.value || phone.value.length !== 11) {
     uni.showToast({
@@ -109,8 +148,10 @@ const sendCode = async () => {
     return;
   }
   
+  sending.value = true;
   try {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // 正式环境替换为: await sendSmsCode({ phone: phone.value });
+    await mockSendSms(phone.value);
     
     uni.showToast({
       title: '验证码已发送 (测试码: 123456)',
@@ -130,6 +171,8 @@ const sendCode = async () => {
       title: error.message || '发送失败',
       icon: 'none',
     });
+  } finally {
+    sending.value = false;
   }
 };
 
@@ -145,48 +188,33 @@ const handleLogin = async () => {
     return;
   }
   
-  if (code.value !== '123456') {
-    uni.showToast({
-      title: '验证码错误 (请输入: 123456)',
-      icon: 'none',
-      duration: 3000,
-    });
-    return;
-  }
-  
   loading.value = true;
   
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // 正式环境替换为: const result = await phoneLogin({ phone: phone.value, code: code.value });
+    const result = await mockPhoneLogin(phone.value, code.value);
     
-    const mockUserInfo = {
-      id: 'user_002',
-      nickname: '手机用户',
-      avatar: 'https://picsum.photos/201',
-      phone: phone.value,
-      gender: 'female' as const,
-      age: 25,
-      tags: ['海底捞', '清汤', '随便逛逛'],
-      intro: '喜欢清淡口味的火锅',
-      balance: 50,
-      matchCount: 3,
-      isProfileComplete: true,
-    };
+    setToken(result.token);
+    setUserInfo(result.userInfo);
     
-    const mockToken = 'mock_token_' + Date.now();
-    
-    setToken(mockToken);
-    setUserInfo(mockUserInfo);
-    
+    const msg = result.isNewUser ? '注册成功，请完善个人资料' : '登录成功';
     uni.showToast({
-      title: '登录成功',
+      title: msg,
       icon: 'success',
     });
     
     setTimeout(() => {
-      uni.switchTab({
-        url: '/pages/tabBar/match',
-      });
+      if (result.isNewUser) {
+        // 新用户：跳转到资料完善页
+        uni.navigateTo({
+          url: '/pages/profile/setup',
+        });
+      } else {
+        // 老用户：跳转到首页
+        uni.switchTab({
+          url: '/pages/tabBar/match',
+        });
+      }
     }, 1500);
   } catch (error: any) {
     uni.showToast({
@@ -287,7 +315,7 @@ const showUserAgreement = () => {
   
   .code-trigger {
     padding: 12rpx 36rpx;
-    background: #E8E8E8;
+    background: #000000;
     border-radius: 30rpx;
     font-size: 28rpx;
     color: #FFFFFF;
@@ -295,7 +323,7 @@ const showUserAgreement = () => {
     
     &.disabled {
       background: #E8E8E8;
-      color: #FFFFFF;
+      color: #999999;
     }
   }
   
