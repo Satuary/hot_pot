@@ -27,7 +27,7 @@ import LoadingOverlay from '@/components/LoadingOverlay.vue';
 const loading = ref(false);
 
 // 模拟后端返回的登录数据（后续接入真实 API 后替换）
-const mockLoginApi = async (code: string) => {
+const mockLoginApi = async (_code: string) => {
   // 模拟网络延迟
   await new Promise(resolve => setTimeout(resolve, 800));
 
