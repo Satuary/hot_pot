@@ -161,22 +161,22 @@
         }
     ],
     "tabBar": {
-        "color": "#999999",
-        "selectedColor": "#FF6B3D",
+        "color": "#929292",
+        "selectedColor": "#FFFFFF",
         "borderStyle": "black",
-        "backgroundColor": "#1A1A1A",
+        "backgroundColor": "#000000",
         "list": [
             {
                 "pagePath": "pages/tabBar/match",
-                "text": "🔍 匹配"
+                "text": "匹配"
             },
             {
                 "pagePath": "pages/tabBar/view",
-                "text": "📋 查看"
+                "text": "查看"
             },
             {
                 "pagePath": "pages/tabBar/me",
-                "text": "👤 我"
+                "text": "我"
             }
         ]
     },

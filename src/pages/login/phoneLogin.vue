@@ -78,8 +78,16 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { setToken, setUserInfo } from '@/utils/auth';
+import { onLoad } from '@dcloudio/uni-app';
+import { isLogin, setToken, setUserInfo } from '@/utils/auth';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
+
+// 已登录则直接跳转首页
+onLoad(() => {
+  if (isLogin()) {
+    uni.switchTab({ url: '/pages/tabBar/match' });
+  }
+});
 
 const phone = ref('');
 const code = ref('');

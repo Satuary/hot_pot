@@ -20,11 +20,19 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import logoImg from '@/static/imgs/logo@3x.png';
-import { setToken, setUserInfo } from '@/utils/auth';
+import { isLogin, setToken, setUserInfo } from '@/utils/auth';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 const loading = ref(false);
+
+// 已登录则直接跳转首页，防止刷新后停留在登录页
+onLoad(() => {
+  if (isLogin()) {
+    uni.switchTab({ url: '/pages/tabBar/match' });
+  }
+});
 
 // 模拟后端返回的登录数据（后续接入真实 API 后替换）
 const mockLoginApi = async (_code: string) => {

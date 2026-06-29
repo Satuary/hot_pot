@@ -1,478 +1,619 @@
 <template>
-    <view class="page post-page">
-        <!-- Header -->
-        <view class="nav-header">
-            <view class="back-btn" @click="goBack">
-                <text class="back-icon">‹</text>
-            </view>
-            <text class="nav-title">发布需求</text>
-        </view>
-
-        <scroll-view class="content" scroll-y>
-            <!-- Gender -->
-            <view class="form-row" @click="showGenderPicker = true">
-                <text class="label">性别要求</text>
-                <view class="value">
-                    <text>{{ req.gender }}</text>
-                    <text class="arrow">›</text>
-                </view>
-            </view>
-
-            <!-- Age Range -->
-            <view class="form-row" @click="showAgePicker = true">
-                <text class="label">年龄范围</text>
-                <view class="value">
-                    <text>{{ req.ageMin }}-{{ req.ageMax }}岁</text>
-                    <text class="arrow">›</text>
-                </view>
-            </view>
-
-            <!-- Hot Pot Type -->
-            <view class="form-row" @click="showHotpotPicker = true">
-                <text class="label">火锅类型</text>
-                <view class="value">
-                    <text>{{ req.hotpotType.join('、') || '不限' }}</text>
-                    <text class="arrow">›</text>
-                </view>
-            </view>
-
-            <!-- Taste -->
-            <view class="form-row" @click="showTastePicker = true">
-                <text class="label">口味偏好</text>
-                <view class="value">
-                    <text>{{ req.taste.join('、') || '不限' }}</text>
-                    <text class="arrow">›</text>
-                </view>
-            </view>
-
-            <!-- Motivation -->
-            <view class="form-row" @click="showMotivationPicker = true">
-                <text class="label">约锅动机</text>
-                <view class="value">
-                    <text>{{ req.motivation || '不限' }}</text>
-                    <text class="arrow">›</text>
-                </view>
-            </view>
-
-            <!-- Store Selection -->
-            <view class="form-row" @click="goStoreSelection">
-                <text class="label">选择店铺</text>
-                <view class="value">
-                    <text>{{ req.store || '请选择' }}</text>
-                    <text class="arrow">›</text>
-                </view>
-            </view>
-
-            <!-- Time -->
-            <view class="form-row" @click="showTimePicker = true">
-                <text class="label">约锅时间</text>
-                <view class="value">
-                    <text>{{ req.time || '请选择' }}</text>
-                    <text class="arrow">›</text>
-                </view>
-            </view>
-
-            <!-- Payment -->
-            <view class="form-row" @click="showPaymentPicker = true">
-                <text class="label">付款方式</text>
-                <view class="value">
-                    <text>{{ req.payment }}</text>
-                    <text class="arrow">›</text>
-                </view>
-            </view>
-        </scroll-view>
-
-        <!-- Submit -->
-        <view class="bottom-area">
-            <view class="gradient-btn active_btn" @click="submitRequirement">
-                发布需求
-            </view>
-        </view>
-
-        <!-- Gender Picker -->
-        <view class="picker-overlay" v-if="showGenderPicker" @click="showGenderPicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">选择性别</text>
-                <view class="picker-options">
-                    <view
-                        v-for="g in ['男', '女', '不限']"
-                        :key="g"
-                        class="picker-option"
-                        :class="{ active: req.gender === g }"
-                        @click="req.gender = g; showGenderPicker = false"
-                    >
-                        <text>{{ g }}</text>
-                        <text v-if="req.gender === g" class="check">✓</text>
-                    </view>
-                </view>
-            </view>
-        </view>
-
-        <!-- Age Range Picker -->
-        <view class="picker-overlay" v-if="showAgePicker" @click="showAgePicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">选择年龄范围</text>
-                <picker-view
-                    class="wheel-picker"
-                    :value="ageIndex"
-                    @change="onAgeChange"
-                    indicator-style="height: 50px;"
-                >
-                    <picker-view-column>
-                        <view v-for="a in ages" :key="a" class="wheel-item">{{ a }}岁</view>
-                    </picker-view-column>
-                    <picker-view-column>
-                        <view v-for="a in ages" :key="a" class="wheel-item">{{ a }}岁</view>
-                    </picker-view-column>
-                </picker-view>
-                <view class="picker-confirm" @click="confirmAge">确定</view>
-            </view>
-        </view>
-
-        <!-- Time Picker -->
-        <view class="picker-overlay" v-if="showTimePicker" @click="showTimePicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">选择时间</text>
-                <view class="quick-time-grid">
-                    <view
-                        v-for="t in quickTimes"
-                        :key="t.value"
-                        class="quick-time-item"
-                        :class="{ active: req.time === t.value }"
-                        @click="req.time = t.value; showTimePicker = false"
-                    >
-                        <text class="quick-time-label">{{ t.label }}</text>
-                        <text class="quick-time-desc">{{ t.desc }}</text>
-                    </view>
-                </view>
-            </view>
-        </view>
-
-        <!-- Payment Picker -->
-        <view class="picker-overlay" v-if="showPaymentPicker" @click="showPaymentPicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">选择付款方式</text>
-                <view class="picker-options">
-                    <view
-                        v-for="p in paymentOptions"
-                        :key="p"
-                        class="picker-option"
-                        :class="{ active: req.payment === p }"
-                        @click="req.payment = p; showPaymentPicker = false"
-                    >
-                        <text>{{ p }}</text>
-                        <text v-if="req.payment === p" class="check">✓</text>
-                    </view>
-                </view>
-            </view>
-        </view>
-
-        <!-- Multi-select Pickers -->
-        <view class="picker-overlay" v-if="showHotpotPicker" @click="showHotpotPicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">选择火锅类型（可多选）</text>
-                <view class="tag-grid">
-                    <view
-                        v-for="t in hotpotTypeOptions"
-                        :key="t"
-                        class="tag"
-                        :class="{ active: req.hotpotType.includes(t) }"
-                        @click="toggleHotpotType(t)"
-                    >{{ t }}</view>
-                </view>
-                <view class="picker-confirm" @click="showHotpotPicker = false">确定</view>
-            </view>
-        </view>
-
-        <view class="picker-overlay" v-if="showTastePicker" @click="showTastePicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">选择口味偏好（可多选）</text>
-                <view class="tag-grid">
-                    <view
-                        v-for="t in tasteOptions"
-                        :key="t"
-                        class="tag"
-                        :class="{ active: req.taste.includes(t) }"
-                        @click="toggleTaste(t)"
-                    >{{ t }}</view>
-                </view>
-                <view class="picker-confirm" @click="showTastePicker = false">确定</view>
-            </view>
-        </view>
-
-        <view class="picker-overlay" v-if="showMotivationPicker" @click="showMotivationPicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">选择约锅动机</text>
-                <view class="tag-grid">
-                    <view
-                        v-for="m in motivationOptions"
-                        :key="m"
-                        class="tag"
-                        :class="{ active: req.motivation === m }"
-                        @click="req.motivation = m; showMotivationPicker = false"
-                    >{{ m }}</view>
-                </view>
-            </view>
-        </view>
+  <view class="post-requirement-page">
+    <!-- 导航栏 -->
+    <view class="nav-bar">
+      <view class="nav-back" @click="goBack">
+        <uni-icons type="left" size="22" color="#FFFFFF"></uni-icons>
+      </view>
+      <view class="nav-title">发布需求</view>
     </view>
+
+    <!-- 性别选择 -->
+    <view class="section">
+      <view class="section-title">性别</view>
+      <view class="gender-selector">
+        <view
+          v-for="item in genderOptions"
+          :key="item.value"
+          class="gender-item"
+          :class="{ active: formData.gender === item.value }"
+          @click="selectGender(item.value)"
+        >
+          <image
+            class="gender-img"
+            :src="formData.gender === item.value ? item.imgActive : item.imgNormal"
+            mode="aspectFit"
+          />
+        </view>
+      </view>
+    </view>
+
+    <!-- 年龄范围 -->
+    <view class="section">
+      <view class="section-title">年龄</view>
+      <view class="age-selector">
+        <view class="age-item" @click="showAgePicker('min')">
+          <view class="age-text-wrap">
+            <div class="age-num">{{ formData.ageMin }}</div>
+            <div class="age-unit">岁</div>
+          </view>
+          <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
+        </view>
+        <view class="age-item" @click="showAgePicker('max')">
+          <view class="age-text-wrap">
+            <div class="age-num">{{ formData.ageMax }}</div>
+            <div class="age-unit">岁</div>
+          </view>
+          <uni-icons type="right" size="20" color="#fffff"></uni-icons>
+        </view>
+      </view>
+    </view>
+
+    <!-- 火锅类型 -->
+    <view class="section">
+      <view class="section-title">火锅类型</view>
+      <view class="tag-list">
+        <view
+          v-for="item in hotpotTypes"
+          :key="item"
+          class="tag-item"
+          :class="{ active: formData.hotpotType === item }"
+          @click="selectHotpotType(item)"
+        >
+          {{ item }}
+        </view>
+      </view>
+    </view>
+
+    <!-- 口味 -->
+    <view class="section">
+      <view class="section-title">口味</view>
+      <view class="tag-list">
+        <view
+          v-for="item in flavors"
+          :key="item"
+          class="tag-item"
+          :class="{ active: formData.flavor === item }"
+          @click="selectFlavor(item)"
+        >
+          {{ item }}
+        </view>
+      </view>
+    </view>
+
+    <!-- 动力 -->
+    <view class="section">
+      <view class="section-title">动力</view>
+      <view class="tag-list">
+        <view
+          v-for="item in motivations"
+          :key="item"
+          class="tag-item"
+          :class="{ active: formData.motivation === item }"
+          @click="selectMotivation(item)"
+        >
+          {{ item }}
+        </view>
+      </view>
+    </view>
+
+    <!-- 选择火锅店 -->
+    <view class="section">
+      <view class="section-title">选择火锅店</view>
+      <view class="selector-item" @click="selectStore">
+        <text class="selector-text" :class="{ placeholder: !formData.storeName }">
+          {{ formData.storeName || '请选择火锅店' }}
+        </text>
+        <uni-icons type="right" size="20" color="#fffff"></uni-icons>
+      </view>
+    </view>
+
+    <!-- 选择时间 -->
+    <view class="section">
+      <view class="section-title">选择时间</view>
+      <picker
+        mode="multiSelector"
+        :range="dateTimeRange"
+        :value="dateTimeValue"
+        @change="onDateTimeChange"
+      >
+        <view class="selector-item">
+          <text class="selector-text">{{ formattedDateTime }}</text>
+          <uni-icons type="right" size="20" color="#fffff"></uni-icons>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 付费方式 -->
+    <view class="section">
+      <view class="section-title">付费方式</view>
+      <view class="tag-list">
+        <view
+          v-for="item in paymentMethods"
+          :key="item.value"
+          class="tag-item"
+          :class="{ active: formData.paymentMethod === item.value }"
+          @click="selectPaymentMethod(item.value)"
+        >
+          {{ item.label }}
+        </view>
+      </view>
+    </view>
+
+    <!-- 开始匹配按钮 -->
+    <view class="submit-btn" @click="submitRequirement">
+      <view class="submit-text">开始匹配</view>
+    </view>
+
+    <!-- 年龄选择器 -->
+    <picker
+      v-if="showPicker"
+      mode="selector"
+      :range="ageRange"
+      :value="currentAgeIndex"
+      @change="onAgeChange"
+      @cancel="showPicker = false"
+    >
+      <view></view>
+    </picker>
+  </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { appState, hotpotTypeOptions, tasteOptions, motivationOptions, paymentOptions } from '@/utils/store';
+import { ref, computed, onMounted } from 'vue';
+import { postRequirement } from '@/api/api';
 
-const req = appState.matchRequirement;
+// 表单数据
+const formData = ref({
+  gender: 'male',
+  ageMin: 18,
+  ageMax: 38,
+  hotpotType: '重庆火锅',
+  flavor: '麻辣',
+  motivation: '尝鲜打卡',
+  storeId: '',
+  storeName: '',
+  dateTime: '',
+  paymentMethod: 'me',
+});
 
-const showGenderPicker = ref(false);
-const showAgePicker = ref(false);
-const showHotpotPicker = ref(false);
-const showTastePicker = ref(false);
-const showMotivationPicker = ref(false);
-const showTimePicker = ref(false);
-const showPaymentPicker = ref(false);
-
-const ages = Array.from({ length: 51 }, (_, i) => String(18 + i));
-const ageIndex = ref([0, 17]);
-
-const quickTimes = [
-    { label: '今天', desc: '今天', value: '今天' },
-    { label: '明天', desc: '明天', value: '明天' },
-    { label: '本周', desc: '本周内', value: '本周内' },
-    { label: '本周末', desc: '周六/周日', value: '本周末' },
+// 性别选项
+const genderOptions = [
+  { value: 'male', label: '男生', imgNormal: '/static/imgs/boy_d.png', imgActive: '/static/imgs/boys.png' },
+  { value: 'female', label: '女生', imgNormal: '/static/imgs/girls_d.png', imgActive: '/static/imgs/girls.png' },
 ];
 
-function goBack() {
-    uni.navigateBack();
-}
+// 火锅类型
+const hotpotTypes = ['重庆火锅', '潮汕火锅', '海鲜火锅', '小火锅'];
 
-function goStoreSelection() {
-    uni.navigateTo({
-        url: '/subPack/match/storeSelection',
+// 口味
+const flavors = ['麻辣', '清汤', '番茄', '菌锅'];
+
+// 动力
+const motivations = ['尝鲜打卡', '解馋吃货', '轻松社交', '治愈心情'];
+
+// 付费方式
+const paymentMethods = [
+  { value: 'me', label: '我请客' },
+  { value: 'AA', label: 'AA' },
+  { value: 'other', label: '对方请客' },
+];
+
+// 年龄选择器相关
+const showPicker = ref(false);
+const currentAgeType = ref<'min' | 'max'>('min');
+const currentAgeIndex = ref(0);
+const ageRange = Array.from({ length: 83 }, (_, i) => `${i + 18} 岁`);
+
+// 日期时间选择器相关
+const dateTimeValue = ref([0, 0, 0]);
+const dateTimeRange = ref<string[][]>([[], [], []]);
+
+// 格式化显示的日期时间
+const formattedDateTime = computed(() => {
+  if (!formData.value.dateTime) {
+    // 默认显示
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString();
+    const day = date.getDate().toString();
+    return `${year}-${month}-${day} 15:30`;
+  }
+  return formData.value.dateTime;
+});
+
+// 返回上一页
+const goBack = () => {
+  uni.navigateBack();
+};
+
+// 选择性别
+const selectGender = (gender: string) => {
+  formData.value.gender = gender;
+};
+
+// 显示年龄选择器
+const showAgePicker = (type: 'min' | 'max') => {
+  currentAgeType.value = type;
+  const currentAge = type === 'min' ? formData.value.ageMin : formData.value.ageMax;
+  currentAgeIndex.value = currentAge - 18;
+  showPicker.value = true;
+  
+  // 触发选择器
+  setTimeout(() => {
+    showPicker.value = false;
+    uni.showActionSheet({
+      itemList: ageRange,
+      success: (res) => {
+        const selectedAge = res.tapIndex + 18;
+        if (type === 'min') {
+          formData.value.ageMin = selectedAge;
+          if (formData.value.ageMin > formData.value.ageMax) {
+            formData.value.ageMax = selectedAge;
+          }
+        } else {
+          formData.value.ageMax = selectedAge;
+          if (formData.value.ageMax < formData.value.ageMin) {
+            formData.value.ageMin = selectedAge;
+          }
+        }
+      },
     });
-}
+  }, 50);
+};
 
-function onAgeChange(e: any) {
-    ageIndex.value = e.detail.value;
-}
+// 年龄选择器变化
+const onAgeChange = (e: any) => {
+  const selectedAge = e.detail.value + 18;
+  if (currentAgeType.value === 'min') {
+    formData.value.ageMin = selectedAge;
+  } else {
+    formData.value.ageMax = selectedAge;
+  }
+  showPicker.value = false;
+};
 
-function confirmAge() {
-    req.ageMin = ages[ageIndex.value[0]];
-    req.ageMax = ages[ageIndex.value[1]];
-    showAgePicker.value = false;
-}
+// 选择火锅类型
+const selectHotpotType = (type: string) => {
+  formData.value.hotpotType = type;
+};
 
-function toggleHotpotType(t: string) {
-    const idx = req.hotpotType.indexOf(t);
-    if (idx > -1) req.hotpotType.splice(idx, 1);
-    else req.hotpotType.push(t);
-}
+// 选择口味
+const selectFlavor = (flavor: string) => {
+  formData.value.flavor = flavor;
+};
 
-function toggleTaste(t: string) {
-    const idx = req.taste.indexOf(t);
-    if (idx > -1) req.taste.splice(idx, 1);
-    else req.taste.push(t);
-}
+// 选择动力
+const selectMotivation = (motivation: string) => {
+  formData.value.motivation = motivation;
+};
 
-function submitRequirement() {
-    uni.navigateTo({
+// 选择付费方式
+const selectPaymentMethod = (method: string) => {
+  formData.value.paymentMethod = method;
+};
+
+// 选择火锅店
+const selectStore = () => {
+  uni.navigateTo({
+    url: '/subPack/match/storeSelection',
+    events: {
+      selectStore: (data: any) => {
+        formData.value.storeId = data.id;
+        formData.value.storeName = data.name;
+      },
+    },
+  });
+};
+
+// 初始化日期时间选择器数据
+const initDateTimeRange = () => {
+  const dates: string[] = [];
+  const hours: string[] = [];
+  const minutes: string[] = [];
+
+  // 生成未来30天的日期
+  const today = new Date();
+  for (let i = 0; i < 30; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    dates.push(`${month}-${day}`);
+  }
+
+  // 生成小时 (00-23)
+  for (let i = 0; i < 24; i++) {
+    hours.push(`${i.toString().padStart(2, '0')}`);
+  }
+
+  // 生成分钟 (00, 15, 30, 45)
+  minutes.push('00', '15', '30', '45');
+
+  dateTimeRange.value = [dates, hours, minutes];
+
+  // 设置默认值为今天 15:30
+  const currentMonth = today.getMonth() + 1;
+  const currentDay = today.getDate();
+  const todayStr = `${currentMonth}-${currentDay}`;
+  const todayIndex = dates.indexOf(todayStr);
+  
+  dateTimeValue.value = [
+    todayIndex >= 0 ? todayIndex : 0,
+    15, // 15点
+    2, // 30分
+  ];
+};
+
+
+// 日期时间选择器变化
+const onDateTimeChange = (e: any) => {
+  const [dateIndex, hourIndex, minuteIndex] = e.detail.value;
+  const dateStr = dateTimeRange.value[0][dateIndex];
+  const hour = dateTimeRange.value[1][hourIndex];
+  const minute = dateTimeRange.value[2][minuteIndex];
+  
+  // 解析月份和日期
+  const [month, day] = dateStr.split('-').map(Number);
+  
+  // 计算正确的年份：如果月份小于当前月份，说明跨年了
+  const now = new Date();
+  let year = now.getFullYear();
+  if (month < now.getMonth() + 1) {
+    year += 1;
+  }
+  
+  formData.value.dateTime = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${hour}:${minute}`;
+};
+
+// 提交需求
+const submitRequirement = async () => {
+  // 验证必填项
+  if (!formData.value.storeId) {
+    uni.showToast({
+      title: '请选择火锅店',
+      icon: 'none',
+    });
+    return;
+  }
+
+  if (!formData.value.dateTime) {
+    uni.showToast({
+      title: '请选择时间',
+      icon: 'none',
+    });
+    return;
+  }
+
+  try {
+    uni.showLoading({
+      title: '提交中...',
+    });
+
+    const params = {
+      gender: formData.value.gender,
+      ageMin: formData.value.ageMin,
+      ageMax: formData.value.ageMax,
+      hotpotType: formData.value.hotpotType,
+      flavor: formData.value.flavor,
+      motivation: formData.value.motivation,
+      storeId: formData.value.storeId,
+      storeName: formData.value.storeName,
+      dateTime: formData.value.dateTime,
+      paymentMethod: formData.value.paymentMethod,
+    };
+
+    // 这里调用实际的 API
+    // const res = await postRequirement(params);
+    
+    uni.hideLoading();
+    uni.showToast({
+      title: '发布成功',
+      icon: 'success',
+    });
+
+    // 跳转到匹配页面
+    setTimeout(() => {
+      uni.navigateTo({
         url: '/subPack/match/matching',
+      });
+    }, 1500);
+  } catch (error: any) {
+    uni.hideLoading();
+    uni.showToast({
+      title: error.message || '发布失败',
+      icon: 'none',
     });
-}
+  }
+};
+
+onMounted(() => {
+  initDateTimeRange();
+  // 设置默认日期时间显示
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString();
+  const day = date.getDate().toString();
+  formData.value.dateTime = `${year}-${month}-${day} 15:30`;
+});
 </script>
 
 <style lang="scss" scoped>
-.post-page {
-    background: #1A1A1A;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
+.post-requirement-page {
+  min-height: 100vh;
+  background: #000;
+  padding-bottom: 200rpx;
 }
 
-.nav-header {
-    display: flex;
-    align-items: center;
-    padding: 20rpx 30rpx 30rpx;
-    padding-top: calc(60rpx + var(--status-bar-height, 0px));
-    border-bottom: 1px solid #2A2A2A;
-}
+// 导航栏
+.nav-bar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 88rpx;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 30rpx;
+  padding-top: var(--status-bar-height, 0px);
+  z-index: 100;
 
-.back-btn {
+  .nav-back {
+    position: absolute;
+    left: 20rpx;
     width: 60rpx;
     height: 60rpx;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 20rpx;
-}
 
-.back-icon {
-    font-size: 48rpx;
-    color: #FFFFFF;
-}
 
-.nav-title {
+  }
+
+  .nav-title {
     font-size: 34rpx;
-    color: #FFFFFF;
-    font-weight: 600;
+    color: #fff;
+    font-weight: 500;
+  }
 }
 
-.content {
+.section {
+  margin-bottom: 56rpx;
+  padding: 0 30rpx;
+
+  .section-title {
+    font-size: 30rpx;
+    color: #999999;
+    margin-bottom: 28rpx;
+    font-weight: 400;
+  }
+}
+
+// 性别选择器
+.gender-selector {
+  display: flex;
+  gap: 24rpx;
+  justify-content: flex-start;
+
+  .gender-item {
+    width: 194rpx;
+    height: 76rpx;
+    
+
+    .gender-img {
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+// 年龄选择器
+.age-selector {
+  display: flex;
+  gap: 24rpx;
+
+  .age-item {
     flex: 1;
-    padding: 0 40rpx;
-}
-
-.form-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 36rpx 0;
-    border-bottom: 1px solid #2A2A2A;
-}
-
-.label {
-    font-size: 30rpx;
-    color: #FFFFFF;
-}
-
-.value {
-    font-size: 28rpx;
-    color: #B0B0B0;
-    display: flex;
-    align-items: center;
-}
-
-.arrow {
-    font-size: 36rpx;
-    color: #808080;
-    margin-left: 8rpx;
-}
-
-.bottom-area {
-    padding: 30rpx 40rpx;
-    padding-bottom: calc(30rpx + env(safe-area-inset-bottom));
-}
-
-/* Picker */
-.picker-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 999;
-    display: flex;
-    align-items: flex-end;
-}
-
-.picker-panel {
-    width: 100%;
-    background: #242424;
-    border-radius: 32rpx 32rpx 0 0;
-    padding: 40rpx 30rpx;
-    padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
-}
-
-.picker-title {
-    font-size: 32rpx;
-    color: #FFF;
-    font-weight: 600;
-    text-align: center;
-    display: block;
-    margin-bottom: 30rpx;
-}
-
-.picker-options {
-    max-height: 600rpx;
-    overflow-y: auto;
-}
-
-.picker-option {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 30rpx 20rpx;
-    border-bottom: 1px solid #333;
-    font-size: 30rpx;
-    color: #B0B0B0;
-}
-
-.picker-option.active {
-    color: #FF6B3D;
-}
-
-.check {
-    color: #FF6B3D;
-    font-weight: 700;
-}
-
-.wheel-picker {
-    width: 100%;
-    height: 400rpx;
-    margin-bottom: 20rpx;
-}
-
-.wheel-item {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 30rpx;
-    color: #FFF;
+    width: 300rpx;
+    height: 88rpx;
+    padding: 0 60rpx;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.1) 100%);
+    border-radius: 152rpx;
+    border: 1rpx solid #ffffff;
+
+    :deep(uni-icons) {
+      position: absolute;
+      right: 32rpx;
+    }
+
+    .age-text-wrap {
+      display: flex;
+      align-items: center;
+
+      .age-num {
+        font-size: 32rpx;
+        color: #ffffff;
+        margin-right: 10rpx;
+      }
+
+      .age-unit {
+        font-size: 30rpx;
+        color: #929292;
+      }
+    }
+  }
 }
 
-.picker-confirm {
-    width: 100%;
-    text-align: center;
-    padding: 24rpx;
-    background: linear-gradient(135deg, #FF6B3D, #FF3D3D);
-    border-radius: 50rpx;
-    color: #FFF;
-    font-size: 30rpx;
-    font-weight: 600;
-    margin-top: 20rpx;
-}
+// 标签列表
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
 
-.tag-grid {
-    display: flex;
-    flex-wrap: wrap;
-    padding: 10rpx 0;
-}
-
-.tag-grid .tag {
-    padding: 16rpx 30rpx;
-    margin: 10rpx;
+  .tag-item {
+    padding: 18rpx 36rpx;
+    background: rgba(0,0,0,0.9);
+    border-radius: 48rpx;
     font-size: 28rpx;
-}
-
-/* Quick Time */
-.quick-time-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20rpx;
-}
-
-.quick-time-item {
-    flex: 1;
-    min-width: 40%;
-    background: #333;
-    border-radius: 16rpx;
-    padding: 30rpx 20rpx;
-    text-align: center;
+    color: #929292;
     border: 2rpx solid transparent;
+    transition: all 0.3s;
+    white-space: nowrap;
+    border: solid 1rpx;
+
+    &.active {  
+      color: #fff;
+      background: linear-gradient( 180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 100%);
+      border-radius: 152rpx 152rpx 152rpx 152rpx;
+      border: 1rpx solid;
+    }
+  }
 }
 
-.quick-time-item.active {
-    border-color: #FF6B3D;
-    background: rgba(255,107,61,0.1);
+// 选择器项
+.selector-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  padding: 0 60rpx;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.1) 100%);
+  border-radius: 152rpx;
+  border: 1rpx solid #ffffff;
+
+  .selector-text {
+    font-size: 30rpx;
+    color: #fff;
+
+    &.placeholder {
+      color: #929292;
+    }
+  }
+
 }
 
-.quick-time-label {
-    font-size: 28rpx;
-    color: #FFF;
-    display: block;
-}
+// 提交按钮
+.submit-btn {
+  width: 650rpx;
+  height: 88rpx;
+  margin: 0 auto;
+  background: linear-gradient(270deg, #58B4FF 0%, #C927FF 100%);
+  border-radius: 52rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 32rpx rgba(91, 156, 252, 0.4);
 
-.quick-time-desc {
-    font-size: 22rpx;
-    color: #808080;
-    display: block;
-    margin-top: 6rpx;
+  .submit-text {
+    font-size: 34rpx;
+    color: #fff;
+    font-weight: 500;
+  }
 }
 </style>

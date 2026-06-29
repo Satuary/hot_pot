@@ -3,276 +3,103 @@
     <!-- 自定义导航栏 -->
     <view class="navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="navbar-inner">
+        <!-- 左侧位置 -->
         <view class="location-picker" @click="chooseLocation">
-          <text class="pin">📍</text>
-          <text class="city">{{ location }}</text>
-          <text class="arrow">▼</text>
+          <uni-icons type="location-filled" size="20" color="#FFFFFF"></uni-icons>
+          <text class="location-text">{{ location }}</text>
         </view>
         
-        <view class="nav-right">
-          <view class="notice-btn" @click="showNotification">
-            <text class="bell">🔔</text>
-            <view class="dot"></view>
-          </view>
+        <!-- 右侧开关 -->
+        <view class="toggle-switch" :class="{ active: isToggleOn }" @click="toggleSwitch">
+          <view class="toggle-circle"></view>
         </view>
       </view>
     </view>
     
-    <!-- 主内容 -->
-    <scroll-view scroll-y class="main-scroll" :style="{ paddingTop: (statusBarHeight + 88) + 'px' }">
-      <!-- 用户状态卡 -->
-      <view class="user-status">
-        <view class="user-left">
-          <image
-            :src="userInfo.avatar || 'https://picsum.photos/200'"
-            class="user-avatar"
-            mode="aspectFill"
-          ></image>
-          <view class="user-meta">
-            <text class="user-name">{{ userInfo.nickname || '火锅爱好者' }}</text>
-            <view class="user-stats">
-              <text class="stat-item">{{ userInfo.matchCount || 0 }} 次</text>
-              <text class="divider">·</text>
-              <text class="stat-item balance">¥{{ userInfo.balance || 0 }}</text>
-            </view>
+    <!-- 主内容区 -->
+    <view class="main-content" :style="{ top: topOffset + 'px' }">
+      <!-- 两个旋转的火锅图片 -->
+      <view class="match-circles">
+        <!-- 左侧精准匹配 -->
+        <view class="circle-item">
+          <view class="circle-image-wrapper">
+            <image 
+              class="circle-image neon-blue" 
+              src="https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&h=400&fit=crop" 
+              mode="aspectFill"
+            ></image>
           </view>
-        </view>
-        <view class="recharge-btn" @click="goToRecharge">
-          <text class="btn-label">充值</text>
-        </view>
-      </view>
-      
-      <!-- 匹配模式 -->
-      <view class="match-modes">
-        <view class="section-head">
-          <text class="head-title">选择模式</text>
-        </view>
-        
-        <view class="mode-grid">
-          <view
-            class="mode-item"
-            :class="{ selected: matchMode === 'precise' }"
-            @click="matchMode = 'precise'"
-          >
-            <text class="mode-emoji">🎯</text>
-            <text class="mode-label">精准</text>
-            <text class="mode-hint">按偏好匹配</text>
-            <view v-if="matchMode === 'precise'" class="check-mark">✓</view>
-          </view>
-          
-          <view
-            class="mode-item"
-            :class="{ selected: matchMode === 'blind' }"
-            @click="matchMode = 'blind'"
-          >
-            <text class="mode-emoji">🎁</text>
-            <text class="mode-label">盲盒</text>
-            <text class="mode-hint">随机惊喜</text>
-            <view v-if="matchMode === 'blind'" class="check-mark">✓</view>
-          </view>
-        </view>
-      </view>
-      
-      <!-- CTA -->
-      <view class="cta-section">
-        <view class="cta-btn" @click="goToPostRequirement">
-          <text class="cta-text">开始拼桌</text>
-          <text class="cta-arrow">→</text>
-        </view>
-      </view>
-      
-      <!-- 最近记录 -->
-      <view class="recent-section">
-        <view class="section-head">
-          <text class="head-title">最近</text>
-          <text class="head-action" @click="goToOrderList">全部 →</text>
-        </view>
-        
-        <view v-if="recentMatches.length > 0" class="recent-list">
-          <view
-            v-for="match in recentMatches"
-            :key="match.id"
-            class="recent-card"
-            @click="goToOrderDetail(match.id)"
-          >
-            <view class="card-top">
-              <view class="status-badge" :class="'status-' + match.status">
-                {{ getStatusText(match.status) }}
-              </view>
-              <text class="card-time">{{ formatTime(match.createTime) }}</text>
-            </view>
-            
-            <view class="card-main">
-              <view class="card-info">
-                <text class="store-title">{{ match.storeName }}</text>
-                <text class="match-meta">{{ match.time }} · {{ match.peopleCount }}人</text>
-              </view>
-              
-              <image
-                v-if="match.matchedUser"
-                :src="match.matchedUser.avatar"
-                class="partner-avatar"
-                mode="aspectFill"
-              ></image>
-            </view>
+          <view class="match-btn precise" @click="goToPreciseMatch">
+            <text>精准匹配</text>
           </view>
         </view>
         
-        <view v-else class="empty-box">
-          <text class="empty-emoji">🍲</text>
-          <text class="empty-text">还没有拼桌记录</text>
-          <text class="empty-hint">开始第一次拼桌吧</text>
+        <!-- 右侧盲配 -->
+        <view class="circle-item">
+          <view class="circle-image-wrapper">
+            <image 
+              class="circle-image neon-pink" 
+              src="https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&h=400&fit=crop" 
+              mode="aspectFill"
+            ></image>
+          </view>
+          <view class="match-btn blind" @click="goToBlindMatch">
+            <text>盲配</text>
+          </view>
         </view>
       </view>
-      
-      <view class="bottom-pad"></view>
-    </scroll-view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { getUserInfo } from '@/utils/auth';
-import { appState } from '@/utils/store';
 
 const statusBarHeight = ref(0);
-const location = ref('上海 闵行');
-const matchMode = ref('precise');
-const userInfo = ref(getUserInfo() || {});
-const recentMatches = ref<any[]>([]);
+const topOffset = ref(0);
+const location = ref('万达广场');
+const isToggleOn = ref(true);
 
 onMounted(() => {
   const systemInfo = uni.getSystemInfoSync();
   statusBarHeight.value = systemInfo.statusBarHeight || 0;
-  
-  // 加载最近匹配记录
-  loadRecentMatches();
+  // 导航栏总高度 = 状态栏 + 88rpx（转换为px）
+  topOffset.value = statusBarHeight.value + (88 * systemInfo.windowWidth / 750);
 });
-
-// 加载最近匹配 - 使用假数据
-const loadRecentMatches = async () => {
-  // 模拟数据
-  recentMatches.value = [
-    {
-      id: 'order_001',
-      status: 'paid',
-      createTime: new Date(Date.now() - 3600000).toISOString(),
-      storeName: '海底捞火锅(闵行店)',
-      time: '今天 18:00',
-      peopleCount: 2,
-      amount: 298,
-      matchedUser: {
-        id: 'user_101',
-        nickname: '火锅小姐姐',
-        avatar: 'https://picsum.photos/100',
-      },
-    },
-    {
-      id: 'order_002',
-      status: 'pending',
-      createTime: new Date(Date.now() - 7200000).toISOString(),
-      storeName: '小龙坎老火锅',
-      time: '明天 19:00',
-      peopleCount: 2,
-      amount: 268,
-      matchedUser: {
-        id: 'user_102',
-        nickname: '麻辣爱好者',
-        avatar: 'https://picsum.photos/101',
-      },
-    },
-    {
-      id: 'order_003',
-      status: 'completed',
-      createTime: new Date(Date.now() - 86400000).toISOString(),
-      storeName: '哥老官重庆美蛙鱼头',
-      time: '昨天 20:00',
-      peopleCount: 2,
-      amount: 328,
-      matchedUser: {
-        id: 'user_103',
-        nickname: '吃货达人',
-        avatar: 'https://picsum.photos/102',
-      },
-    },
-  ];
-};
 
 // 选择位置
 const chooseLocation = () => {
   uni.chooseLocation({
     success: (res) => {
-      location.value = res.name || res.address;
+      location.value = res.name || res.address || '万达广场';
     },
   });
 };
 
-// 显示通知
-const showNotification = () => {
+// 切换开关
+const toggleSwitch = () => {
+  isToggleOn.value = !isToggleOn.value;
+};
+
+// 精准匹配
+const goToPreciseMatch = () => {
   uni.navigateTo({
-    url: '/subPack/me/notifications',
+    url: '/subPack/match/postRequirement?mode=precise',
   });
 };
 
-// 去充值
-const goToRecharge = () => {
+// 盲配
+const goToBlindMatch = () => {
   uni.navigateTo({
-    url: '/subPack/me/recharge',
+    url: '/subPack/match/postRequirement?mode=blind',
   });
-};
-
-// 发布匹配需求
-const goToPostRequirement = () => {
-  appState.matchMode = matchMode.value as any;
-  uni.navigateTo({
-    url: '/subPack/match/postRequirement',
-  });
-};
-
-// 查看订单列表
-const goToOrderList = () => {
-  uni.switchTab({
-    url: '/pages/tabBar/view',
-  });
-};
-
-// 查看订单详情
-const goToOrderDetail = (id: string) => {
-  uni.navigateTo({
-    url: `/subPack/me/orderDetail?id=${id}`,
-  });
-};
-
-// 获取状态文本
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    pending: '待确认',
-    paid: '已支付',
-    completed: '已完成',
-    refunded: '已退款',
-    cancelled: '已取消',
-  };
-  return statusMap[status] || status;
-};
-
-// 格式化时间
-const formatTime = (time: string) => {
-  if (!time) return '';
-  const date = new Date(time);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  return `${Math.floor(diff / 86400000)}天前`;
 };
 </script>
 
 <style lang="scss" scoped>
 .match-page {
   min-height: 100vh;
-  background: #0D0D0D;
+  background: #000000;
 }
 
 // 导航栏
@@ -282,9 +109,7 @@ const formatTime = (time: string) => {
   left: 0;
   right: 0;
   z-index: 999;
-  background: rgba(13, 13, 13, 0.95);
-  backdrop-filter: blur(20rpx);
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
+  background: transparent;
   
   .navbar-inner {
     display: flex;
@@ -294,371 +119,164 @@ const formatTime = (time: string) => {
     padding: 0 40rpx;
   }
   
+  // 左侧位置
   .location-picker {
     display: flex;
     align-items: center;
     gap: 8rpx;
     
-    .pin {
-      font-size: 28rpx;
-    }
-    
-    .city {
+    .location-text {
       font-size: 30rpx;
-      font-weight: 600;
+      font-weight: 500;
       color: #FFFFFF;
-    }
-    
-    .arrow {
-      font-size: 18rpx;
-      color: rgba(255, 255, 255, 0.4);
-      transform: scale(0.8);
     }
   }
   
-  .nav-right {
-    .notice-btn {
-      position: relative;
-      width: 60rpx;
-      height: 60rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+  // 右侧开关
+  .toggle-switch {
+    width: 100rpx;
+    height: 52rpx;
+    border-radius: 26rpx;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+    transition: all 0.3s ease;
+    
+    &.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       
-      .bell {
-        font-size: 36rpx;
+      .toggle-circle {
+        transform: translateX(48rpx);
       }
+    }
+    
+    &:not(.active) {
+      background: rgba(255, 255, 255, 0.3);
       
-      .dot {
-        position: absolute;
-        top: 8rpx;
-        right: 8rpx;
-        width: 12rpx;
-        height: 12rpx;
-        background: #FF4D4F;
-        border-radius: 50%;
-        border: 2rpx solid #0D0D0D;
+      .toggle-circle {
+        transform: translateX(4rpx);
       }
+    }
+    
+    .toggle-circle {
+      position: absolute;
+      top: 4rpx;
+      left: 0;
+      width: 44rpx;
+      height: 44rpx;
+      border-radius: 50%;
+      background: #FFFFFF;
+      transition: transform 0.3s ease;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
     }
   }
 }
 
-// 主滚动区
-.main-scroll {
-  height: 100vh;
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
-  box-sizing: border-box;
+// 主内容区
+.main-content {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-// 用户状态卡
-.user-status {
+// 匹配圆圈区域
+.match-circles {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 60rpx;
+}
+
+.circle-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40rpx;
+}
+
+// 圆形图片包装器
+.circle-image-wrapper {
+  position: relative;
+  width: 280rpx;
+  height: 280rpx;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin: 30rpx 40rpx;
-  padding: 30rpx;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 24rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  justify-content: center;
   
-  .user-left {
-    display: flex;
-    align-items: center;
-    gap: 24rpx;
-  }
-  
-  .user-avatar {
-    width: 88rpx;
-    height: 88rpx;
+  .circle-image {
+    width: 250rpx;
+    height: 250rpx;
     border-radius: 50%;
-    border: 2rpx solid rgba(255, 107, 61, 0.3);
-  }
-  
-  .user-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 8rpx;
-  }
-  
-  .user-name {
-    font-size: 32rpx;
-    font-weight: 600;
-    color: #FFFFFF;
-  }
-  
-  .user-stats {
-    display: flex;
-    align-items: center;
-    gap: 12rpx;
+    object-fit: cover;
+    border: 4rpx solid rgba(255, 255, 255, 0.1);
     
-    .stat-item {
-      font-size: 24rpx;
-      color: rgba(255, 255, 255, 0.4);
-      
-      &.balance {
-        color: #FFB946;
-      }
+    // 霓虹边框 - 蓝色
+    &.neon-blue {
+      border: 3rpx solid rgba(0, 212, 255, 0.5);
+      box-shadow: 
+        0 0 40rpx rgba(0, 212, 255, 0.3),
+        0 0 80rpx rgba(0, 212, 255, 0.15),
+        0 0 140rpx rgba(0, 212, 255, 0.08);
     }
     
-    .divider {
-      font-size: 20rpx;
-      color: rgba(255, 255, 255, 0.2);
-    }
-  }
-  
-  .recharge-btn {
-    padding: 16rpx 32rpx;
-    background: rgba(255, 107, 61, 0.1);
-    border-radius: 20rpx;
-    
-    .btn-label {
-      font-size: 26rpx;
-      color: #FF6B3D;
-      font-weight: 500;
-    }
-    
-    &:active {
-      background: rgba(255, 107, 61, 0.15);
+    // 霓虹边框 - 粉色
+    &.neon-pink {
+      border: 3rpx solid rgba(255, 45, 149, 0.5);
+      box-shadow: 
+        0 0 40rpx rgba(255, 45, 149, 0.3),
+        0 0 80rpx rgba(255, 45, 149, 0.15),
+        0 0 140rpx rgba(255, 45, 149, 0.08);
     }
   }
 }
 
-// 匹配模式
-.match-modes {
-  margin: 0 40rpx 40rpx;
+// 匹配按钮
+.match-btn {
+width: 192rpx;
+height: 72rpx;
+border-radius: 420rpx 420rpx 420rpx 420rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
-  .section-head {
-    margin-bottom: 28rpx;
+  text {
+    font-size: 30rpx;
+    font-weight: 500;
+  }
+  
+  // 精准匹配按钮 - 紫色渐变
+  &.precise {
+    background: linear-gradient(270deg, #58B4FF 0%, #C927FF 100%);
+    border-radius: 420rpx;
+    box-shadow: 0 8rpx 24rpx rgba(88, 180, 255, 0.4);
     
-    .head-title {
-      font-size: 28rpx;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.9);
+    text {
+      color: #FFFFFF;
     }
-  }
-  
-  .mode-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20rpx;
-  }
-  
-  .mode-item {
-    position: relative;
-    padding: 36rpx 28rpx;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1rpx solid rgba(255, 255, 255, 0.08);
-    border-radius: 20rpx;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12rpx;
-    transition: all 0.3s;
     
     &:active {
-      transform: scale(0.97);
-    }
-    
-    &.selected {
-      background: rgba(255, 107, 61, 0.08);
-      border-color: rgba(255, 107, 61, 0.3);
-    }
-    
-    .mode-emoji {
-      font-size: 56rpx;
-    }
-    
-    .mode-label {
-      font-size: 28rpx;
-      font-weight: 600;
-      color: #FFFFFF;
-    }
-    
-    .mode-hint {
-      font-size: 22rpx;
-      color: rgba(255, 255, 255, 0.3);
-    }
-    
-    .check-mark {
-      position: absolute;
-      top: 12rpx;
-      right: 12rpx;
-      width: 32rpx;
-      height: 32rpx;
-      background: #FF6B3D;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20rpx;
-      color: #FFFFFF;
+      transform: scale(0.95);
     }
   }
-}
-
-// CTA按钮
-.cta-section {
-  margin: 0 40rpx 60rpx;
   
-  .cta-btn {
-    height: 96rpx;
-    border-radius: 48rpx;
-    background: linear-gradient(135deg, #FF6B3D 0%, #E5533D 100%);
-    box-shadow: 0 8rpx 24rpx rgba(255, 107, 61, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 36rpx;
-    transition: all 0.2s;
+  // 盲配按钮 - 白色
+  &.blind {
+    background: #FFFFFF;
+    box-shadow: 0 4rpx 16rpx rgba(255, 255, 255, 0.2);
+    
+    text {
+      color: #333333;
+    }
     
     &:active {
-      transform: scale(0.97);
-    }
-    
-    .cta-text {
-      font-size: 32rpx;
-      font-weight: 600;
-      color: #FFFFFF;
-    }
-    
-    .cta-arrow {
-      font-size: 40rpx;
-      color: rgba(255, 255, 255, 0.8);
-      font-weight: 300;
+      transform: scale(0.95);
     }
   }
-}
-
-// 最近记录
-.recent-section {
-  margin: 0 40rpx;
-  
-  .section-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 28rpx;
-    
-    .head-title {
-      font-size: 28rpx;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.9);
-    }
-    
-    .head-action {
-      font-size: 24rpx;
-      color: rgba(255, 255, 255, 0.4);
-    }
-  }
-  
-  .recent-list {
-    display: flex;
-    flex-direction: column;
-    gap: 20rpx;
-  }
-  
-  .recent-card {
-    padding: 28rpx;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 20rpx;
-    border: 1rpx solid rgba(255, 255, 255, 0.05);
-    transition: all 0.2s;
-    
-    &:active {
-      background: rgba(255, 255, 255, 0.05);
-    }
-    
-    .card-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20rpx;
-    }
-    
-    .status-badge {
-      padding: 8rpx 20rpx;
-      border-radius: 16rpx;
-      font-size: 22rpx;
-      font-weight: 500;
-      
-      &.status-pending {
-        background: rgba(255, 107, 61, 0.12);
-        color: #FF6B3D;
-      }
-      
-      &.status-paid {
-        background: rgba(82, 196, 26, 0.12);
-        color: #52C41A;
-      }
-      
-      &.status-completed {
-        background: rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.4);
-      }
-    }
-    
-    .card-time {
-      font-size: 22rpx;
-      color: rgba(255, 255, 255, 0.3);
-    }
-    
-    .card-main {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    
-    .card-info {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8rpx;
-    }
-    
-    .store-title {
-      font-size: 28rpx;
-      font-weight: 600;
-      color: #FFFFFF;
-    }
-    
-    .match-meta {
-      font-size: 24rpx;
-      color: rgba(255, 255, 255, 0.4);
-    }
-    
-    .partner-avatar {
-      width: 72rpx;
-      height: 72rpx;
-      border-radius: 50%;
-      border: 2rpx solid rgba(255, 255, 255, 0.1);
-    }
-  }
-  
-  .empty-box {
-    padding: 100rpx 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20rpx;
-    
-    .empty-emoji {
-      font-size: 100rpx;
-      opacity: 0.2;
-    }
-    
-    .empty-text {
-      font-size: 26rpx;
-      color: rgba(255, 255, 255, 0.3);
-    }
-    
-    .empty-hint {
-      font-size: 22rpx;
-      color: rgba(255, 255, 255, 0.2);
-    }
-  }
-}
-
-.bottom-pad {
-  height: 60rpx;
 }
 </style>
