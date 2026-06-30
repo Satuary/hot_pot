@@ -46,6 +46,11 @@ export interface MatchOrder {
     status: string;
     createTime: string;
     requirement: MatchRequirement;
+    currentUser?: {
+        id: string;
+        nickname: string;
+        avatar: string;
+    };
     matchedUser?: UserProfile;
     amount: number;
     refundStatus?: string;

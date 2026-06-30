@@ -1,442 +1,325 @@
 <template>
-    <view class="page view-page">
-        <!-- Header -->
-        <view class="nav-header">
-            <text class="nav-title">查看</text>
+  <view class="view-page">
+    <!-- 背景图 -->
+    <image class="bg-image" src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&fit=crop" mode="aspectFill"></image>
+
+    <!-- 内容区域 -->
+    <view class="content-wrapper">
+      <!-- 头像和连接区域 -->
+      <view class="avatar-section">
+        <!-- 左侧头像 - 剪影 -->
+        <view class="avatar-wrapper">
+          <view class="avatar-left silhouette-bg">
+            <view class="silhouette-shape"></view>
+          </view>
         </view>
 
-        <!-- Tabs -->
-        <view class="tabs">
-            <view
-                v-for="tab in tabs"
-                :key="tab.key"
-                class="tab-item"
-                :class="{ active: activeTab === tab.key }"
-                @click="activeTab = tab.key"
-            >
-                <text>{{ tab.label }}</text>
-                <view v-if="activeTab === tab.key" class="tab-indicator"></view>
-            </view>
+        <!-- 中间链接图标 -->
+        <view class="link-icon-wrap">
+          <image class="link-icon-text" src="/static/imgs/link.png" mode="aspectFit"></image>
         </view>
 
-        <!-- Content -->
-        <scroll-view class="content" scroll-y>
-            <view v-if="filteredOrders.length === 0" class="empty-state">
-                <text class="empty-icon">📋</text>
-                <text class="empty-text">暂无记录</text>
+        <!-- 右侧头像 + 点击查看标签 -->
+        <view class="avatar-wrapper right-group">
+          <image
+            class="avatar-img"
+            src="/static/imgs/link.png"
+            mode="aspectFit"
+          ></image>
+          <view class="view-tag">点击查看</view>
+        </view>
+      </view>
+
+      <!-- 预约信息卡片 -->
+      <view class="order-card">
+        <!-- 左侧：日期时间 -->
+        <view class="card-date-col">
+          <text class="date-label">11-18</text>
+          <text class="time-value">15:00</text>
+        </view>
+
+        <!-- 竖向分割线 -->
+        <view class="v-divider"></view>
+
+        <!-- 右侧：详细信息 -->
+        <view class="card-info-col">
+          <view class="info-title-row">
+            <image class="icon-fire" src="/static/imgs/location.png" mode="aspectFit"></image>
+            <text class="title-text">重庆老火锅</text>
+          </view>
+          <view class="info-item-row">
+            <text class="item-label">火锅类型：</text>
+            <text class="item-val">重庆火锅</text>
+          </view>
+          <view class="info-item-row last-row">
+            <text class="item-label">付费方式：</text>
+            <text class="item-val">AA</text>
+            <view class="cancel-btn" @click="handleCancel">
+              <text class="cancel-txt">取消</text>
             </view>
-
-            <view v-else class="order-list">
-                <view
-                    v-for="order in filteredOrders"
-                    :key="order.id"
-                    class="order-card dark-card"
-                >
-                    <!-- Order Header -->
-                    <view class="order-header">
-                        <text class="order-status" :class="order.status">{{ order.statusText }}</text>
-                        <text class="order-time">{{ order.createTime }}</text>
-                    </view>
-
-                    <!-- Matched User -->
-                    <view class="matched-user" v-if="order.matchedUser">
-                        <view class="user-avatar">
-                            <text>👤</text>
-                        </view>
-                        <view class="user-info">
-                            <text class="user-name">{{ order.matchedUser.nickname }}</text>
-                            <text class="user-meta">{{ order.matchedUser.gender }} · {{ order.matchedUser.birthday }}</text>
-                        </view>
-                    </view>
-
-                    <!-- Order Details -->
-                    <view class="order-detail">
-                        <view class="detail-row">
-                            <text class="detail-label">火锅类型</text>
-                            <text class="detail-value">{{ order.requirement.hotpotType.join('、') || '不限' }}</text>
-                        </view>
-                        <view class="detail-row">
-                            <text class="detail-label">店铺</text>
-                            <text class="detail-value">{{ order.requirement.store || '待定' }}</text>
-                        </view>
-                        <view class="detail-row">
-                            <text class="detail-label">时间</text>
-                            <text class="detail-value">{{ order.requirement.time || '待定' }}</text>
-                        </view>
-                        <view class="detail-row">
-                            <text class="detail-label">金额</text>
-                            <text class="detail-value price">¥{{ order.amount.toFixed(2) }}</text>
-                        </view>
-                    </view>
-
-                    <!-- Actions -->
-                    <view class="order-actions">
-                        <text class="action-btn outline" @click="goOrderDetail(order)">查看详情</text>
-                        <text
-                            v-if="order.status === 'matched'"
-                            class="action-btn primary"
-                            @click="contactUser(order)"
-                        >联系对方</text>
-                        <text
-                            v-if="order.status === 'completed'"
-                            class="action-btn outline"
-                            @click="goRefund(order)"
-                        >申请退款</text>
-                    </view>
-                </view>
-            </view>
-        </scroll-view>
+          </view>
+        </view>
+      </view>
     </view>
+  </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { appState, type MatchOrder } from '@/utils/store';
-
-const tabs = [
-    { key: 'all', label: '全部' },
-    { key: 'matched', label: '已匹配' },
-    { key: 'completed', label: '已完成' },
-    { key: 'refund', label: '退款' },
-];
-
-const activeTab = ref('all');
-
-const mockOrders: MatchOrder[] = [
-    {
-        id: '20230628001',
-        status: 'matched',
-        statusText: '已匹配',
-        createTime: '2023-06-28 14:30',
-        requirement: {
-            gender: '女',
-            ageMin: '20',
-            ageMax: '30',
-            hotpotType: ['重庆火锅'],
-            taste: ['麻辣'],
-            motivation: '吃货交友',
-            store: '海底捞(闵行店)',
-            storeAddress: '闵行区都市路5001号',
-            time: '今晚 19:00',
-            payment: 'AA',
-        },
-        matchedUser: {
-            id: 'u1',
-            phone: '138****0001',
-            nickname: '火锅小公主',
-            gender: '女',
-            birthday: '1998-06',
-            height: '165',
-            weight: '50',
-            hotpotType: ['重庆火锅', '潮汕牛肉'],
-            taste: ['麻辣', '微辣'],
-            motivation: '想找人一起吃',
-            wechat: 'hotpot_lover',
-            avatar: '',
-            balance: 0,
-            matchCount: 5,
-        },
-        amount: 99.00,
+const handleCancel = () => {
+  uni.showModal({
+    title: '取消预约',
+    content: '确定要取消此次火锅预约吗？',
+    confirmText: '取消预约',
+    confirmColor: '#FF4D4F',
+    success: (res) => {
+      if (res.confirm) {
+        uni.showToast({ title: '已取消预约', icon: 'success' });
+      }
     },
-    {
-        id: '20230627002',
-        status: 'completed',
-        statusText: '已完成',
-        createTime: '2023-06-27 18:00',
-        requirement: {
-            gender: '男',
-            ageMin: '25',
-            ageMax: '35',
-            hotpotType: ['成都火锅'],
-            taste: ['清汤'],
-            motivation: '解馋',
-            store: '小龙坎(七宝店)',
-            storeAddress: '闵行区七宝万科广场B1',
-            time: '昨天 19:30',
-            payment: 'AA',
-        },
-        matchedUser: {
-            id: 'u2',
-            phone: '139****0002',
-            nickname: '麻辣达人',
-            gender: '男',
-            birthday: '1995-03',
-            height: '178',
-            weight: '70',
-            hotpotType: ['成都火锅'],
-            taste: ['微辣'],
-            motivation: '解馋',
-            wechat: 'spicy_king',
-            avatar: '',
-            balance: 0,
-            matchCount: 8,
-        },
-        amount: 128.00,
-        refundStatus: '',
-    },
-    {
-        id: '20230625003',
-        status: 'refunding',
-        statusText: '退款中',
-        createTime: '2023-06-25 12:00',
-        requirement: {
-            gender: '不限',
-            ageMin: '22',
-            ageMax: '32',
-            hotpotType: ['老北京涮肉'],
-            taste: ['骨汤'],
-            motivation: '体验新店',
-            store: '东来顺(虹桥店)',
-            storeAddress: '闵行区虹桥天地3楼',
-            time: '6月25日 18:00',
-            payment: 'AA',
-        },
-        matchedUser: {
-            id: 'u3',
-            phone: '137****0003',
-            nickname: '吃货小明',
-            gender: '女',
-            birthday: '2000-01',
-            height: '162',
-            weight: '45',
-            hotpotType: ['老北京涮肉', '椰子鸡'],
-            taste: ['清汤', '菌汤'],
-            motivation: '庆祝',
-            wechat: 'foodie_ming',
-            avatar: '',
-            balance: 0,
-            matchCount: 3,
-        },
-        amount: 88.00,
-        refundStatus: 'pending',
-    },
-];
-
-const filteredOrders = computed(() => {
-    if (activeTab.value === 'all') return mockOrders;
-    if (activeTab.value === 'refund') return mockOrders.filter(o => o.refundStatus);
-    return mockOrders.filter(o => o.status === activeTab.value);
-});
-
-const goOrderDetail = (order: MatchOrder) => {
-    appState.orders = [order];
-    uni.navigateTo({
-        url: '/subPack/me/orderDetail?id=' + order.id,
-    });
-};
-
-const contactUser = (order: MatchOrder) => {
-    uni.showToast({ title: '已发送联系请求', icon: 'success' });
-};
-
-const goRefund = (order: MatchOrder) => {
-    uni.navigateTo({
-        url: '/subPack/me/refund?id=' + order.id,
-    });
+  });
 };
 </script>
 
 <style lang="scss" scoped>
 .view-page {
-    background: #1A1A1A;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
-.nav-header {
-    padding: 30rpx;
-    padding-top: calc(60rpx + var(--status-bar-height, 0px));
-}
-
-.nav-title {
-    font-size: 40rpx;
-    color: #FFFFFF;
-    font-weight: 700;
-}
-
-.tabs {
-    display: flex;
-    padding: 0 30rpx;
-    gap: 40rpx;
-    border-bottom: 1px solid #2A2A2A;
-}
-
-.tab-item {
     position: relative;
-    padding: 20rpx 0;
-    font-size: 28rpx;
-    color: #808080;
+    min-height: 100vh;
+    padding: 0rpx 30rpx;
 }
 
-.tab-item.active {
-    color: #FF6B3D;
-    font-weight: 600;
+.bg-image {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  filter: blur(8px);
+  opacity: 0.45;
 }
 
-.tab-indicator {
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40rpx;
-    height: 4rpx;
-    background: #FF6B3D;
-    border-radius: 2rpx;
+.content-wrapper {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 160rpx 40rpx 60rpx;
+  box-sizing: border-box;
+  
 }
 
-.content {
-    flex: 1;
-    padding: 20rpx 0;
+/* ======== 头像区域 ======= */
+.avatar-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28rpx;
+  margin-bottom: 70rpx;
 }
 
-.empty-state {
-    display: flex;
+.avatar-wrapper {
+  display: flex;
+  align-items: center;
+
+  &.right-group {
     flex-direction: column;
+    gap: 14rpx;
+    position: relative;
     align-items: center;
-    padding: 200rpx 0;
+  }
 }
 
-.empty-icon {
-    font-size: 80rpx;
-    margin-bottom: 20rpx;
+/* 左侧剪影头像 */
+.avatar-left {
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid rgba(255,255,255,0.15);
+
+  .silhouette-shape {
+    width: 90rpx;
+    height: 110rpx;
+    background: #000000;
+    border-radius: 50% 50% 10% 10%;
+    margin-top: 12rpx;
+    clip-path: ellipse(50% 48% at 50% 42%);
+  }
 }
 
-.empty-text {
-    font-size: 28rpx;
-    color: #808080;
+.silhouette-bg {
+  background: repeating-linear-gradient(
+    135deg,
+    #cc2222,
+    #cc2222 16rpx,
+    #ffffff 16rpx,
+    #ffffff 32rpx
+  );
 }
 
-.order-list {
-    padding: 0 30rpx;
-    display: flex;
-    flex-direction: column;
-    gap: 20rpx;
-    padding-bottom: 30rpx;
+/* 右侧头像 */
+.avatar-img {
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(255,255,255,0.2);
 }
 
+/* 点击查看标签 */
+.view-tag {
+  position: absolute;
+  bottom: 0rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6rpx 10rpx;
+  background: rgba(255,255,255,0.88);
+  font-size: 20rpx;
+  color: #333333;
+  font-weight: 500;
+  white-space: nowrap; 
+  background: #FFFFFF;
+  box-shadow: 0rpx -4rpx 10rpx 0rpx rgba(0,0,0,0.3);
+  border-radius: 8rpx 8rpx 8rpx 8rpx;
+}
+
+/* 中间链接图标 */
+.link-icon-wrap {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 30rpx rgba(120,100,180,0.35);
+  margin-top: -8rpx;
+  margin-bottom: -8rpx;
+
+  .link-icon-text {
+    width: 44rpx;
+    height: 44rpx;
+  }
+}
+
+/* ======== 预约卡片 ======= */
 .order-card {
-    margin: 0;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  padding: 36rpx 30rpx;
+  background: linear-gradient( 45deg, rgba(92,175,255,0.2) 0%, rgba(198,43,255,0.2) 100%);
+  border: 2rpx solid rgba(170, 155, 210, 0.22);
+  border-radius: 26rpx;
+  backdrop-filter: blur(12rpx);
 }
 
-.order-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20rpx;
-}
+/* 左列：日期时间 */
+.card-date-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-right: 28rpx;
+  border-right: 2rpx solid rgba(255,255,255,0.13);
+  min-width: 130rpx;
 
-.order-status {
-    font-size: 24rpx;
-    padding: 6rpx 16rpx;
-    border-radius: 8rpx;
-}
+  .date-label {
+    font-size: 26rpx;
+    color: rgba(255,255,255,0.58);
+    margin-bottom: 10rpx;
+  }
 
-.order-status.matched {
-    color: #FF6B3D;
-    background: rgba(255, 107, 61, 0.15);
-}
-
-.order-status.completed {
-    color: #4CD964;
-    background: rgba(76, 217, 100, 0.15);
-}
-
-.order-status.refunding {
-    color: #FF9500;
-    background: rgba(255, 149, 0, 0.15);
-}
-
-.order-time {
-    font-size: 24rpx;
-    color: #808080;
-}
-
-.matched-user {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20rpx;
-    padding: 16rpx;
-    background: #333;
-    border-radius: 12rpx;
-}
-
-.user-avatar {
-    width: 72rpx;
-    height: 72rpx;
-    border-radius: 50%;
-    background: #444;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 16rpx;
-    font-size: 32rpx;
-}
-
-.user-name {
-    font-size: 28rpx;
+  .time-value {
+    font-size: 46rpx;
+    font-weight: 700;
     color: #FFFFFF;
-    font-weight: 500;
-    display: block;
+    letter-spacing: 1rpx;
+    line-height: 1.1;
+  }
 }
 
-.user-meta {
-    font-size: 24rpx;
-    color: #808080;
-    margin-top: 4rpx;
-    display: block;
+/* 分割线 */
+.v-divider {
+  width: 2rpx;
+  align-self: stretch;
+  margin: 20rpx 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255,255,255,0.14) 50%,
+    transparent 100%
+  );
 }
 
-.order-detail {
-    border-top: 1px solid #333;
-    padding-top: 20rpx;
+/* 右列：信息详情 */
+.card-info-col {
+  flex: 1;
+  padding-left: 26rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
 }
 
-.detail-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10rpx 0;
-}
+.info-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
 
-.detail-label {
-    font-size: 26rpx;
-    color: #808080;
-}
+  .icon-fire {
+    width: 30rpx;
+    height: 30rpx;
+  }
 
-.detail-value {
-    font-size: 26rpx;
-    color: #B0B0B0;
-}
-
-.detail-value.price {
-    color: #FF6B3D;
+  .title-text {
+    font-size: 30rpx;
     font-weight: 600;
-}
-
-.order-actions {
-    display: flex;
-    gap: 20rpx;
-    margin-top: 20rpx;
-    padding-top: 20rpx;
-    border-top: 1px solid #333;
-}
-
-.action-btn {
-    flex: 1;
-    text-align: center;
-    padding: 16rpx 0;
-    border-radius: 50rpx;
-    font-size: 26rpx;
-    font-weight: 500;
-}
-
-.action-btn.primary {
-    background: linear-gradient(135deg, #FF6B3D, #FF3D3D);
     color: #FFFFFF;
+  }
 }
 
-.action-btn.outline {
-    border: 2rpx solid #4A4A4A;
-    color: #B0B0B0;
+.info-item-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6rpx;
+
+  .item-label {
+    font-size: 25rpx;
+    color: rgba(255,255,255,0.58);
+  }
+
+  .item-val {
+    font-size: 25rpx;
+    color: rgba(255,255,255,0.88);
+  }
+
+  /* 最后一行包含取消按钮 */
+  &.last-row {
+    align-items: center;
+
+    .cancel-btn {
+      margin-left: auto;
+      padding: 9rpx 26rpx;
+      background: rgba(255,255,255,0.11);
+      border: 1rpx solid rgba(255,255,255,0.14);
+      border-radius: 26rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:active {
+        background: rgba(255,77,79,0.22);
+        transform: scale(0.96);
+      }
+
+      .cancel-txt {
+        font-size: 23rpx;
+        color: rgba(255,255,255,0.72);
+        font-weight: 500;
+      }
+    }
+  }
 }
 </style>

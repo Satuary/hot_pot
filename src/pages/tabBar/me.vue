@@ -1,151 +1,110 @@
 <template>
   <view class="me-page">
-    <!-- 自定义导航栏 -->
-    <view class="navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
-      <view class="navbar-inner">
-        <text class="nav-title">我的</text>
-        <view class="nav-right">
-          <view class="settings-btn" @click="goSettings">
-            <text class="icon">⚙️</text>
+    <!-- 背景图 -->
+    <image
+      class="bg-image"
+      src="https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800&fit=crop"
+      mode="aspectFill"
+    ></image>
+    <!-- 顶部到底部的暗色蒙层，让文字更清晰 -->
+    <view class="bg-mask"></view>
+
+    <!-- 顶部个人区域 -->
+    <view class="profile-section" :style="{ paddingTop: (statusBarHeight + 20) + 'px' }">
+        <view class="profile-row">
+          <view class="avatar-wrap">
+            <image
+              :src="userInfo.avatar || defaultAvatar"
+              class="profile-avatar"
+              mode="aspectFill"
+            ></image>
+            <view class="edit-badge">
+              <uni-icons type="compose" size="14" color="#333333"></uni-icons>
+            </view>
           </view>
-        </view>
-      </view>
-    </view>
-    
-    <!-- 主内容 -->
-    <scroll-view scroll-y class="main-scroll" :style="{ paddingTop: (statusBarHeight + 88) + 'px' }">
-      <!-- 个人信息卡片 -->
-      <view class="profile-section">
-        <view class="profile-header" @click="goEditProfile">
-          <image
-            :src="userInfo.avatar || 'https://picsum.photos/200'"
-            class="profile-avatar"
-            mode="aspectFill"
-          ></image>
+
           <view class="profile-info">
-            <text class="profile-name">{{ userInfo.nickname || '未登录' }}</text>
-            <text class="profile-desc">{{ getProfileDesc }}</text>
-          </view>
-          <text class="edit-icon">→</text>
-        </view>
-        
-        <!-- 余额卡 -->
-        <view class="balance-box">
-          <view class="balance-item">
-            <text class="balance-label">余额</text>
-            <text class="balance-value">¥{{ (userInfo.balance || 0).toFixed(2) }}</text>
-          </view>
-          <view class="balance-divider"></view>
-          <view class="balance-item">
-            <text class="balance-label">拼桌次数</text>
-            <text class="balance-value">{{ userInfo.matchCount || 0 }}</text>
+            <view class="name-row">
+              <text class="profile-name">{{ userInfo.nickname || '火锅友212' }}</text>
+              <view class="tag-spicy">
+                <text class="tag-spicy-txt">麻辣</text>
+              </view>
+            </view>
+            <view class="desc-row">
+              <text class="desc-text">ID:{{ userInfo.id || '30145' }}</text>
+              <view class="copy-btn" @click="copyId">
+                <uni-icons type="redo" size="16" color="rgba(255,255,255,0.45)"></uni-icons>
+              </view>
+              <text class="desc-text">地址：{{ userInfo.address || '美景大厦' }}</text>
+            </view>
           </view>
         </view>
-        
-        <!-- 快捷操作 -->
-        <view class="quick-actions">
-          <view class="quick-btn" @click="goRecharge">
-            <text class="quick-icon">💰</text>
-            <text class="quick-label">充值</text>
+
+        <!-- 信息标签组：身高/年龄/性别 -->
+        <view class="tags-row">
+          <view class="tag-item">
+            <uni-icons type="compose" size="16" color="rgba(255,255,255,0.85)"></uni-icons>
+            <text class="tag-txt">{{ userInfo.height || '170' }}cm {{ userInfo.weight || '60' }}kg</text>
           </view>
-          <view class="quick-btn" @click="goTransactionHistory">
-            <text class="quick-icon">📝</text>
-            <text class="quick-label">明细</text>
+          <view class="tag-item">
+            <uni-icons type="person" size="16" color="rgba(255,255,255,0.85)"></uni-icons>
+            <text class="tag-txt">{{ userInfo.age || '25' }}岁</text>
           </view>
-          <view class="quick-btn">
-            <text class="quick-icon">⭐</text>
-            <text class="quick-label">评价</text>
+          <view class="tag-item">
+            <text class="tag-txt">{{ userInfo.gender || '男' }}</text>
           </view>
-          <view class="quick-btn">
-            <text class="quick-icon">💬</text>
-            <text class="quick-label">客服</text>
+        </view>
+
+        <!-- 火锅类型/偏好标签 -->
+        <view class="tags-row">
+          <view class="pill-tag" v-for="(t, i) in tasteTags" :key="'t'+i">
+            <text class="pill-txt">{{ t }}</text>
           </view>
         </view>
       </view>
-      
-      <!-- 功能菜单 -->
-      <view class="menu-group">
-        <view class="menu-title">账户管理</view>
-        <view class="menu-list">
-          <view class="menu-row" @click="goEditProfile">
-            <view class="menu-left">
-              <text class="menu-emoji">📝</text>
-              <text class="menu-label">编辑资料</text>
-            </view>
-            <text class="menu-arrow">→</text>
-          </view>
-          <view class="menu-row" @click="goTransactionHistory">
-            <view class="menu-left">
-              <text class="menu-emoji">📊</text>
-              <text class="menu-label">使用明细</text>
-            </view>
-            <text class="menu-arrow">→</text>
-          </view>
+
+    <!-- 充值入口 -->
+    <view class="recharge-card" @click="goRecharge">
+      <view class="recharge-left">
+        <view class="recharge-icon-wrap">
+          <uni-icons type="wallet" size="20" color="#FFFFFF"></uni-icons>
         </view>
+        <text class="recharge-label">充值</text>
       </view>
-      
-      <view class="menu-group">
-        <view class="menu-title">更多</view>
-        <view class="menu-list">
-          <view class="menu-row">
-            <view class="menu-left">
-              <text class="menu-emoji">❓</text>
-              <text class="menu-label">帮助中心</text>
-            </view>
-            <text class="menu-arrow">→</text>
-          </view>
-          <view class="menu-row" @click="goAbout">
-            <view class="menu-left">
-              <text class="menu-emoji">ℹ️</text>
-              <text class="menu-label">关于我们</text>
-            </view>
-            <text class="menu-arrow">→</text>
-          </view>
-        </view>
-      </view>
-      
-      <!-- 退出登录 -->
-      <view class="logout-section">
-        <view class="logout-btn" @click="handleLogout">
-          <text class="logout-text">退出登录</text>
-        </view>
-      </view>
-      
-      <view class="bottom-pad"></view>
-    </scroll-view>
+      <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { getUserInfo, clearAuth } from '@/utils/auth';
+import { ref, onMounted } from 'vue';
+import { getUserInfo } from '@/utils/auth';
 
 const statusBarHeight = ref(0);
 const userInfo = ref<any>({});
+const defaultAvatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&fit=crop';
+
+// 顶部"重庆火锅"、"尝鲜打卡"等标签
+const tasteTags = ref<string[]>(['重庆火锅', '尝鲜打卡']);
 
 onMounted(() => {
   const systemInfo = uni.getSystemInfoSync();
   statusBarHeight.value = systemInfo.statusBarHeight || 0;
-  
-  // 加载用户信息
+
   const info = getUserInfo();
   if (info) {
     userInfo.value = info;
   }
 });
 
-// 个人简介
-const getProfileDesc = computed(() => {
-  if (!userInfo.value.intro) {
-    return '点击编辑个人资料';
-  }
-  return userInfo.value.intro;
-});
-
-// 编辑资料
-const goEditProfile = () => {
-  uni.navigateTo({
-    url: '/subPack/me/editProfile',
+// 复制 ID
+const copyId = () => {
+  const id = userInfo.value.id || '30145';
+  uni.setClipboardData({
+    data: id,
+    success: () => {
+      uni.showToast({ title: 'ID 已复制', icon: 'success', duration: 1500 });
+    },
   });
 };
 
@@ -155,302 +114,240 @@ const goRecharge = () => {
     url: '/subPack/me/recharge',
   });
 };
-
-// 交易明细
-const goTransactionHistory = () => {
-  uni.navigateTo({
-    url: '/subPack/me/transactionHistory',
-  });
-};
-
-// 设置
-const goSettings = () => {
-  uni.navigateTo({
-    url: '/subPack/me/settings',
-  });
-};
-
-// 关于我们
-const goAbout = () => {
-  uni.navigateTo({
-    url: '/subPack/me/about',
-  });
-};
-
-// 退出登录
-const handleLogout = () => {
-  uni.showModal({
-    title: '退出登录',
-    content: '确定要退出当前账号吗？',
-    confirmText: '退出',
-    confirmColor: '#FF4D4F',
-    success: (res) => {
-      if (res.confirm) {
-        // 清除认证信息
-        clearAuth();
-        
-        // 跳转到登录页
-        uni.reLaunch({
-          url: '/pages/login/login',
-        });
-      }
-    },
-  });
-};
 </script>
 
 <style lang="scss" scoped>
 .me-page {
+  position: relative;
   min-height: 100vh;
   background: #0D0D0D;
-}
-
-// 导航栏
-.navbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 999;
-  background: rgba(13, 13, 13, 0.95);
-  backdrop-filter: blur(20rpx);
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
-  
-  .navbar-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 88rpx;
-    padding: 0 40rpx;
-  }
-  
-  .nav-title {
-    font-size: 36rpx;
-    font-weight: 600;
-    color: #FFFFFF;
-  }
-  
-  .nav-right {
-    .settings-btn {
-      width: 60rpx;
-      height: 60rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      
-      .icon {
-        font-size: 36rpx;
-      }
-    }
-  }
-}
-
-// 主滚动区
-.main-scroll {
-  height: 100vh;
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
+  padding: 0 40rpx 60rpx;
   box-sizing: border-box;
 }
 
-// 个人信息区域
+/* 铺满全屏背景图 */
+.bg-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  filter: blur(8px);
+  opacity: 0.45;
+}
+
+/* 暗色蒙层 */
+.bg-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(13,13,13,0.6) 100%);
+}
+
+/* ======== 个人信息 ======== */
 .profile-section {
-  margin: 30rpx 40rpx 40rpx;
-  padding: 32rpx;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1rpx solid rgba(255, 255, 255, 0.05);
-  border-radius: 24rpx;
-  
-  .profile-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 32rpx;
-    
-    &:active {
-      opacity: 0.8;
-    }
-  }
-  
+  position: relative;
+  z-index: 1;
+  padding-bottom: 30rpx;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 28rpx;
+  margin-bottom: 36rpx;
+}
+
+.avatar-wrap {
+  position: relative;
+  width: 150rpx;
+  height: 150rpx;
+  flex-shrink: 0;
+
   .profile-avatar {
-    width: 96rpx;
-    height: 96rpx;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
-    border: 2rpx solid rgba(255, 107, 61, 0.3);
-    margin-right: 24rpx;
+    border: 4rpx solid #ffffff;
+    background: #2a2a2a;
   }
-  
-  .profile-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8rpx;
-  }
-  
-  .profile-name {
-    font-size: 32rpx;
-    font-weight: 600;
-    color: #FFFFFF;
-  }
-  
-  .profile-desc {
-    font-size: 24rpx;
-    color: rgba(255, 255, 255, 0.4);
-  }
-  
-  .edit-icon {
-    font-size: 32rpx;
-    color: rgba(255, 255, 255, 0.3);
-    font-weight: 300;
-  }
-  
-  // 余额卡
-  .balance-box {
-    display: flex;
-    align-items: center;
-    padding: 28rpx 0;
-    margin-bottom: 28rpx;
-    border-top: 1rpx solid rgba(255, 255, 255, 0.05);
-    border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
-  }
-  
-  .balance-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12rpx;
-  }
-  
-  .balance-label {
-    font-size: 24rpx;
-    color: rgba(255, 255, 255, 0.4);
-  }
-  
-  .balance-value {
-    font-size: 32rpx;
-    font-weight: 600;
-    color: #FFB946;
-  }
-  
-  .balance-divider {
-    width: 1rpx;
-    height: 60rpx;
-    background: rgba(255, 255, 255, 0.08);
-  }
-  
-  // 快捷操作
-  .quick-actions {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20rpx;
-  }
-  
-  .quick-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12rpx;
-    padding: 20rpx 0;
-    transition: all 0.2s;
-    
-    &:active {
-      transform: scale(0.95);
-    }
-    
-    .quick-icon {
-      font-size: 44rpx;
-    }
-    
-    .quick-label {
-      font-size: 22rpx;
-      color: rgba(255, 255, 255, 0.6);
-    }
-  }
-}
 
-// 功能菜单组
-.menu-group {
-  margin: 0 40rpx 32rpx;
-  
-  .menu-title {
-    font-size: 24rpx;
-    color: rgba(255, 255, 255, 0.4);
-    margin-bottom: 20rpx;
-    padding-left: 4rpx;
-  }
-  
-  .menu-list {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1rpx solid rgba(255, 255, 255, 0.05);
-    border-radius: 20rpx;
-    overflow: hidden;
-  }
-  
-  .menu-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 32rpx 28rpx;
-    border-bottom: 1rpx solid rgba(255, 255, 255, 0.03);
-    transition: all 0.2s;
-    
-    &:last-child {
-      border-bottom: none;
-    }
-    
-    &:active {
-      background: rgba(255, 255, 255, 0.05);
-    }
-  }
-  
-  .menu-left {
-    display: flex;
-    align-items: center;
-    gap: 20rpx;
-  }
-  
-  .menu-emoji {
-    font-size: 36rpx;
-  }
-  
-  .menu-label {
-    font-size: 28rpx;
-    color: #FFFFFF;
-  }
-  
-  .menu-arrow {
-    font-size: 32rpx;
-    color: rgba(255, 255, 255, 0.3);
-    font-weight: 300;
-  }
-}
-
-// 退出登录
-.logout-section {
-  margin: 40rpx 40rpx 0;
-  
-  .logout-btn {
-    padding: 32rpx;
-    background: rgba(255, 77, 79, 0.08);
-    border: 1rpx solid rgba(255, 77, 79, 0.15);
-    border-radius: 20rpx;
+  .edit-badge {
+    position: absolute;
+    right: 0;
+    bottom: 4rpx;
+    width: 36rpx;
+    height: 36rpx;
+    background: #ffffff;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
-    
-    &:active {
-      background: rgba(255, 77, 79, 0.12);
-    }
-    
-    .logout-text {
-      font-size: 28rpx;
-      color: #FF4D4F;
-      font-weight: 500;
-    }
+    box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.4);
   }
 }
 
-.bottom-pad {
-  height: 60rpx;
+.profile-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding-top: 8rpx;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.profile-name {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 1rpx;
+}
+
+
+.tag-spicy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10rpx 14rpx;
+  // background: rgba(72, 115, 20, 0.2);
+  background: rgb(104 181 11 / 20%);
+  border-radius: 8rpx;
+  .tag-spicy-txt {
+    font-size: 22rpx;
+    color: #6DE18F;
+    line-height: 1;
+  }
+}
+
+.desc-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.75);
+  flex-wrap: nowrap;
+}
+
+.desc-text {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: nowrap;
+}
+
+.copy-btn {
+  flex-shrink: 0;
+
+  &:active {
+    opacity: 0.5;
+  }
+}
+
+.desc-divider {
+  width: 1rpx;
+  height: 22rpx;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 0 6rpx;
+}
+
+/* ======== 标签组 ======== */
+.tags-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-bottom: 18rpx;
+}
+
+/* 半透明深色标签（170cm、25岁、男） */
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  height: 52rpx;
+  padding: 0 20rpx;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+  border-radius: 30rpx;
+  box-sizing: border-box;
+
+  .tag-txt {
+    font-size: 24rpx;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1;
+  }
+}
+
+/* 白色胶囊标签（重庆火锅、尝鲜打卡） */
+.pill-tag {
+  height: 52rpx;
+  padding: 0 26rpx;
+  background: #FFFFFF;
+  border-radius: 30rpx;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+
+  .pill-txt {
+    font-size: 24rpx;
+    color: #000000;
+    font-weight: 600;
+    line-height: 1;
+  }
+}
+
+/* ======== 充值卡 ======== */
+.recharge-card {
+  background: rgba(0,0,0,0.6);
+  position: relative;
+  z-index: 1;
+  margin-top: 40rpx;
+  padding: 30rpx 36rpx;
+  background: #1a1a1a;
+  border: 1rpx solid #ffffff;
+  border-radius: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+
+  &:active {
+    background: #222;
+    transform: scale(0.99);
+  }
+}
+
+.recharge-left {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+/* 充值图标：蓝紫渐变（实际项目可换 SVG/PNG） */
+.recharge-icon-wrap {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50rpx;
+  background: linear-gradient(135deg, #4d8bff 0%, #b04dff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6rpx 18rpx rgba(77, 139, 255, 0.35);
+  overflow: hidden;
+}
+
+.recharge-label {
+  font-size: 32rpx;
+  // font-weight: 600;
+  color: #FFFFFF;
 }
 </style>

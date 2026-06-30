@@ -4,10 +4,10 @@ import { isLogin } from '@/utils/auth';
 
 onLaunch(() => {
     console.log('[HotPot] App Launch');
-    // 已登录则直接跳转到首页，避免停留在登录页
-    if (isLogin()) {
+    // 未登录时，跳转到登录页；已登录则正常进入应用，不做额外跳转
+    if (!isLogin()) {
         uni.reLaunch({
-            url: '/pages/tabBar/match',
+            url: '/pages/login/login',
         });
     }
 });
