@@ -78,7 +78,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { getUserInfo } from '@/utils/auth';
+import { onShow } from '@dcloudio/uni-app';
+import { isLogin, isProfileComplete, getUserInfo } from '@/utils/auth';
 
 const statusBarHeight = ref(0);
 const userInfo = ref<any>({});
@@ -94,6 +95,17 @@ onMounted(() => {
   const info = getUserInfo();
   if (info) {
     userInfo.value = info;
+  }
+});
+
+// TabBar 页面守卫：每次显示时检查登录和资料完善状态
+onShow(() => {
+  if (!isLogin()) {
+    uni.reLaunch({ url: '/pages/login/login' });
+    return;
+  }
+  if (!isProfileComplete()) {
+    uni.reLaunch({ url: '/pages/profile/complete' });
   }
 });
 

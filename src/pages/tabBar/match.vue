@@ -54,6 +54,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
+import { isLogin, isProfileComplete } from '@/utils/auth';
 
 const statusBarHeight = ref(0);
 const topOffset = ref(0);
@@ -65,6 +67,17 @@ onMounted(() => {
   statusBarHeight.value = systemInfo.statusBarHeight || 0;
   // 导航栏总高度 = 状态栏 + 88rpx（转换为px）
   topOffset.value = statusBarHeight.value + (88 * systemInfo.windowWidth / 750);
+});
+
+// TabBar 页面守卫：每次显示时检查登录和资料完善状态
+onShow(() => {
+  if (!isLogin()) {
+    uni.reLaunch({ url: '/pages/login/login' });
+    return;
+  }
+  if (!isProfileComplete()) {
+    uni.reLaunch({ url: '/pages/profile/complete' });
+  }
 });
 
 // 选择位置

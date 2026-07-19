@@ -65,6 +65,19 @@
 </template>
 
 <script setup lang="ts">
+import { onShow } from '@dcloudio/uni-app';
+import { isLogin, isProfileComplete } from '@/utils/auth';
+
+onShow(() => {
+  if (!isLogin()) {
+    uni.reLaunch({ url: '/pages/login/login' });
+    return;
+  }
+  if (!isProfileComplete()) {
+    uni.reLaunch({ url: '/pages/profile/complete' });
+  }
+});
+
 const handleCancel = () => {
   uni.showModal({
     title: '取消预约',

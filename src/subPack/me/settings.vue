@@ -49,6 +49,7 @@
 
 <script setup lang="ts">
 import { appState } from '@/utils/store';
+import { clearAuth } from '@/utils/auth';
 
 function goBack() { uni.navigateBack(); }
 
@@ -63,6 +64,7 @@ function handleLogout() {
         success: (res) => {
             if (res.confirm) {
                 appState.isLoggedIn = false;
+                clearAuth();
                 uni.reLaunch({ url: '/pages/login/login' });
             }
         },

@@ -79,13 +79,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { isLogin, setToken, setUserInfo } from '@/utils/auth';
+import { isLogin, isProfileComplete, setToken, setUserInfo, setProfileComplete } from '@/utils/auth';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
-// 已登录则直接跳转首页
+// 已登录 -> 未完善资料则去完善页，已完善则去首页
 onLoad(() => {
   if (isLogin()) {
-    uni.switchTab({ url: '/pages/tabBar/match' });
+    if (!isProfileComplete()) {
+      uni.redirectTo({ url: '/pages/profile/complete' });
+    } else {
+      uni.switchTab({ url: '/pages/tabBar/match' });
+    }
   }
 });
 
@@ -204,6 +208,8 @@ const handleLogin = async () => {
     
     setToken(result.token);
     setUserInfo(result.userInfo);
+    // 登录后将资料状态标记为未完善，统一走完善资料页
+    setProfileComplete(false);
     
     const msg = result.isNewUser ? '注册成功，请完善个人资料' : '登录成功';
     uni.showToast({
@@ -212,17 +218,10 @@ const handleLogin = async () => {
     });
     
     setTimeout(() => {
-      if (result.isNewUser) {
-        // 新用户：跳转到资料完善页
-        uni.navigateTo({
-          url: '/pages/profile/setup',
-        });
-      } else {
-        // 老用户：跳转到首页
-        uni.switchTab({
-          url: '/pages/tabBar/match',
-        });
-      }
+      // 统一跳转到资料完善页
+      uni.redirectTo({
+        url: '/pages/profile/complete',
+      });
     }, 1500);
   } catch (error: any) {
     uni.showToast({

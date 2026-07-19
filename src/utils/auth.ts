@@ -4,6 +4,7 @@
 
 const TOKEN_KEY = 'token';
 const USER_INFO_KEY = 'userInfo';
+const PROFILE_COMPLETE_KEY = 'profileComplete';
 
 /**
  * 保存 token
@@ -54,6 +55,7 @@ export function removeUserInfo() {
 export function clearAuth() {
   removeToken();
   removeUserInfo();
+  uni.removeStorageSync(PROFILE_COMPLETE_KEY);
 }
 
 /**
@@ -74,4 +76,18 @@ export function checkLogin(): boolean {
     return false;
   }
   return true;
+}
+
+/**
+ * 获取资料是否已完善
+ */
+export function isProfileComplete(): boolean {
+  return !!uni.getStorageSync(PROFILE_COMPLETE_KEY);
+}
+
+/**
+ * 设置资料完善状态
+ */
+export function setProfileComplete(complete: boolean) {
+  uni.setStorageSync(PROFILE_COMPLETE_KEY, complete);
 }

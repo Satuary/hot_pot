@@ -1,11 +1,13 @@
 <template>
   <view class="post-requirement-page">
     <!-- 导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-back" @click="goBack">
-        <uni-icons type="left" size="22" color="#FFFFFF"></uni-icons>
+    <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <view class="nav-content">
+        <view class="nav-back" @click="goBack">
+          <uni-icons type="left" size="22" color="#FFFFFF"></uni-icons>
+        </view>
+        <view class="nav-title">发布需求</view>
       </view>
-      <view class="nav-title">发布需求</view>
     </view>
 
     <!-- 性别选择 -->
@@ -162,6 +164,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { postRequirement } from '@/api/api';
+
+// 状态栏高度
+const statusBarHeight = ref(0);
 
 // 表单数据
 const formData = ref({
@@ -428,6 +433,9 @@ const submitRequirement = async () => {
 };
 
 onMounted(() => {
+  const systemInfo = uni.getSystemInfoSync();
+  statusBarHeight.value = systemInfo.statusBarHeight || 0;
+  
   initDateTimeRange();
   // 设置默认日期时间显示
   const date = new Date();
@@ -451,14 +459,17 @@ onMounted(() => {
   top: 0;
   left: 0;
   right: 0;
-  height: 88rpx;
   background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 30rpx;
-  padding-top: var(--status-bar-height, 0px);
   z-index: 100;
+
+  .nav-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 88rpx;
+    padding: 0 30rpx;
+    position: relative;
+  }
 
   .nav-back {
     position: absolute;
@@ -468,8 +479,6 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-
-
   }
 
   .nav-title {

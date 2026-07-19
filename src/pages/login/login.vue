@@ -22,15 +22,19 @@
 import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import logoImg from '@/static/imgs/logo@3x.png';
-import { isLogin, setToken, setUserInfo } from '@/utils/auth';
+import { isLogin, isProfileComplete, setToken, setUserInfo, setProfileComplete } from '@/utils/auth';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 const loading = ref(false);
 
-// 已登录则直接跳转首页，防止刷新后停留在登录页
+// 已登录 -> 未完善资料则去完善页，已完善则去首页
 onLoad(() => {
   if (isLogin()) {
-    uni.switchTab({ url: '/pages/tabBar/match' });
+    if (!isProfileComplete()) {
+      uni.redirectTo({ url: '/pages/profile/complete' });
+    } else {
+      uni.switchTab({ url: '/pages/tabBar/match' });
+    }
   }
 });
 
@@ -77,16 +81,17 @@ const handleWechatLogin = async () => {
     // 3. 保存认证信息
     setToken(result.token);
     setUserInfo(result.userInfo);
+    setProfileComplete(false);
 
     uni.showToast({
       title: '登录成功',
       icon: 'success',
     });
 
-    // 4. 跳转到首页
+    // 4. 跳转到完善资料页
     setTimeout(() => {
-      uni.switchTab({
-        url: '/pages/tabBar/match',
+      uni.redirectTo({
+        url: '/pages/profile/complete',
       });
     }, 1500);
   } catch (error: any) {
