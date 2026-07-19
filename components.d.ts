@@ -9,7 +9,10 @@ export {}
 
 declare module '@vue/runtime-core' {
   export interface GlobalComponents {
+    BlindBoxPopup: typeof import('./src/components/BlindBoxPopup.vue')['default']
     LoadingOverlay: typeof import('./src/components/LoadingOverlay.vue')['default']
+    MatchConfirmModal: typeof import('./src/components/MatchConfirmModal.vue')['default']
+    MatchSuccessModal: typeof import('./src/components/MatchSuccessModal.vue')['default']
     NavBar: typeof import('./src/components/NavBar.vue')['default']
     TagSelector: typeof import('./src/components/TagSelector.vue')['default']
   }

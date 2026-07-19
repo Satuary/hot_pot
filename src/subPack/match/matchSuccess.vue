@@ -1,184 +1,305 @@
 <template>
-    <view class="page success-page">
-        <view class="success-content">
-            <view class="fireworks-area">
-                <text class="firework">🎉</text>
-                <text class="firework-small left">🎊</text>
-                <text class="firework-small right">✨</text>
-            </view>
-            <text class="success-title">恭喜匹配成功！</text>
-            <text class="success-subtitle">找到一位火锅搭子</text>
+    <view class="container">
+        <!-- 背景装饰：流星 -->
+        <view class="meteor meteor-1"></view>
+        <view class="meteor meteor-2"></view>
 
-            <!-- Matched User -->
-            <view class="matched-card">
-                <view class="matched-avatar">
-                    <text>👤</text>
-                </view>
-                <text class="matched-name">火锅小公主</text>
-                <text class="matched-bio">女 · 25岁 · 165cm</text>
-                <view class="matched-tags">
-                    <text class="m-tag">重庆火锅</text>
-                    <text class="m-tag">麻辣</text>
-                    <text class="m-tag">吃货交友</text>
-                </view>
-                <view class="matched-detail">
-                    <text class="md-item">⏰ 今晚 19:00</text>
-                    <text class="md-item">📍 海底捞(闵行店)</text>
-                    <text class="md-item">💰 AA</text>
-                </view>
+        <!-- 核心匹配区域 -->
+        <view class="match-area">
+            <!-- 轨道光晕背景 -->
+            <view class="orbit-glow orbit-outer"></view>
+            <view class="orbit-glow orbit-inner"></view>
+
+            <!-- 中心火锅图片 -->
+            <view class="center-hub">
+                <image src="/static/hotpot.png" mode="aspectFill" class="hotpot-img"></image>
             </view>
 
-            <!-- Actions -->
-            <view class="success-actions">
-                <view class="gradient-btn active_btn" @click="contactNow">
-                    查看联系方式
+            <!-- 动态旋转层：包含头像和装饰球 -->
+            <view class="rotating-layer" :style="{ animationDuration: duration + 's' }">
+                <!-- 元素 1: 用户头像 (左上) -->
+                <view class="item user-avatar-1">
+                    <image src="/static/avatar1.png" mode="aspectFill" class="avatar"></image>
                 </view>
-                <view class="outline-btn" @click="goBack">
-                    返回首页
+
+                <!-- 元素 2: 装饰球 (右上) -->
+                <view class="item ball ball-purple"></view>
+
+                <!-- 元素 3: 用户头像 (右下) -->
+                <view class="item user-avatar-2">
+                    <!-- 这里用简单的色块模拟唐老鸭风格头像，实际开发请替换图片 -->
+                    <image src="/static/avatar2.png" mode="aspectFill" class="avatar"></image>
                 </view>
+
+                <!-- 元素 4: 装饰球 (左下) -->
+                <view class="item ball ball-yellow"></view>
+
+                <!-- 元素 5: 装饰球 (正上方点缀) -->
+                <view class="item ball ball-cyan"></view>
             </view>
+        </view>
+
+        <!-- 底部文字与按钮 -->
+        <view class="footer">
+            <text class="status-text">{{ statusText }}</text>
+            <button class="cancel-btn" @click="handleCancel">取消匹配</button>
         </view>
     </view>
 </template>
 
 <script setup lang="ts">
-function contactNow() {
-    uni.showToast({ title: '已发送联系方式', icon: 'success' });
-    setTimeout(() => {
-        uni.switchTab({ url: '/pages/tabBar/view' });
-    }, 1500);
-}
+import { ref, onMounted, onUnmounted } from 'vue';
 
-function goBack() {
-    uni.switchTab({ url: '/pages/tabBar/match' });
-}
+const duration = ref(20);
+const statusText = ref('正在匹配...');
+
+let matchTimer: any = null;
+
+onMounted(() => {
+    matchTimer = setTimeout(() => {
+        statusText.value = '匹配成功！';
+        uni.setStorageSync('showMatchSuccessModal', true);
+        setTimeout(() => {
+            uni.navigateBack();
+        }, 800);
+    }, 3000);
+});
+
+onUnmounted(() => {
+    if (matchTimer) clearTimeout(matchTimer);
+});
+
+const handleCancel = () => {
+    uni.showToast({
+        title: '已取消',
+        icon: 'none',
+    });
+    uni.navigateBack();
+};
 </script>
 
 <style lang="scss" scoped>
-.success-page {
-    background: #1A1A1A;
+/* 页面容器 */
+.container {
+    width: 100vw;
     height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 60rpx;
-}
-
-.success-content {
-    width: 100%;
+    background: linear-gradient(180deg, #2b1d4e 0%, #1a103c 100%); /* 深紫色渐变背景 */
     display: flex;
     flex-direction: column;
     align-items: center;
-}
-
-.fireworks-area {
+    justify-content: space-between;
     position: relative;
-    margin-bottom: 20rpx;
+    overflow: hidden;
 }
 
-.firework {
-    font-size: 100rpx;
-}
-
-.firework-small {
-    font-size: 60rpx;
+/* --- 背景流星特效 --- */
+.meteor {
     position: absolute;
-    top: 0;
+    width: 100rpx;
+    height: 2rpx;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.6));
+    transform: rotate(-45deg);
+    opacity: 0;
+    animation: meteorFall 3s infinite ease-in-out;
+}
+.meteor-1 {
+    top: 20%;
+    left: 80%;
+    animation-delay: 0s;
+}
+.meteor-2 {
+    top: 60%;
+    left: 20%;
+    animation-delay: 1.5s;
+    width: 150rpx;
 }
 
-.firework-small.left { left: -60rpx; }
-.firework-small.right { right: -60rpx; }
-
-.success-title {
-    font-size: 40rpx;
-    color: #FFD700;
-    font-weight: 700;
-    margin-bottom: 10rpx;
+@keyframes meteorFall {
+    0% {
+        transform: translateX(0) translateY(0) rotate(-45deg);
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(-200rpx) translateY(200rpx) rotate(-45deg);
+        opacity: 0;
+    }
 }
 
-.success-subtitle {
-    font-size: 28rpx;
-    color: #B0B0B0;
-    margin-bottom: 40rpx;
-}
-
-.matched-card {
+/* --- 核心匹配区域 --- */
+.match-area {
+    position: relative;
     width: 100%;
-    background: #242424;
-    border-radius: 24rpx;
-    padding: 50rpx 40rpx;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    border: 2rpx solid rgba(255,107,61,0.3);
-    margin-bottom: 40rpx;
-}
-
-.matched-avatar {
-    width: 140rpx;
-    height: 140rpx;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #FF6B3D, #FF3D3D);
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 64rpx;
-    margin-bottom: 20rpx;
 }
 
-.matched-name {
-    font-size: 36rpx;
-    color: #FFF;
-    font-weight: 600;
-    margin-bottom: 8rpx;
+/* 轨道光晕 */
+.orbit-glow {
+    position: absolute;
+    border-radius: 50%;
+    border: 1rpx solid rgba(255, 255, 255, 0.1);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0) 70%);
+    box-shadow: 0 0 20rpx rgba(138, 43, 226, 0.2);
+}
+.orbit-outer {
+    width: 700rpx;
+    height: 700rpx;
+}
+.orbit-inner {
+    width: 480rpx;
+    height: 480rpx;
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
-.matched-bio {
-    font-size: 26rpx;
-    color: #808080;
-    margin-bottom: 20rpx;
-}
-
-.matched-tags {
+/* 中心火锅 Hub */
+.center-hub {
+    position: absolute;
+    z-index: 10;
+    width: 260rpx;
+    height: 260rpx;
+    border-radius: 50%;
+    background: #2a1f45; /* 防止图片透明导致的穿帮 */
     display: flex;
-    gap: 16rpx;
-    margin-bottom: 24rpx;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 30rpx rgba(0, 0, 0, 0.5);
 }
 
-.m-tag {
-    background: rgba(255,107,61,0.15);
-    color: #FF8C66;
-    padding: 8rpx 24rpx;
-    border-radius: 20rpx;
-    font-size: 24rpx;
+.hotpot-img {
+    width: 240rpx;
+    height: 240rpx;
+    border-radius: 50%;
 }
 
-.matched-detail {
+/* --- 旋转层逻辑 --- */
+.rotating-layer {
+    position: absolute;
+    width: 600rpx; /* 控制整体分布范围 */
+    height: 600rpx;
+    border-radius: 50%;
+    /* 持续旋转动画 */
+    animation: rotateCircle linear infinite;
+    z-index: 5;
+}
+
+/* 旋转动画关键帧 */
+@keyframes rotateCircle {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 轨道上的通用元素 */
+.item {
+    position: absolute;
+    /* 这里的技巧是：先定位到圆心，然后translate出去，再反向旋转保持自身直立（可选） */
+    left: 50%;
+    top: 50%;
+    margin-left: -30rpx; /* 修正自身宽度的一半，使其居中 */
+    margin-top: -30rpx;
+}
+
+/* --- 具体元素的位置分布 (使用三角函数近似值定位) --- */
+
+/* 1. 左上角头像 (约 200度位置) */
+.user-avatar-1 {
+    transform: translate(-180rpx, 80rpx);
+}
+.user-avatar-1 .avatar {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 50%;
+    border: 4rpx solid #fff;
+    background: #eee;
+}
+
+/* 2. 右上角紫色球 (约 20度位置) */
+.ball-purple {
+    transform: translate(220rpx, -80rpx);
+    width: 40rpx;
+    height: 40rpx;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #e0aaff, #9d4edd);
+    box-shadow: 0 0 15rpx #9d4edd;
+}
+
+/* 3. 右下角头像 (约 330度位置) */
+.user-avatar-2 {
+    transform: translate(120rpx, 180rpx);
+}
+.user-avatar-2 .avatar {
+    width: 90rpx;
+    height: 90rpx;
+    border-radius: 50%;
+    border: 4rpx solid #fff;
+    background: #eee;
+}
+
+/* 4. 下方黄色球 (约 260度位置) */
+.ball-yellow {
+    transform: translate(-40rpx, 240rpx);
+    width: 30rpx;
+    height: 30rpx;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffffcc, #ffd700);
+    box-shadow: 0 0 15rpx #ffd700;
+}
+
+/* 5. 左侧青色小球 (约 150度位置) */
+.ball-cyan {
+    transform: translate(-240rpx, -60rpx);
+    width: 24rpx;
+    height: 24rpx;
+    border-radius: 50%;
+    background: #00ffff;
+    box-shadow: 0 0 10rpx #00ffff;
+}
+
+/* --- 底部区域 --- */
+.footer {
+    width: 100%;
+    padding-bottom: 80rpx;
     display: flex;
     flex-direction: column;
-    gap: 12rpx;
-    width: 100%;
-    padding-top: 24rpx;
-    border-top: 1px solid #333;
+    align-items: center;
+    z-index: 20;
 }
 
-.md-item {
-    font-size: 26rpx;
-    color: #B0B0B0;
+.status-text {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 32rpx;
+    margin-bottom: 60rpx;
+    letter-spacing: 2rpx;
 }
 
-.success-actions {
-    width: 100%;
-}
-
-.outline-btn {
-    width: 100%;
-    text-align: center;
-    padding: 24rpx;
-    border: 2rpx solid #4A4A4A;
+.cancel-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1rpx solid rgba(255, 255, 255, 0.2);
     border-radius: 50rpx;
-    color: #B0B0B0;
+    width: 300rpx;
+    height: 80rpx;
+    line-height: 80rpx;
     font-size: 30rpx;
-    margin-top: 20rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* 去除默认边框 */
+    &::after {
+        border: none;
+    }
+
+    &:active {
+        background: rgba(255, 255, 255, 0.2);
+    }
 }
 </style>

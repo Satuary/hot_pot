@@ -111,11 +111,57 @@
             </view>
         </view>
     </view>
+    <MatchSuccessModal
+      :visible="showMatchModal"
+      :user-list="matchedUsers"
+      @close="showMatchModal = false"
+      @unlock="handleUnlock"
+    />
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { appState } from '@/utils/store';
+import MatchSuccessModal from '@/components/MatchSuccessModal.vue';
+
+// 控制弹窗显示/隐藏
+const showMatchModal = ref(false);
+
+// 模拟从API获取的匹配用户数据
+const matchedUsers = ref([
+  {
+    id: 1,
+    avatar: 'https://i.pravatar.cc/150?img=1', // 使用在线占位图
+    status: 'locked',
+    statusText: '点击解锁',
+  },
+  {
+    id: 2,
+    avatar: 'https://i.pravatar.cc/150?img=2',
+    status: 'pending',
+    statusText: '已发送申请',
+    subStatusText: '等待对方同意',
+  },
+  {
+    id: 3,
+    avatar: 'https://i.pravatar.cc/150?img=3',
+    status: 'locked',
+    statusText: '点击解锁',
+  },
+]);
+
+/**
+ * 处理解锁事件
+ * @param {Object} user - 被解锁的用户信息
+ */
+const handleUnlock = (user:any) => {
+  console.log('正在解锁用户:', user);
+  // 在这里执行实际的解锁逻辑，例如调用API
+  // 解锁成功后，可以更新用户状态或关闭弹窗
+  // 例如：user.status = 'unlocked'; user.statusText = '已是好友';
+};
+
+
 
 const req = appState.matchRequirement;
 const isBlind = ref(false);
@@ -133,6 +179,7 @@ const foundUsers = ref([
     { id: 'u2', nickname: '麻辣达人', gender: '男', age: '28', matchRate: 87 },
     { id: 'u3', nickname: '吃货小明', gender: '女', age: '23', matchRate: 82 },
 ]);
+
 
 onMounted(() => {
     // Auto start on page load

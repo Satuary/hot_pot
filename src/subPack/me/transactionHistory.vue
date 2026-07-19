@@ -42,10 +42,12 @@
                     </view>
 
                     <view v-for="group in transactionGroups" :key="group.month" class="group">
-                        <view class="group-title">{{ group.month }}</view>
-                        <view v-for="item in group.items" :key="item.id" class="list-item">
-                            <text class="item-title">{{ item.desc }}<text class="amount">{{ item.amountText }}</text></text>
-                            <text class="item-time">{{ item.time }}</text>
+                        <view v-for="item in group.items" :key="item.id" class="list-item" @click="goToDetail(item)">
+                            <text class="item-title">{{ item.desc }}</text>
+                            <view class="item-right">
+                                <text class="amount">{{ item.amountText }}</text>
+                                <text class="item-time">{{ item.time }}</text>
+                            </view>
                         </view>
                     </view>
                     <view v-if="!transactionGroups.length" class="empty-tip">暂无交易记录</view>
@@ -57,7 +59,13 @@
         <view class="picker-mask" v-if="showPicker" @click="closePicker">
             <view class="picker-popup" @click.stop>
                 <view class="picker-header">选择时间</view>
-                <picker-view class="picker-view" :value="pickerValue" @change="onPickerChange" indicator-style="height: 80rpx;" mask-style="background: linear-gradient(180deg, rgba(26,26,26,1) 0%, rgba(26,26,26,0.3) 30%, transparent 50%, rgba(26,26,26,0.3) 70%, rgba(26,26,26,1) 100%);">
+                <picker-view
+                    class="picker-view"
+                    :value="pickerValue"
+                    @change="onPickerChange"
+                    indicator-style="height: 44px; border-radius: 12rpx;"
+                    mask-style="background-image: linear-gradient(to bottom, rgba(26, 26, 26, 0.45), rgba(26, 26, 26, 0)), linear-gradient(to top, rgba(26, 26, 26, 0.45), rgba(26, 26, 26, 0)); background-position: top, bottom; background-size: 100% 80rpx; background-repeat: no-repeat;"
+                >
                     <picker-view-column>
                         <view v-for="year in yearRange" :key="year" class="picker-item">{{ year }}年</view>
                     </picker-view-column>
@@ -117,14 +125,14 @@ const rawTransactions = computed(() => {
         { id: 't1', date: '2023-07-15', time: '2025.10.29 10:25', desc: '按次充值', amountText: '20元', amount: 20 },
         { id: 't2', date: '2023-07-10', time: '2025.10.29 10:25', desc: '按月充值', amountText: '20元', amount: 20 },
         { id: 't3', date: '2023-06-20', time: '2025.10.29 10:25', desc: '按次充值', amountText: '20元', amount: 20 },
-        { id: 't4', date: '2023-06-05', time: '2025.10.29 10:25', desc: '按月充值', amountText: '20元', amount: 20 }
+        { id: 't4', date: '2023-06-15', time: '2025.10.29 10:25', desc: '按月充值', amountText: '20元', amount: 20 },
     );
     return list;
 });
 
 const now = new Date();
-const selectedYear = ref(now.getFullYear());
-const selectedMonth = ref(now.getMonth() + 1);
+const selectedYear = ref(2023);
+const selectedMonth = ref(7);
 
 const transactionGroups = computed(() => {
     const filtered = rawTransactions.value.filter((t) => {
@@ -148,7 +156,7 @@ const transactionGroups = computed(() => {
 const showPicker = ref(false);
 const yearRange = Array.from({ length: 50 }, (_, i) => 2000 + i);
 const monthRange = Array.from({ length: 12 }, (_, i) => i + 1);
-const pickerValue = ref([now.getFullYear() - 2000, now.getMonth()]);
+const pickerValue = ref([selectedYear.value - 2000, selectedMonth.value - 1]);
 const tempPickerValue = ref([...pickerValue.value]);
 
 function openPicker() {
@@ -174,6 +182,12 @@ function confirmPicker() {
 
 function goBack() {
     uni.navigateBack();
+}
+
+function goToDetail(item: any) {
+    uni.navigateTo({
+        url: `/subPack/me/orderDetail?id=${encodeURIComponent(item.id)}&desc=${encodeURIComponent(item.desc)}&amount=${item.amount}&time=${encodeURIComponent(item.time)}`,
+    });
 }
 
 onMounted(() => {
@@ -298,12 +312,6 @@ onMounted(() => {
     margin-bottom: 30rpx;
 }
 
-.group-title {
-    font-size: 24rpx;
-    color: #808080;
-    margin-bottom: 16rpx;
-}
-
 .list-item {
     display: flex;
     align-items: center;
@@ -316,8 +324,14 @@ onMounted(() => {
     color: #fff;
 }
 
+.item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
 .amount {
-    color: #4CD964;
+    color: #4cd964;
 }
 
 .item-time {
@@ -345,53 +359,54 @@ onMounted(() => {
 .picker-popup {
     width: 100%;
     background: #1a1a1a;
-    border-radius: 40rpx 40rpx 0 0;
-    padding: 40rpx 30rpx 60rpx;
+    border-radius: 32rpx 32rpx 0 0;
+    padding: 32rpx;
+    padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
 }
 
 .picker-header {
     text-align: center;
     font-size: 32rpx;
     color: #fff;
-    font-weight: 500;
-    margin-bottom: 30rpx;
+    margin-bottom: 24rpx;
 }
 
 .picker-view {
-    height: 360rpx;
+    height: 340rpx;
     background: #1a1a1a;
 }
 
 .picker-item {
-    line-height: 80rpx;
+    line-height: 88rpx;
     text-align: center;
     font-size: 32rpx;
-    color: #fff !important;
+    font-weight: 500;
+    color: #fff;
     background-color: #1a1a1a;
 }
 
 .picker-actions {
     display: flex;
     gap: 24rpx;
-    margin-top: 30rpx;
+    margin-top: 24rpx;
 }
 
 .picker-btn {
     flex: 1;
-    height: 90rpx;
-    border-radius: 50rpx;
+    height: 88rpx;
+    border-radius: 44rpx;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 30rpx;
 
     &.cancel {
-        background: #fff;
-        color: #333;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
     }
 
     &.confirm {
-        background: linear-gradient(270deg, #58B4FF 0%, #C927FF 100%);
+        background: linear-gradient(90deg, #6d5dfc 0%, #c84dfb 100%);
         color: #fff;
     }
 }
@@ -402,6 +417,8 @@ onMounted(() => {
 .picker-item {
     background-color: #1a1a1a !important;
     color: #fff !important;
+    line-height: 88rpx;
+    font-weight: 500;
     // opacity: 1 !important;
 }
 
