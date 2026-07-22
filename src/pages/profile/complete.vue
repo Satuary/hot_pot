@@ -23,9 +23,15 @@
             <!-- 年龄 -->
             <view class="form-group">
                 <view class="form-label">选择你的年龄</view>
-                <view class="picker-cell" @click="openBirthdayPicker">
-                    <text class="picker-value">{{ formatBirthday(form.birthday) }}</text>
-                    <text class="iconfont icon-you"></text>
+                <view class="picker-cell birthday-cell" @click="openBirthdayPicker">
+                    <view class="picker-value birthday-value">
+                        <template v-if="birthdayParts">
+                            <text>{{ birthdayParts.y }}年</text>
+                            <text>{{ birthdayParts.m }}月</text>
+                            <text>{{ birthdayParts.d }}日</text>
+                        </template>
+                        <uni-icons type="right" size="14" color="#ffffff"></uni-icons>
+                    </view>
                 </view>
             </view>
 
@@ -35,11 +41,11 @@
                 <view class="hw-row">
                     <view class="picker-cell half" @click="openHwPicker">
                         <text class="picker-value">{{ form.height }} cm</text>
-                        <text class="iconfont icon-you"></text>
+                        <uni-icons type="right" size="14" color="#ffffff"></uni-icons>
                     </view>
                     <view class="picker-cell half" @click="openHwPicker">
                         <text class="picker-value">{{ form.weight }} kg</text>
-                        <text class="iconfont icon-you"></text>
+                        <uni-icons type="right" size="14" color="#ffffff"></uni-icons>
                     </view>
                 </view>
             </view>
@@ -47,31 +53,37 @@
             <!-- 火锅类型 -->
             <view class="form-group">
                 <view class="form-label">火锅类型</view>
-                <view class="tag-list">
-                    <view v-for="item in hotpotTypeOptions" :key="item" class="tag-item" :class="{ active: form.hotpotType === item }" @click="form.hotpotType = item">
-                        {{ item }}
+                <scroll-view scroll-x class="tag-list" :show-scrollbar="false">
+                    <view class="tag-scroll-inner">
+                        <view v-for="item in hotpotTypeOptions" :key="item" class="tag-item" :class="{ active: form.hotpotType === item }" @click="form.hotpotType = item">
+                            {{ item }}
+                        </view>
                     </view>
-                </view>
+                </scroll-view>
             </view>
 
             <!-- 口味 -->
             <view class="form-group">
                 <view class="form-label">口味</view>
-                <view class="tag-list">
-                    <view v-for="item in tasteOptions" :key="item" class="tag-item" :class="{ active: form.taste === item }" @click="form.taste = item">
-                        {{ item }}
+                <scroll-view scroll-x class="tag-list" :show-scrollbar="false">
+                    <view class="tag-scroll-inner">
+                        <view v-for="item in tasteOptions" :key="item" class="tag-item" :class="{ active: form.taste === item }" @click="form.taste = item">
+                            {{ item }}
+                        </view>
                     </view>
-                </view>
+                </scroll-view>
             </view>
 
             <!-- 动力 -->
             <view class="form-group">
                 <view class="form-label">动力</view>
-                <view class="tag-list">
-                    <view v-for="item in motivationOptions" :key="item" class="tag-item" :class="{ active: form.motivation === item }" @click="form.motivation = item">
-                        {{ item }}
+                <scroll-view scroll-x class="tag-list" :show-scrollbar="false">
+                    <view class="tag-scroll-inner">
+                        <view v-for="item in motivationOptions" :key="item" class="tag-item" :class="{ active: form.motivation === item }" @click="form.motivation = item">
+                            {{ item }}
+                        </view>
                     </view>
-                </view>
+                </scroll-view>
             </view>
 
             <!-- 预留微信 -->
@@ -94,30 +106,30 @@
             <view class="submit-btn" :class="{ disabled: !canSubmit }" @click="onSubmit"> 确认 </view>
         </view>
 
-        <!-- 生日选择器弹窗 -->
-        <view v-if="birthdayVisible" class="mask" @click="closeBirthdayPicker">
-            <view class="picker-modal" @click.stop>
-                <view class="picker-modal-title">选择出生日期</view>
-                <view class="picker-body birthday-picker-body">
+        <!-- 年龄选择器弹窗 -->
+        <view v-if="birthdayVisible" class="mask age-mask" @click="closeBirthdayPicker">
+            <view class="picker-modal age-picker-modal" @click.stop>
+                <view class="picker-modal-title">选择年龄</view>
+                <view class="picker-body age-picker-body">
                     <picker-view
-                        class="picker-view birthday-picker"
+                        class="picker-view age-picker-view"
                         :value="[yearIndex, monthIndex, dayIndex]"
-                        indicator-style="height: 44px; border-radius: 12rpx;"
-                        mask-style="background-image: linear-gradient(to bottom, rgba(26, 26, 26, 0.45), rgba(26, 26, 26, 0)), linear-gradient(to top, rgba(26, 26, 26, 0.45), rgba(26, 26, 26, 0)); background-position: top, bottom; background-size: 100% 80rpx; background-repeat: no-repeat;"
+                        indicator-style="height: 88rpx;"
+                        mask-style="background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5)), linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5)); background-position: top, bottom;"
                         @change="onBirthdayColChange"
                     >
                         <picker-view-column>
-                            <view v-for="y in yearRange" :key="y" class="picker-view-item">{{ y }}年</view>
+                            <view v-for="y in yearRange" :key="y" class="picker-view-item age-picker-item">{{ y }}年</view>
                         </picker-view-column>
                         <picker-view-column>
-                            <view v-for="m in monthRange" :key="m" class="picker-view-item">{{ m }}月</view>
+                            <view v-for="m in monthRange" :key="m" class="picker-view-item age-picker-item">{{ m }}月</view>
                         </picker-view-column>
                         <picker-view-column>
-                            <view v-for="d in dayRange" :key="d" class="picker-view-item">{{ d }}日</view>
+                            <view v-for="d in dayRange" :key="d" class="picker-view-item age-picker-item">{{ d }}日</view>
                         </picker-view-column>
                     </picker-view>
                 </view>
-                <view class="picker-actions">
+                <view class="picker-actions age-picker-actions">
                     <view class="picker-btn cancel" @click="closeBirthdayPicker">取消</view>
                     <view class="picker-btn confirm" @click="confirmBirthday">确认</view>
                 </view>
@@ -273,15 +285,15 @@ const selectGender = (gender: string) => {
     form.gender = gender;
 };
 
+const birthdayParts = computed(() => {
+    if (!form.birthday) return null;
+    const [y, m, d] = form.birthday.split('-');
+    return { y, m: Number(m), d: Number(d) };
+});
+
 const canSubmit = computed(() => {
     return form.gender && form.birthday && form.height && form.weight && form.hotpotType && form.taste && form.motivation && form.nickname.trim();
 });
-
-function formatBirthday(date: string) {
-    if (!date) return '';
-    const [y, m, d] = date.split('-');
-    return `${y} 年 ${Number(m)} 月 ${Number(d)} 日`;
-}
 
 function parseBirthday(dateStr: string) {
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -455,21 +467,36 @@ async function onSubmit() {
     border: 2rpx solid rgba(255, 255, 255, 0.2);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
+    position: relative;
     padding: 0 32rpx;
 
     &.half {
         flex: 1;
     }
 
+    &.birthday-cell {
+        :deep(uni-icons) {
+            position: static;
+        }
+    }
+
     .picker-value {
         font-size: 30rpx;
         color: #fff;
+        text-align: center;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        &.birthday-value {
+            flex: 1;
+        }
     }
 
-    .iconfont {
-        font-size: 28rpx;
-        color: #999;
+    :deep(uni-icons) {
+        position: absolute;
+        right: 32rpx;
     }
 }
 
@@ -479,12 +506,18 @@ async function onSubmit() {
 }
 
 .tag-list {
-    display: flex;
-    flex-wrap: wrap;
+    width: 100%;
+    white-space: nowrap;
+}
+
+.tag-scroll-inner {
+    display: inline-flex;
     gap: 20rpx;
+    padding: 4rpx 0;
 }
 
 .tag-item {
+    flex-shrink: 0;
     padding: 18rpx 32rpx;
     border-radius: 36rpx;
     background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.1) 100%);
@@ -554,7 +587,8 @@ async function onSubmit() {
 
 .picker-modal {
     width: 100%;
-    background: #1a1a1a;
+    // background: #1a1a1a;
+    background: rgba(0,0,0,0.9);
     border-radius: 32rpx 32rpx 0 0;
     padding: 32rpx;
     padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
@@ -645,6 +679,58 @@ async function onSubmit() {
     &.confirm {
         background: linear-gradient(90deg, #6d5dfc 0%, #c84dfb 100%);
         color: #fff;
+    }
+}
+
+/* 年龄选择器弹框样式 */
+.mask.age-mask {
+    align-items: center;
+    justify-content: center;
+}
+
+.picker-modal.age-picker-modal {
+    width: 620rpx;
+    border-radius: 32rpx;
+    padding: 40rpx 32rpx;
+    border: 2rpx solid rgba(255, 255, 255, 0.5);
+    padding-bottom: 40rpx;
+}
+
+.age-picker-body {
+    height: 400rpx;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+}
+
+.age-picker-view {
+    width: 100%;
+    height: 400rpx;
+    background: transparent;
+}
+
+.age-picker-item {
+    height: 88rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 36rpx;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.age-picker-actions {
+    margin-top: 32rpx;
+
+    .picker-btn.cancel {
+        background: #ffffff;
+        color: #000000;
+    }
+
+    .picker-btn.confirm {
+        background: linear-gradient(90deg, #58b4ff 0%, #c927ff 100%);
     }
 }
 </style>
