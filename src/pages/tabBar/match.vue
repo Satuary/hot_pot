@@ -1,7 +1,7 @@
 <template>
     <view class="match-page">
         <!-- 自定义导航栏 -->
-        <view class="navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
+        <view class="navbar" :style="{ height: navbarHeight + 'px', paddingTop: navbarPaddingTop + 'px' }">
             <view class="navbar-inner">
                 <!-- 左侧位置 -->
                 <view class="location-picker" @click="chooseLocation">
@@ -89,6 +89,8 @@ const handleCloseModal = () => {
 };
 
 const statusBarHeight = ref(0);
+const navbarPaddingTop = ref(0);
+const navbarHeight = ref(0);
 const topOffset = ref(0);
 const location = ref('万达广场');
 const isToggleOn = ref(true);
@@ -96,8 +98,20 @@ const isToggleOn = ref(true);
 onMounted(() => {
     const systemInfo = uni.getSystemInfoSync();
     statusBarHeight.value = systemInfo.statusBarHeight || 0;
-    // 导航栏总高度 = 状态栏 + 88rpx（转换为px）
-    topOffset.value = statusBarHeight.value + (88 * systemInfo.windowWidth) / 750;
+
+    // 获取胶囊按钮信息，导航栏内容放在胶囊下方
+    // #ifdef MP-WEIXIN
+    const menuButtonInfo = uni.getMenuButtonBoundingClientRect();
+    const gap = 8; // 胶囊底部间距
+    navbarPaddingTop.value = menuButtonInfo.bottom + gap;
+    navbarHeight.value = navbarPaddingTop.value + (88 * systemInfo.windowWidth) / 750;
+    // #endif
+    // #ifndef MP-WEIXIN
+    navbarPaddingTop.value = statusBarHeight.value;
+    navbarHeight.value = statusBarHeight.value + (88 * systemInfo.windowWidth) / 750;
+    // #endif
+
+    topOffset.value = navbarHeight.value;
 });
 
 onShow(() => {
@@ -165,7 +179,7 @@ const goToBlindMatch = () => {
         align-items: center;
         justify-content: space-between;
         height: 88rpx;
-        padding: 0 200rpx 0 40rpx;
+        padding: 0 40rpx 0 40rpx;
     }
 
     // 左侧位置

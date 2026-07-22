@@ -32,22 +32,22 @@
 
     <!-- 年龄范围 -->
     <view class="section">
-      <view class="section-title">年龄</view>
-      <view class="age-selector">
-        <view class="age-item" @click="showAgePicker('min')">
+      <view class="section-title">年龄范围</view>
+      <view class="age-selector" @click="showAgePicker">
+        <view class="age-item">
           <view class="age-text-wrap">
             <div class="age-num">{{ formData.ageMin }}</div>
             <div class="age-unit">岁</div>
           </view>
-          <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
         </view>
-        <view class="age-item" @click="showAgePicker('max')">
+        <view class="age-separator">—</view>
+        <view class="age-item">
           <view class="age-text-wrap">
             <div class="age-num">{{ formData.ageMax }}</div>
             <div class="age-unit">岁</div>
           </view>
-          <uni-icons type="right" size="20" color="#fffff"></uni-icons>
         </view>
+        <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
       </view>
     </view>
 
@@ -106,24 +106,17 @@
         <text class="selector-text" :class="{ placeholder: !formData.storeName }">
           {{ formData.storeName || '请选择火锅店' }}
         </text>
-        <uni-icons type="right" size="20" color="#fffff"></uni-icons>
+        <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
       </view>
     </view>
 
     <!-- 选择时间 -->
     <view class="section">
       <view class="section-title">选择时间</view>
-      <picker
-        mode="multiSelector"
-        :range="dateTimeRange"
-        :value="dateTimeValue"
-        @change="onDateTimeChange"
-      >
-        <view class="selector-item">
-          <text class="selector-text">{{ formattedDateTime }}</text>
-          <uni-icons type="right" size="20" color="#fffff"></uni-icons>
-        </view>
-      </picker>
+      <view class="selector-item" @click="showDateTimePicker">
+        <text class="selector-text">{{ formattedDateTime }}</text>
+        <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
+      </view>
     </view>
 
     <!-- 付费方式 -->
@@ -147,17 +140,80 @@
       <view class="submit-text">开始匹配</view>
     </view>
 
-    <!-- 年龄选择器 -->
-    <picker
-      v-if="showPicker"
-      mode="selector"
-      :range="ageRange"
-      :value="currentAgeIndex"
-      @change="onAgeChange"
-      @cancel="showPicker = false"
-    >
-      <view></view>
-    </picker>
+    <!-- 年龄选择器弹窗 -->
+    <view v-if="agePickerVisible" class="mask age-mask" @click="closeAgePicker">
+      <view class="picker-modal age-picker-modal" @click.stop>
+        <view class="picker-modal-title">选择年龄范围</view>
+        <view class="picker-body age-picker-body">
+          <picker-view
+            class="picker-view age-picker-view"
+            :value="agePickerValue"
+            indicator-style="height: 88rpx;"
+            mask-style="background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5)), linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5)); background-position: top, bottom;"
+            @change="onAgePickerChange"
+          >
+            <picker-view-column>
+              <view v-for="age in ageRangeValues" :key="age" class="picker-view-item age-picker-item">{{ age }}岁</view>
+            </picker-view-column>
+            <picker-view-column>
+              <view v-for="age in ageRangeValues" :key="age" class="picker-view-item age-picker-item">{{ age }}岁</view>
+            </picker-view-column>
+          </picker-view>
+        </view>
+        <view class="picker-actions age-picker-actions">
+          <view class="picker-btn cancel" @click="closeAgePicker">取消</view>
+          <view class="picker-btn confirm" @click="confirmAge">确认</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 日期时间选择器弹窗 -->
+    <view v-if="dateTimePickerVisible" class="mask date-mask" @click="closeDateTimePicker">
+      <view class="picker-modal date-picker-modal" @click.stop>
+        <view class="picker-modal-title">选择时间</view>
+        <view class="date-picker-body">
+          <!-- 左侧：今天、明天、后天 -->
+          <view class="date-left">
+            <picker-view
+              class="date-picker-view"
+              :value="dateTypePickerValue"
+              indicator-style="height: 88rpx;"
+              mask-style="background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5)), linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5)); background-position: top, bottom;"
+              @change="onDateTypeChange"
+            >
+              <picker-view-column>
+                <view v-for="item in dateOptions" :key="item.value" class="picker-view-item date-picker-item">
+                  {{ item.label }}
+                </view>
+              </picker-view-column>
+            </picker-view>
+          </view>
+          <!-- 分隔线 -->
+          <view class="date-divider"></view>
+          <!-- 右侧：时:分选择器 -->
+          <view class="date-right">
+            <picker-view
+              class="time-picker-view"
+              :value="timePickerValue"
+              indicator-style="height: 88rpx;"
+              mask-style="background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5)), linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5)); background-position: top, bottom;"
+              @change="onTimePickerChange"
+            >
+              <picker-view-column>
+                <view v-for="h in hourOptions" :key="h" class="picker-view-item time-picker-item">{{ h }}时</view>
+              </picker-view-column>
+              <picker-view-column>
+                <view v-for="m in minuteOptions" :key="m" class="picker-view-item time-picker-item">{{ m }}分</view>
+              </picker-view-column>
+            </picker-view>
+          </view>
+        </view>
+        <view class="picker-actions date-picker-actions">
+          <view class="picker-btn cancel" @click="closeDateTimePicker">取消</view>
+          <view class="picker-btn confirm" @click="confirmDateTime">确认</view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -204,27 +260,60 @@ const paymentMethods = [
   { value: 'other', label: '对方请客' },
 ];
 
-// 年龄选择器相关
-const showPicker = ref(false);
-const currentAgeType = ref<'min' | 'max'>('min');
-const currentAgeIndex = ref(0);
-const ageRange = Array.from({ length: 83 }, (_, i) => `${i + 18} 岁`);
+// 年龄选择器弹窗相关
+const agePickerVisible = ref(false);
+const tempAgeMin = ref(18);
+const tempAgeMax = ref(38);
+const ageRangeValues = Array.from({ length: 83 }, (_, i) => i + 18);
+const agePickerValue = computed(() => [
+  ageRangeValues.findIndex(v => v === tempAgeMin.value),
+  ageRangeValues.findIndex(v => v === tempAgeMax.value),
+]);
 
-// 日期时间选择器相关
-const dateTimeValue = ref([0, 0, 0]);
-const dateTimeRange = ref<string[][]>([[], [], []]);
+// 日期时间选择器弹窗相关
+const dateTimePickerVisible = ref(false);
+const tempDateType = ref('today'); // 'today' | 'tomorrow' | 'afterTomorrow'
+const tempHour = ref(15);
+const tempMinute = ref('30');
 
-// 格式化显示的日期时间
+// 日期选项：今天、明天、后天
+const dateOptions = [
+  { value: 'today', label: '今天' },
+  { value: 'tomorrow', label: '明天' },
+  { value: 'afterTomorrow', label: '后天' },
+];
+
+// 小时选项
+const hourOptions = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+// 分钟选项
+const minuteOptions = ['00', '10', '20', '30', '40', '50'];
+
+// 日期类型选择器当前值索引
+const dateTypePickerValue = computed(() => {
+  const idx = dateOptions.findIndex(item => item.value === tempDateType.value);
+  return [idx >= 0 ? idx : 0];
+});
+
+// 时间选择器当前值索引
+const timePickerValue = computed(() => {
+  const hourIdx = tempHour.value;
+  const minIdx = minuteOptions.indexOf(tempMinute.value);
+  return [hourIdx, minIdx >= 0 ? minIdx : 0];
+});
+
+// 格式化显示的日期时间：年月日 时:分
 const formattedDateTime = computed(() => {
-  if (!formData.value.dateTime) {
-    // 默认显示
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString();
-    const day = date.getDate().toString();
-    return `${year}-${month}-${day} 15:30`;
+  if (formData.value.dateTime) {
+    const [datePart, timePart] = formData.value.dateTime.split(' ');
+    const [y, m, d] = datePart.split('-');
+    return `${y}年${parseInt(m)}月${parseInt(d)}日 ${timePart}`;
   }
-  return formData.value.dateTime;
+  // 默认显示
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${year}年${month}月${day}日 15:30`;
 });
 
 // 返回上一页
@@ -237,45 +326,34 @@ const selectGender = (gender: string) => {
   formData.value.gender = gender;
 };
 
-// 显示年龄选择器
-const showAgePicker = (type: 'min' | 'max') => {
-  currentAgeType.value = type;
-  const currentAge = type === 'min' ? formData.value.ageMin : formData.value.ageMax;
-  currentAgeIndex.value = currentAge - 18;
-  showPicker.value = true;
-  
-  // 触发选择器
-  setTimeout(() => {
-    showPicker.value = false;
-    uni.showActionSheet({
-      itemList: ageRange,
-      success: (res) => {
-        const selectedAge = res.tapIndex + 18;
-        if (type === 'min') {
-          formData.value.ageMin = selectedAge;
-          if (formData.value.ageMin > formData.value.ageMax) {
-            formData.value.ageMax = selectedAge;
-          }
-        } else {
-          formData.value.ageMax = selectedAge;
-          if (formData.value.ageMax < formData.value.ageMin) {
-            formData.value.ageMin = selectedAge;
-          }
-        }
-      },
-    });
-  }, 50);
+// 显示年龄选择器弹窗
+const showAgePicker = () => {
+  tempAgeMin.value = formData.value.ageMin;
+  tempAgeMax.value = formData.value.ageMax;
+  agePickerVisible.value = true;
 };
 
-// 年龄选择器变化
-const onAgeChange = (e: any) => {
-  const selectedAge = e.detail.value + 18;
-  if (currentAgeType.value === 'min') {
-    formData.value.ageMin = selectedAge;
-  } else {
-    formData.value.ageMax = selectedAge;
+// 关闭年龄选择器弹窗
+const closeAgePicker = () => {
+  agePickerVisible.value = false;
+};
+
+// 年龄选择器滚动变化
+const onAgePickerChange = (e: any) => {
+  const [minIdx, maxIdx] = e.detail.value;
+  tempAgeMin.value = ageRangeValues[minIdx];
+  tempAgeMax.value = ageRangeValues[maxIdx];
+};
+
+// 确认年龄选择
+const confirmAge = () => {
+  // 确保最小值不大于最大值
+  if (tempAgeMin.value > tempAgeMax.value) {
+    [tempAgeMin.value, tempAgeMax.value] = [tempAgeMax.value, tempAgeMin.value];
   }
-  showPicker.value = false;
+  formData.value.ageMin = tempAgeMin.value;
+  formData.value.ageMax = tempAgeMax.value;
+  agePickerVisible.value = false;
 };
 
 // 选择火锅类型
@@ -311,64 +389,65 @@ const selectStore = () => {
   });
 };
 
-// 初始化日期时间选择器数据
-const initDateTimeRange = () => {
-  const dates: string[] = [];
-  const hours: string[] = [];
-  const minutes: string[] = [];
-
-  // 生成未来30天的日期
-  const today = new Date();
-  for (let i = 0; i < 30; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    dates.push(`${month}-${day}`);
+// 显示日期时间选择器弹窗
+const showDateTimePicker = () => {
+  // 从当前 formData.dateTime 解析出日期类型和时分
+  if (formData.value.dateTime) {
+    const [dateStr, timeStr] = formData.value.dateTime.split(' ');
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const [h, min] = timeStr.split(':');
+    
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+    const targetStr = `${y}-${m}-${d}`;
+    const diffDays = Math.floor((new Date(targetStr).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) tempDateType.value = 'today';
+    else if (diffDays === 1) tempDateType.value = 'tomorrow';
+    else tempDateType.value = 'afterTomorrow';
+    
+    tempHour.value = parseInt(h);
+    tempMinute.value = min;
+  } else {
+    tempDateType.value = 'today';
+    tempHour.value = 15;
+    tempMinute.value = '30';
   }
-
-  // 生成小时 (00-23)
-  for (let i = 0; i < 24; i++) {
-    hours.push(`${i.toString().padStart(2, '0')}`);
-  }
-
-  // 生成分钟 (00, 15, 30, 45)
-  minutes.push('00', '15', '30', '45');
-
-  dateTimeRange.value = [dates, hours, minutes];
-
-  // 设置默认值为今天 15:30
-  const currentMonth = today.getMonth() + 1;
-  const currentDay = today.getDate();
-  const todayStr = `${currentMonth}-${currentDay}`;
-  const todayIndex = dates.indexOf(todayStr);
-  
-  dateTimeValue.value = [
-    todayIndex >= 0 ? todayIndex : 0,
-    15, // 15点
-    2, // 30分
-  ];
+  dateTimePickerVisible.value = true;
 };
 
+// 关闭日期时间选择器弹窗
+const closeDateTimePicker = () => {
+  dateTimePickerVisible.value = false;
+};
 
-// 日期时间选择器变化
-const onDateTimeChange = (e: any) => {
-  const [dateIndex, hourIndex, minuteIndex] = e.detail.value;
-  const dateStr = dateTimeRange.value[0][dateIndex];
-  const hour = dateTimeRange.value[1][hourIndex];
-  const minute = dateTimeRange.value[2][minuteIndex];
+// 日期类型选择器滚动变化
+const onDateTypeChange = (e: any) => {
+  const idx = e.detail.value[0];
+  tempDateType.value = dateOptions[idx].value;
+};
+
+// 时间选择器滚动变化
+const onTimePickerChange = (e: any) => {
+  const [hourIdx, minIdx] = e.detail.value;
+  tempHour.value = hourIdx;
+  tempMinute.value = minuteOptions[minIdx];
+};
+
+// 确认日期时间
+const confirmDateTime = () => {
+  const date = new Date();
+  if (tempDateType.value === 'tomorrow') date.setDate(date.getDate() + 1);
+  if (tempDateType.value === 'afterTomorrow') date.setDate(date.getDate() + 2);
   
-  // 解析月份和日期
-  const [month, day] = dateStr.split('-').map(Number);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(tempHour.value).padStart(2, '0');
+  const minute = tempMinute.value;
   
-  // 计算正确的年份：如果月份小于当前月份，说明跨年了
-  const now = new Date();
-  let year = now.getFullYear();
-  if (month < now.getMonth() + 1) {
-    year += 1;
-  }
-  
-  formData.value.dateTime = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${hour}:${minute}`;
+  formData.value.dateTime = `${year}-${month}-${day} ${hour}:${minute}`;
+  dateTimePickerVisible.value = false;
 };
 
 // 提交需求
@@ -436,12 +515,11 @@ onMounted(() => {
   const systemInfo = uni.getSystemInfoSync();
   statusBarHeight.value = systemInfo.statusBarHeight || 0;
   
-  initDateTimeRange();
   // 设置默认日期时间显示
   const date = new Date();
   const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString();
-  const day = date.getDate().toString();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   formData.value.dateTime = `${year}-${month}-${day} 15:30`;
 });
 </script>
@@ -522,6 +600,7 @@ onMounted(() => {
 .age-selector {
   display: flex;
   gap: 24rpx;
+  position: relative;
 
   .age-item {
     flex: 1;
@@ -535,11 +614,6 @@ onMounted(() => {
     background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.1) 100%);
     border-radius: 152rpx;
     border: 1rpx solid #ffffff;
-
-    :deep(uni-icons) {
-      position: absolute;
-      right: 32rpx;
-    }
 
     .age-text-wrap {
       display: flex;
@@ -557,15 +631,36 @@ onMounted(() => {
       }
     }
   }
+
+  .age-separator {
+    font-size: 28rpx;
+    color: rgba(255, 255, 255, 0.5);
+    align-self: center;
+    flex-shrink: 0;
+  }
+
+  > :deep(uni-icons) {
+    position: absolute;
+    right: 32rpx;
+    top: 50%;
+    transform: translateY(-50%);
+  }
 }
 
 // 标签列表
 .tag-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 20rpx;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
   .tag-item {
+    flex-shrink: 0;
     padding: 18rpx 36rpx;
     background: rgba(0,0,0,0.9);
     border-radius: 48rpx;
@@ -623,6 +718,187 @@ onMounted(() => {
     font-size: 34rpx;
     color: #fff;
     font-weight: 500;
+  }
+}
+
+// 弹窗遮罩
+.mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// 年龄选择器弹窗 - 居中弹框模式
+.age-picker-modal {
+  width: 620rpx;
+  background: #000;
+  border-radius: 32rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  padding: 40rpx 32rpx;
+
+  .picker-modal-title {
+    font-size: 30rpx;
+    color: #999999;
+    text-align: center;
+    padding-bottom: 24rpx;
+    font-weight: 400;
+  }
+
+  .picker-body {
+    height: 440rpx;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border-radius: 24rpx;
+  }
+
+  .picker-view {
+    width: 100%;
+    height: 100%;
+  }
+
+  .picker-view-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32rpx;
+    color: #ffffff;
+    height: 88rpx;
+  }
+
+  .picker-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 24rpx;
+    gap: 24rpx;
+
+    .picker-btn {
+      flex: 1;
+      height: 76rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 152rpx;
+      font-size: 30rpx;
+      font-weight: 400;
+
+      &.cancel {
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.1) 100%);
+        border: 1rpx solid #ffffff;
+        color: #ffffff;
+      }
+
+      &.confirm {
+        background: linear-gradient(270deg, #58B4FF 0%, #C927FF 100%);
+        color: #ffffff;
+      }
+    }
+  }
+}
+
+// 日期时间选择器弹窗
+.date-picker-modal {
+  width: 660rpx;
+  background: #000;
+  border-radius: 32rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  padding: 40rpx 32rpx;
+
+  .picker-modal-title {
+    font-size: 30rpx;
+    color: #999999;
+    text-align: center;
+    padding-bottom: 24rpx;
+    font-weight: 400;
+  }
+
+  .date-picker-body {
+    display: flex;
+    height: 440rpx;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border-radius: 24rpx;
+
+    .date-left {
+      flex: 1;
+      overflow: hidden;
+
+      .date-picker-view {
+        width: 100%;
+        height: 100%;
+      }
+
+      .date-picker-item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32rpx;
+        color: #ffffff;
+        height: 88rpx;
+      }
+    }
+
+    .date-divider {
+      width: 1rpx;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 24rpx 0;
+    }
+
+    .date-right {
+      flex: 1;
+      overflow: hidden;
+
+      .time-picker-view {
+        width: 100%;
+        height: 100%;
+      }
+
+      .time-picker-item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32rpx;
+        color: #ffffff;
+        height: 88rpx;
+      }
+    }
+  }
+
+  .picker-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 24rpx;
+    gap: 24rpx;
+
+    .picker-btn {
+      flex: 1;
+      height: 76rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 152rpx;
+      font-size: 30rpx;
+      font-weight: 400;
+
+      &.cancel {
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.1) 100%);
+        border: 1rpx solid #ffffff;
+        color: #ffffff;
+      }
+
+      &.confirm {
+        background: linear-gradient(270deg, #58B4FF 0%, #C927FF 100%);
+        color: #ffffff;
+      }
+    }
   }
 }
 </style>
