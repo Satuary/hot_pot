@@ -137,46 +137,64 @@
         </view>
 
         <!-- 身高体重选择器弹窗 -->
-        <view v-if="hwVisible" class="mask" @click="closeHwPicker">
-            <view class="picker-modal" @click.stop>
+        <view v-if="hwVisible" class="mask hw-mask" @click="closeHwPicker">
+            <view class="picker-modal hw-picker-modal" @click.stop>
                 <view class="picker-modal-title">选择身高体重</view>
-                <view class="picker-body">
-                    <view class="picker-column-box">
-                        <text class="picker-column-label">身高</text>
-                        <picker-view
-                            class="picker-view"
-                            :value="[heightIndex]"
-                            indicator-style="height: 44px;border-radius: 12rpx;"
-                            mask-style="background-image: linear-gradient(to bottom, rgba(26, 26, 26, 0.45), rgba(26, 26, 26, 0)), linear-gradient(to top, rgba(26, 26, 26, 0.45), rgba(26, 26, 26, 0)); background-position: top, bottom; background-size: 100% 80rpx; background-repeat: no-repeat;"
-                            @change="onHeightChange"
-                        >
-                            <picker-view-column>
-                                <view v-for="h in heightRange" :key="h" class="picker-view-item">
-                                    {{ h }}
+                <view class="hw-divider"></view>
+
+                <!-- 身高选择器 -->
+                <view class="ruler-section">
+                    <text class="ruler-label">身高</text>
+                    <view class="ruler-wrap" @touchstart="onHeightTouchStart" @touchmove.stop.prevent="onHeightTouchMove" @touchend="onHeightTouchEnd">
+                        <view class="ruler-arrow left" @click.stop="adjustHeight(-1)">
+                            <view class="arrow-triangle"></view>
+                        </view>
+                        <view class="ruler-viewport">
+                            <view class="ruler-ticks">
+                                <view v-for="(item, idx) in visibleHeightRange" :key="idx" class="ruler-tick" :class="{ active: item.isCurrent, empty: item.value === null }"></view>
+                            </view>
+                            <view class="ruler-values">
+                                <view v-for="(item, idx) in visibleHeightRange" :key="idx" class="ruler-value-box" :class="{ active: item.isCurrent }">
+                                    <template v-if="item.value !== null">
+                                        <text class="ruler-value-num">{{ item.value }}</text>
+                                        <text v-if="item.isCurrent" class="ruler-value-unit">cm</text>
+                                    </template>
                                 </view>
-                            </picker-view-column>
-                        </picker-view>
-                        <text class="picker-unit">cm</text>
-                    </view>
-                    <view class="picker-column-box">
-                        <text class="picker-column-label">体重</text>
-                        <picker-view
-                            class="picker-view"
-                            :value="[weightIndex]"
-                            indicator-style="height: 44px; border-radius: 12rpx;"
-                            mask-style="background-image: linear-gradient(to bottom, rgba(26, 26, 26, 0.45), rgba(26, 26, 26, 0)), linear-gradient(to top, rgba(26, 26, 26, 0.45), rgba(26, 26, 26, 0)); background-position: top, bottom; background-size: 100% 80rpx; background-repeat: no-repeat;"
-                            @change="onWeightChange"
-                        >
-                            <picker-view-column>
-                                <view v-for="w in weightRange" :key="w" class="picker-view-item">
-                                    {{ w }}
-                                </view>
-                            </picker-view-column>
-                        </picker-view>
-                        <text class="picker-unit">kg</text>
+                            </view>
+                        </view>
+                        <view class="ruler-arrow right" @click.stop="adjustHeight(1)">
+                            <view class="arrow-triangle"></view>
+                        </view>
                     </view>
                 </view>
-                <view class="picker-actions">
+
+                <!-- 体重选择器 -->
+                <view class="ruler-section">
+                    <text class="ruler-label">体重</text>
+                    <view class="ruler-wrap" @touchstart="onWeightTouchStart" @touchmove.stop.prevent="onWeightTouchMove" @touchend="onWeightTouchEnd">
+                        <view class="ruler-arrow left" @click.stop="adjustWeight(-1)">
+                            <view class="arrow-triangle"></view>
+                        </view>
+                        <view class="ruler-viewport">
+                            <view class="ruler-ticks">
+                                <view v-for="(item, idx) in visibleWeightRange" :key="idx" class="ruler-tick" :class="{ active: item.isCurrent, empty: item.value === null }"></view>
+                            </view>
+                            <view class="ruler-values">
+                                <view v-for="(item, idx) in visibleWeightRange" :key="idx" class="ruler-value-box" :class="{ active: item.isCurrent }">
+                                    <template v-if="item.value !== null">
+                                        <text class="ruler-value-num">{{ item.value }}</text>
+                                        <text v-if="item.isCurrent" class="ruler-value-unit">kg</text>
+                                    </template>
+                                </view>
+                            </view>
+                        </view>
+                        <view class="ruler-arrow right" @click.stop="adjustWeight(1)">
+                            <view class="arrow-triangle"></view>
+                        </view>
+                    </view>
+                </view>
+
+                <view class="picker-actions hw-picker-actions">
                     <view class="picker-btn cancel" @click="closeHwPicker">取消</view>
                     <view class="picker-btn confirm" @click="confirmHw">确认</view>
                 </view>
@@ -337,12 +355,92 @@ function closeHwPicker() {
     hwVisible.value = false;
 }
 
-function onHeightChange(e: any) {
-    tempHeight.value = heightRange[e.detail.value[0]];
+const visibleHeightRange = computed(() => {
+    const current = Number(tempHeight.value);
+    const min = 140;
+    const max = 220;
+    const range = [];
+    for (let i = -2; i <= 2; i++) {
+        const val = current + i;
+        range.push({
+            value: val >= min && val <= max ? val : null,
+            isCurrent: i === 0,
+        });
+    }
+    return range;
+});
+
+const visibleWeightRange = computed(() => {
+    const current = Number(tempWeight.value);
+    const min = 30;
+    const max = 150;
+    const range = [];
+    for (let i = -2; i <= 2; i++) {
+        const val = current + i;
+        range.push({
+            value: val >= min && val <= max ? val : null,
+            isCurrent: i === 0,
+        });
+    }
+    return range;
+});
+
+function adjustHeight(delta: number) {
+    const val = Number(tempHeight.value) + delta;
+    if (val >= 140 && val <= 220) {
+        tempHeight.value = String(val);
+    }
 }
 
-function onWeightChange(e: any) {
-    tempWeight.value = weightRange[e.detail.value[0]];
+function adjustWeight(delta: number) {
+    const val = Number(tempWeight.value) + delta;
+    if (val >= 30 && val <= 150) {
+        tempWeight.value = String(val);
+    }
+}
+
+let heightTouchStartX = 0;
+let heightTouchStartValue = 0;
+let weightTouchStartX = 0;
+let weightTouchStartValue = 0;
+const STEP_PX = 18;
+
+function onHeightTouchStart(e: any) {
+    heightTouchStartX = e.touches[0].clientX;
+    heightTouchStartValue = Number(tempHeight.value);
+}
+
+function onHeightTouchMove(e: any) {
+    const deltaX = e.touches[0].clientX - heightTouchStartX;
+    const steps = Math.round(-deltaX / STEP_PX);
+    const newVal = heightTouchStartValue + steps;
+    const clampedVal = Math.max(140, Math.min(220, newVal));
+    if (String(clampedVal) !== tempHeight.value) {
+        tempHeight.value = String(clampedVal);
+    }
+}
+
+function onHeightTouchEnd(_e: any) {
+    // touchmove 已实时更新，无需额外处理
+}
+
+function onWeightTouchStart(e: any) {
+    weightTouchStartX = e.touches[0].clientX;
+    weightTouchStartValue = Number(tempWeight.value);
+}
+
+function onWeightTouchMove(e: any) {
+    const deltaX = e.touches[0].clientX - weightTouchStartX;
+    const steps = Math.round(-deltaX / STEP_PX);
+    const newVal = weightTouchStartValue + steps;
+    const clampedVal = Math.max(30, Math.min(150, newVal));
+    if (String(clampedVal) !== tempWeight.value) {
+        tempWeight.value = String(clampedVal);
+    }
+}
+
+function onWeightTouchEnd(_e: any) {
+    // touchmove 已实时更新，无需额外处理
 }
 
 function confirmHw() {
@@ -619,20 +717,6 @@ async function onSubmit() {
     }
 }
 
-.picker-column-box {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-}
-
-.picker-column-label {
-    font-size: 28rpx;
-    color: #999;
-    margin-bottom: 16rpx;
-}
-
 .picker-view {
     flex: 1;
     width: 100%;
@@ -646,14 +730,6 @@ async function onSubmit() {
     font-size: 32rpx;
     font-weight: 500;
     color: #fff;
-}
-
-.picker-unit {
-    position: absolute;
-    right: 30rpx;
-    top: 196rpx;
-    font-size: 28rpx;
-    color: #999;
 }
 
 .picker-actions {
@@ -723,6 +799,157 @@ async function onSubmit() {
 
 .age-picker-actions {
     margin-top: 32rpx;
+
+    .picker-btn.cancel {
+        background: #ffffff;
+        color: #000000;
+    }
+
+    .picker-btn.confirm {
+        background: linear-gradient(90deg, #58b4ff 0%, #c927ff 100%);
+    }
+}
+
+/* 身高体重选择器弹框样式 - 刻度尺 */
+.mask.hw-mask {
+    align-items: center;
+    justify-content: center;
+}
+
+.picker-modal.hw-picker-modal {
+    width: 620rpx;
+    border-radius: 32rpx;
+    padding: 32rpx 32rpx 40rpx;
+    border: 2rpx solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.95);
+}
+
+.hw-divider {
+    height: 1rpx;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 0 -32rpx 32rpx;
+}
+
+.ruler-section {
+    margin-bottom: 40rpx;
+}
+
+.ruler-label {
+    display: block;
+    text-align: center;
+    font-size: 30rpx;
+    color: #fff;
+    margin-bottom: 20rpx;
+    font-weight: 500;
+}
+
+.ruler-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4rpx;
+}
+
+.ruler-arrow {
+    width: 36rpx;
+    height: 60rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    &.left .arrow-triangle {
+        width: 0;
+        height: 0;
+        border-top: 7rpx solid transparent;
+        border-bottom: 7rpx solid transparent;
+        border-right: 9rpx solid rgba(255, 255, 255, 0.45);
+    }
+
+    &.right .arrow-triangle {
+        width: 0;
+        height: 0;
+        border-top: 7rpx solid transparent;
+        border-bottom: 7rpx solid transparent;
+        border-left: 9rpx solid rgba(255, 255, 255, 0.45);
+    }
+}
+
+.ruler-viewport {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.ruler-ticks {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    width: 100%;
+    height: 36rpx;
+    margin-bottom: 12rpx;
+    position: relative;
+}
+
+.ruler-tick {
+    width: 2rpx;
+    height: 14rpx;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 1rpx;
+
+    &.empty {
+        background: transparent;
+    }
+
+    &.active {
+        height: 36rpx;
+        background: #fff;
+    }
+}
+
+.ruler-values {
+    display: flex;
+    justify-content: space-around;
+    align-items: baseline;
+    width: 100%;
+    height: 60rpx;
+}
+
+.ruler-value-box {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    width: 80rpx;
+    transition: all 0.15s ease;
+
+    .ruler-value-num {
+        font-size: 26rpx;
+        color: rgba(255, 255, 255, 0.2);
+    }
+
+    .ruler-value-unit {
+        font-size: 20rpx;
+        color: rgba(255, 255, 255, 0.35);
+        margin-left: 4rpx;
+    }
+
+    &.active {
+        .ruler-value-num {
+            font-size: 48rpx;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .ruler-value-unit {
+            font-size: 22rpx;
+            color: rgba(255, 255, 255, 0.5);
+        }
+    }
+}
+
+.hw-picker-actions {
+    margin-top: 16rpx;
 
     .picker-btn.cancel {
         background: #ffffff;
