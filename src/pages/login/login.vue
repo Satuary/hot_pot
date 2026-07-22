@@ -3,7 +3,7 @@
     <!-- Logo 区域 -->
     <view class="logo-section">
       <image class="logo-img" :src="logoImg" ></image>
-      <text class="brand-name">月最近火锅</text>
+      <text class="brand-name">月最新</text>
     </view>
     
     <!-- 登录按钮 -->

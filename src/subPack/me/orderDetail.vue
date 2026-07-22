@@ -1,222 +1,238 @@
 <template>
-    <view class="page order-page">
-        <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
-            <view class="nav-content">
-                <view class="nav-back" @click="goBack">
-                    <uni-icons type="left" size="22" color="#FFFFFF"></uni-icons>
+    <view class="page-container">
+        <!-- 1. 顶部导航栏 -->
+        <view class="custom-navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
+            <view class="navbar-content">
+                <!-- 返回按钮图标 -->
+                <view class="nav-btn" @click="goBack">
+                    <text class="icon-back"></text>
                 </view>
                 <view class="nav-title">订单详情</view>
+                <!-- 占位符，保持标题居中 -->
+                <view class="nav-placeholder"></view>
             </view>
         </view>
 
-        <view class="content">
-            <view class="dark-card">
-                <view class="order-header">
-                    <text class="order-title">{{ order.desc }}</text>
-                    <text class="order-amount">{{ order.amountText }}</text>
+        <!-- 2. 主体内容区 -->
+        <view class="main-content">
+            <!-- 订单卡片 -->
+            <view class="order-card">
+                <!-- 第一行：金额与时间 -->
+                <view class="card-row header-row">
+                    <view class="title-group">
+                        <text class="label-text">按次充值金额</text>
+                        <text class="highlight-price">20元</text>
+                    </view>
+                    <text class="time-text">2025.10.29 10:25</text>
                 </view>
 
+                <!-- 分割线 -->
                 <view class="divider"></view>
 
-                <view class="order-time">{{ order.time }}</view>
-
-                <view class="divider"></view>
-
-                <view class="order-status">
-                    <view class="info-row">
-                        <text class="info-label">订单状态</text>
-                        <text class="info-value">{{ order.statusText }}</text>
-                    </view>
-                    <view class="info-row">
-                        <text class="info-label">退款状态</text>
-                        <text class="info-value">{{ order.refundStatusText }}</text>
-                    </view>
+                <!-- 第二行：订单状态标签 -->
+                <view class="card-row simple-row">
+                    <text class="row-label">订单状态</text>
                 </view>
 
-                <view class="divider"></view>
-
-                <view class="reminder">
-                    <text class="section-title">温馨提醒</text>
-                    <text class="info-text">1.已使用不可退款（申请退款为灰色不可点击）</text>
-                    <text class="info-text">2.未使用，可申请退款</text>
-                    <text class="info-text">3.退款方式，原路返回</text>
+                <!-- 第三行：具体状态值 -->
+                <view class="card-row status-row">
+                    <text class="status-val left">未使用</text>
+                    <text class="status-val right">退款完成</text>
                 </view>
             </view>
-        </view>
 
-        <view v-if="order.statusText === '未使用'" class="bottom-btn">
-            <view class="gradient-btn active_btn" @click="goRefund">申请退款</view>
+            <!-- 3. 底部温馨提示 -->
+            <view class="tips-section">
+                <view class="tips-title">温馨提醒：</view>
+                <view class="tips-list">
+                    <text class="tip-item">1.已使用不可退款（申请退款为灰色不可点击）</text>
+                    <text class="tip-item">2.未使用，可申请退款</text>
+                    <text class="tip-item">3.退款方式，原路返回</text>
+                </view>
+            </view>
         </view>
     </view>
 </template>
 
-<script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
-import { onLoad } from '@dcloudio/uni-app';
+<script setup>
+import { ref, onMounted } from 'vue';
 
+// 获取系统状态栏高度，适配刘海屏
 const statusBarHeight = ref(0);
-
-const order = reactive({
-    id: '',
-    desc: '按次充值金额',
-    amount: 20,
-    amountText: '20元',
-    time: '2025.10.29 10:25',
-    statusText: '未使用',
-    refundStatusText: '退款完成',
-});
-
-onLoad((options: any) => {
-    if (options.desc && options.amount !== undefined) {
-        order.id = options.id || '';
-        order.desc = decodeURIComponent(options.desc) + '金额';
-        order.amount = parseFloat(options.amount) || 0;
-        order.amountText = `${order.amount}元`;
-        order.time = decodeURIComponent(options.time) || '2025.10.29 10:25';
-    }
-});
-
-function goBack() {
-    uni.navigateBack();
-}
-
-function goRefund() {
-    uni.navigateTo({
-        url: `/subPack/me/refund?id=${order.id}`,
-    });
-}
 
 onMounted(() => {
     const systemInfo = uni.getSystemInfoSync();
     statusBarHeight.value = systemInfo.statusBarHeight || 0;
 });
+
+const goBack = () => {
+    uni.navigateBack({
+        delta: 1,
+    });
+};
 </script>
 
 <style lang="scss" scoped>
-.order-page {
+/* --- 全局变量定义 --- */
+$bg-color: #050508; /* 页面整体背景 */
+$card-bg: #161618; /* 卡片背景 */
+$text-primary: #ffffff; /* 主要文字 */
+$text-secondary: #9e9e9e; /* 次要文字/灰色 */
+$accent-green: #00d672; /* 金额绿色 */
+$border-color: #2c2c2e; /* 分割线颜色 */
+$font-size-base: 30rpx;
+
+.page-container {
     min-height: 100vh;
-    background: #000;
+    background-color: $bg-color;
+    color: $text-primary;
+    display: flex;
+    flex-direction: column;
 }
 
-.nav-bar {
-    position: sticky;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: #000;
-    z-index: 100;
+/* --- 1. 导航栏样式 --- */
+.custom-navbar {
+    width: 100%;
+    background-color: transparent; /* 透明背景，融入页面 */
 
-    .nav-content {
+    .navbar-content {
+        height: 88rpx;
         display: flex;
         align-items: center;
-        justify-content: center;
-        height: 88rpx;
+        justify-content: space-between;
         padding: 0 30rpx;
         position: relative;
     }
 
-    .nav-back {
-        position: absolute;
-        left: 20rpx;
-        width: 60rpx;
-        height: 60rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
     .nav-title {
         font-size: 34rpx;
-        color: #fff;
         font-weight: 500;
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .icon-back {
+        display: inline-block;
+        width: 20rpx;
+        height: 20rpx;
+        border-left: 4rpx solid #fff;
+        border-bottom: 4rpx solid #fff;
+        transform: rotate(45deg);
+        margin-top: 6rpx;
+    }
+
+    .nav-placeholder {
+        width: 20rpx; /* 占位平衡 */
     }
 }
 
-.content {
-    padding: 30rpx;
-}
-
-.dark-card {
-    margin: 0;
-}
-
-.order-header {
+/* --- 2. 主体内容 --- */
+.main-content {
+    flex: 1;
+    padding: 20rpx 30rpx;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+}
+
+/* 卡片样式 */
+.order-card {
+    background-color: $card-bg;
+    border-radius: 16rpx;
+    border: 1rpx solid #333335; /* 极细微的边框 */
+    overflow: hidden;
+    margin-bottom: 60rpx; /* 与底部的距离 */
+}
+
+.card-row {
+    padding: 30rpx;
+    display: flex;
     align-items: center;
-    padding-bottom: 20rpx;
 }
 
-.order-title {
-    font-size: 32rpx;
-    color: #fff;
-    font-weight: 500;
+/* 头部行：金额和时间 */
+.header-row {
+    justify-content: space-between;
+    padding-bottom: 35rpx;
+
+    .title-group {
+        display: flex;
+        align-items: baseline; /* 文字底部对齐 */
+
+        .label-text {
+            font-size: 32rpx;
+            font-weight: bold;
+            margin-right: 10rpx;
+        }
+
+        .highlight-price {
+            color: $accent-green;
+            font-size: 32rpx;
+            font-weight: bold;
+        }
+    }
+
+    .time-text {
+        color: $text-secondary;
+        font-size: 26rpx;
+    }
 }
 
-.order-amount {
-    font-size: 32rpx;
-    color: #4cd964;
-    font-weight: 600;
-}
-
-.order-time {
-    font-size: 26rpx;
-    color: #808080;
-    padding: 20rpx 0;
-}
-
+/* 分割线 */
 .divider {
     height: 1rpx;
-    background: rgba(255, 255, 255, 0.1);
-    margin: 0 -30rpx;
+    background-color: $border-color;
+    width: 100%;
 }
 
-.order-status {
-    padding: 20rpx 0;
+/* 简单行：只有左侧标题 */
+.simple-row {
+    padding-top: 35rpx;
+    padding-bottom: 20rpx;
+
+    .row-label {
+        color: $text-secondary;
+        font-size: 28rpx;
+    }
 }
 
-.info-row {
-    display: flex;
+/* 状态行：左右分布 */
+.status-row {
+    padding-top: 10rpx;
+    padding-bottom: 40rpx;
     justify-content: space-between;
-    padding: 14rpx 0;
+
+    .status-val {
+        font-size: 32rpx;
+        color: $text-primary;
+
+        &.right {
+            /* 右侧文字如果需要不同颜色可在此修改，目前图示为白色 */
+        }
+    }
 }
 
-.info-label {
-    font-size: 28rpx;
-    color: #808080;
-}
+/* --- 3. 底部提示 --- */
+.tips-section {
+    margin-top: auto; /* 推到底部 */
+    padding-bottom: 40rpx;
 
-.info-value {
-    font-size: 28rpx;
-    color: #fff;
-}
+    .tips-title {
+        color: $text-secondary;
+        font-size: 26rpx;
+        margin-bottom: 16rpx;
+    }
 
-.reminder {
-    padding-top: 20rpx;
-}
+    .tips-list {
+        display: flex;
+        flex-direction: column;
 
-.section-title {
-    font-size: 28rpx;
-    color: #808080;
-    margin-bottom: 16rpx;
-    display: block;
-}
-
-.info-text {
-    font-size: 24rpx;
-    color: #666;
-    line-height: 1.8;
-    display: block;
-}
-
-.bottom-btn {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: #000;
-    padding: 30rpx;
-    padding-bottom: calc(30rpx + env(safe-area-inset-bottom));
-    z-index: 10;
+        .tip-item {
+            color: #666668; /* 比次要文字更暗一点 */
+            font-size: 24rpx;
+            line-height: 1.8;
+            margin-bottom: 4rpx;
+        }
+    }
 }
 </style>

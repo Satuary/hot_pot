@@ -10,7 +10,7 @@
             <view class="profile-row">
                 <view class="avatar-wrap">
                     <image :src="userInfo.avatar || defaultAvatar" class="profile-avatar" mode="aspectFill"></image>
-                    <view class="edit-badge">
+                    <view class="edit-badge" @click="goEditProfile">
                         <uni-icons type="compose" size="14" color="#333333"></uni-icons>
                     </view>
                 </view>
@@ -116,6 +116,13 @@ const copyId = () => {
 const goRecharge = () => {
     uni.navigateTo({
         url: '/subPack/me/recharge',
+    });
+};
+
+// 编辑个人资料
+const goEditProfile = () => {
+    uni.navigateTo({
+        url: '/subPack/me/editProfile',
     });
 };
 </script>

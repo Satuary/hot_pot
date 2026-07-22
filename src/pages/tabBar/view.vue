@@ -1,338 +1,272 @@
 <template>
-  <view class="view-page">
-    <!-- 背景图 -->
-    <image class="bg-image" src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&fit=crop" mode="aspectFill"></image>
+  <view class="page-container">
+    <!-- 顶部状态栏占位 -->
+    <view class="status-bar"></view>
 
-    <!-- 内容区域 -->
-    <view class="content-wrapper">
-      <!-- 头像和连接区域 -->
-      <view class="avatar-section">
-        <!-- 左侧头像 - 剪影 -->
-        <view class="avatar-wrapper">
-          <view class="avatar-left silhouette-bg">
-            <view class="silhouette-shape"></view>
-          </view>
-        </view>
-
-        <!-- 中间链接图标 -->
-        <view class="link-icon-wrap">
-          <image class="link-icon-text" src="/static/imgs/link.png" mode="aspectFit"></image>
-        </view>
-
-        <!-- 右侧头像 + 点击查看标签 -->
-        <view class="avatar-wrapper right-group">
-          <image
-            class="avatar-img"
-            src="/static/imgs/link.png"
-            mode="aspectFit"
-          ></image>
-          <view class="view-tag">点击查看</view>
-        </view>
+    <!-- 顶部头像与连接区域 -->
+    <view class="header-section">
+      <!-- 左侧头像 -->
+      <view class="avatar-box left-avatar">
+        <image
+          src="https://picsum.photos/200"
+          mode="aspectFill"
+          class="avatar-img"
+        ></image>
       </view>
 
-      <!-- 预约信息卡片 -->
-      <view class="order-card">
-        <!-- 左侧：日期时间 -->
-        <view class="card-date-col">
-          <text class="date-label">11-18</text>
-          <text class="time-value">15:00</text>
+      <!-- 中间连接图标 -->
+      <view class="link-icon-box">
+        <image class="link-icon-text" src="/static/imgs/link.png" mode="aspectFit"></image>
+      </view>
+
+      <!-- 右侧头像 + 标签 -->
+      <view class="right-wrapper">
+        <view class="avatar-box right-avatar">
+          <image
+            src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80"
+            mode="aspectFill"
+            class="avatar-img"
+          ></image>
         </view>
+        <!-- 点击查看标签 -->
+        <view class="click-tag">点击查看</view>
+      </view>
+    </view>
 
-        <!-- 竖向分割线 -->
-        <view class="v-divider"></view>
+    <!-- 中间信息卡片 -->
+    <view class="info-card">
+      <!-- 左侧时间区 -->
+      <view class="time-section">
+        <text class="date-text">11-18</text>
+        <text class="time-text">15:00</text>
+      </view>
 
-        <!-- 右侧：详细信息 -->
-        <view class="card-info-col">
-          <view class="info-title-row">
+      <!-- 分割线 -->
+      <view class="divider"></view>
+
+      <!-- 右侧详情区 -->
+      <view class="detail-section">
+        <view class="title-row">
+          <view class="icon-pin">
+            <!-- <svg width="14" height="14" viewBox="0 0 24 24" fill="#ff7675" stroke="none">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3" fill="#fff"></circle>
+            </svg> -->
             <image class="icon-fire" src="/static/imgs/location.png" mode="aspectFit"></image>
-            <text class="title-text">重庆老火锅</text>
           </view>
-          <view class="info-item-row">
-            <text class="item-label">火锅类型：</text>
-            <text class="item-val">重庆火锅</text>
-          </view>
-          <view class="info-item-row last-row">
-            <text class="item-label">付费方式：</text>
-            <text class="item-val">AA</text>
-            <view class="cancel-btn" @click="handleCancel">
-              <text class="cancel-txt">取消</text>
-            </view>
-          </view>
+          <text class="shop-name">重庆老火锅</text>
         </view>
+
+        <view class="info-row">
+          <text class="label">火锅类型：</text>
+          <text class="value">重庆火锅</text>
+        </view>
+
+        <view class="info-row">
+          <text class="label">付费方式：</text>
+          <text class="value">AA</text>
+        </view>
+
+        <!-- 取消按钮 -->
+        <view class="cancel-btn">取消</view>
       </view>
     </view>
   </view>
 </template>
 
-<script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app';
-import { isLogin, isProfileComplete } from '@/utils/auth';
-
-onShow(() => {
-  if (!isLogin()) {
-    uni.reLaunch({ url: '/pages/login/login' });
-    return;
-  }
-  if (!isProfileComplete()) {
-    uni.reLaunch({ url: '/pages/profile/complete' });
-  }
-});
-
-const handleCancel = () => {
-  uni.showModal({
-    title: '取消预约',
-    content: '确定要取消此次火锅预约吗？',
-    confirmText: '取消预约',
-    confirmColor: '#FF4D4F',
-    success: (res) => {
-      if (res.confirm) {
-        uni.showToast({ title: '已取消预约', icon: 'success' });
-      }
-    },
-  });
-};
+<script setup>
+// 页面逻辑
 </script>
 
 <style lang="scss" scoped>
-.view-page {
-    position: relative;
-    min-height: 100vh;
-    padding: 0rpx 30rpx;
-}
-
-.bg-image {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  filter: blur(8px);
-  opacity: 0.45;
-}
-
-.content-wrapper {
-  position: relative;
-  z-index: 1;
+/* 全局容器 */
+.page-container {
+  min-height: 100vh;
+  background: #000000;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 160rpx 40rpx 60rpx;
+  position: relative;
   box-sizing: border-box;
-  
 }
 
-/* ======== 头像区域 ======= */
-.avatar-section {
+.status-bar {
+  height: var(--status-bar-height);
+  width: 100%;
+}
+
+/* 顶部头像区域 - 精确间距与层级 */
+.header-section {
+  margin-top: 200rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 28rpx;
-  margin-bottom: 70rpx;
+  width: 100%;
+  position: relative;
 }
 
-.avatar-wrapper {
-  display: flex;
-  align-items: center;
-
-  &.right-group {
-    flex-direction: column;
-    gap: 14rpx;
-    position: relative;
-    align-items: center;
-  }
-}
-
-/* 左侧剪影头像 */
-.avatar-left {
-  width: 150rpx;
-  height: 150rpx;
+.avatar-box {
+  width: 140rpx;
+  height: 140rpx;
   border-radius: 50%;
+  border: 4rpx solid #ffffff;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2rpx solid rgba(255,255,255,0.15);
-
-  .silhouette-shape {
-    width: 90rpx;
-    height: 110rpx;
-    background: #000000;
-    border-radius: 50% 50% 10% 10%;
-    margin-top: 12rpx;
-    clip-path: ellipse(50% 48% at 50% 42%);
-  }
+  background-color: #eee;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 1;
 }
 
-.silhouette-bg {
-  background: repeating-linear-gradient(
-    135deg,
-    #cc2222,
-    #cc2222 16rpx,
-    #ffffff 16rpx,
-    #ffffff 32rpx
-  );
-}
-
-/* 右侧头像 */
 .avatar-img {
-  width: 150rpx;
-  height: 150rpx;
-  border-radius: 50%;
-  border: 2rpx solid rgba(255,255,255,0.2);
+  width: 100%;
+  height: 100%;
 }
 
-/* 点击查看标签 */
-.view-tag {
+.left-avatar {
+  margin-right: 60rpx;
+}
+
+.right-avatar {
+}
+
+.right-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-left: 60rpx;
+}
+
+/* 点击查看标签 - 精确位置与样式 */
+.click-tag {
   position: absolute;
   bottom: 0rpx;
   left: 50%;
   transform: translateX(-50%);
-  padding: 6rpx 10rpx;
-  background: rgba(255,255,255,0.88);
+  background-color: #ffffff;
+  color: #333;
   font-size: 20rpx;
-  color: #333333;
-  font-weight: 500;
-  white-space: nowrap; 
-  background: #FFFFFF;
-  box-shadow: 0rpx -4rpx 10rpx 0rpx rgba(0,0,0,0.3);
-  border-radius: 8rpx 8rpx 8rpx 8rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  white-space: nowrap;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+  z-index: 2;
 }
 
-/* 中间链接图标 */
-.link-icon-wrap {
-  width: 76rpx;
-  height: 76rpx;
+/* 中间连接图标 - 精确尺寸与阴影 */
+.link-icon-box {
+  width: 60rpx;
+  height: 60rpx;
+  background-color: #ffffff;
   border-radius: 50%;
-  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 30rpx rgba(120,100,180,0.35);
-  margin-top: -8rpx;
-  margin-bottom: -8rpx;
-
-  .link-icon-text {
-    width: 44rpx;
-    height: 44rpx;
-  }
+  box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.2);
+  z-index: 3;
 }
 
-/* ======== 预约卡片 ======= */
-.order-card {
-  width: 100%;
-  display: flex;
-  align-items: stretch;
-  padding: 36rpx 30rpx;
+/* 中间信息卡片 - 精确尺寸、毛玻璃与阴影 */
+.info-card {
+  margin-top: 80rpx;
+  width: 640rpx;
+  height: 240rpx;
   background: linear-gradient( 45deg, rgba(92,175,255,0.2) 0%, rgba(198,43,255,0.2) 100%);
-  border: 2rpx solid rgba(170, 155, 210, 0.22);
-  border-radius: 26rpx;
-  backdrop-filter: blur(12rpx);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  padding: 30rpx;
+  box-sizing: border-box;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.2);
 }
 
-/* 左列：日期时间 */
-.card-date-col {
+/* 左侧时间区 - 精确间距与字体 */
+.time-section {
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  padding-right: 28rpx;
-  border-right: 2rpx solid rgba(255,255,255,0.13);
-  min-width: 130rpx;
-
-  .date-label {
-    font-size: 26rpx;
-    color: rgba(255,255,255,0.58);
-    margin-bottom: 10rpx;
-  }
-
-  .time-value {
-    font-size: 46rpx;
-    font-weight: 700;
-    color: #FFFFFF;
-    letter-spacing: 1rpx;
-    line-height: 1.1;
-  }
+  align-items: center;
+  width: 140rpx;
+  border-right: 1rpx solid rgba(255, 255, 255, 0.2);
+  margin-right: 30rpx;
 }
 
-/* 分割线 */
-.v-divider {
-  width: 2rpx;
-  align-self: stretch;
-  margin: 20rpx 0;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(255,255,255,0.14) 50%,
-    transparent 100%
-  );
+.date-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 24rpx;
+  margin-bottom: 10rpx;
 }
 
-/* 右列：信息详情 */
-.card-info-col {
+.time-text {
+  color: #ffffff;
+  font-size: 44rpx;
+  font-weight: bold;
+}
+
+.divider {
+  display: none;
+}
+
+/* 右侧详情区 - 精确布局与字体 */
+.detail-section {
   flex: 1;
-  padding-left: 26rpx;
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  justify-content: space-between;
+  position: relative;
+  
 }
 
-.info-title-row {
+.title-row {
   display: flex;
   align-items: center;
-  gap: 10rpx;
+  margin-bottom: 10rpx;
+}
 
-  .icon-fire {
-    width: 30rpx;
-    height: 30rpx;
-  }
-
-  .title-text {
-    font-size: 30rpx;
-    font-weight: 600;
-    color: #FFFFFF;
+.icon-pin {
+  margin-right: 10rpx;
+  display: flex;
+  align-items: center;
+  .icon-fire{
+    width: 32rpx;
+    height: 32rpx;
   }
 }
 
-.info-item-row {
+.shop-name {
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 500;
+}
+
+.info-row {
   display: flex;
-  align-items: baseline;
-  gap: 6rpx;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
 
-  .item-label {
-    font-size: 25rpx;
-    color: rgba(255,255,255,0.58);
-  }
+.label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 24rpx;
+}
 
-  .item-val {
-    font-size: 25rpx;
-    color: rgba(255,255,255,0.88);
-  }
+.value {
+  color: #ffffff;
+  font-size: 24rpx;
+}
 
-  /* 最后一行包含取消按钮 */
-  &.last-row {
-    align-items: center;
-
-    .cancel-btn {
-      margin-left: auto;
-      padding: 9rpx 26rpx;
-      background: rgba(255,255,255,0.11);
-      border: 1rpx solid rgba(255,255,255,0.14);
-      border-radius: 26rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      &:active {
-        background: rgba(255,77,79,0.22);
-        transform: scale(0.96);
-      }
-
-      .cancel-txt {
-        font-size: 23rpx;
-        color: rgba(255,255,255,0.72);
-        font-weight: 500;
-      }
-    }
-  }
+/* 取消按钮 - 精确位置与样式 */
+.cancel-btn {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 24rpx;
+  padding: 10rpx 30rpx;
+  border-radius: 30rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
 }
 </style>

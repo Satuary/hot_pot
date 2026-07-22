@@ -44,8 +44,8 @@ withDefaults(defineProps<Props>(), {
   .loading-spinner {
     width: 80rpx;
     height: 80rpx;
-    border: 6rpx solid rgba(255, 107, 61, 0.2);
-    border-top-color: #FF6B3D;
+    border: 6rpx solid rgb(255, 255, 255);
+    border-top-color: #000000;
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }

@@ -1,200 +1,246 @@
 <template>
-    <view class="page edit-page">
-        <view class="nav-header">
-            <view class="back-btn" @click="goBack">
-                <text class="back-icon">‹</text>
-            </view>
-            <text class="nav-title">编辑资料</text>
+    <view class="container">
+        <!-- 顶部导航栏模拟 (实际开发中建议使用 uni-nav-bar 或原生导航) -->
+        <view class="nav-bar" :style="navBarStyle">
+            <uni-icons type="left" size="24" color="#ffffff" @click="handleBack"></uni-icons>
         </view>
 
-        <scroll-view class="content" scroll-y>
-            <!-- Avatar -->
-            <view class="avatar-section">
-                <view class="avatar-circle">
-                    <text>👤</text>
-                </view>
-                <text class="change-avatar">更换头像</text>
-            </view>
+        <!-- 头像区域 -->
+        <view class="avatar-section">
+            <view class="avatar-wrapper">
+                <!-- 头像图片 -->
+                <image class="avatar-img" src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80" mode="aspectFill"></image>
 
-            <!-- Nickname -->
-            <view class="form-row">
+                <!-- 相机图标按钮 -->
+                <view class="camera-btn">
+                    <uni-icons type="camera-filled" size="16" color="#000000"></uni-icons>
+                </view>
+            </view>
+        </view>
+
+        <!-- 列表区域 -->
+        <view class="list-container">
+            <!-- 昵称 -->
+            <view class="list-item" @click="handleClick('nickname')">
                 <text class="label">昵称</text>
-                <view class="value">
-                    <input class="inline-input" v-model="profile.nickname" placeholder="请输入昵称" placeholder-style="color:#555" />
+                <view class="value-row">
+                    <text class="value-text">高山我梦</text>
+                    <uni-icons type="right" size="16" color="#666666" class="arrow-icon"></uni-icons>
                 </view>
             </view>
 
-            <!-- Gender -->
-            <view class="form-row" @click="showGenderPicker = true">
+            <!-- 性别 -->
+            <view class="list-item" @click="handleClick('gender')">
                 <text class="label">性别</text>
-                <view class="value">
-                    <text>{{ profile.gender || '请选择' }}</text>
-                    <text class="arrow">›</text>
+                <view class="value-row">
+                    <uni-icons type="right" size="16" color="#666666" class="arrow-icon"></uni-icons>
                 </view>
             </view>
 
-            <!-- Birthday -->
-            <view class="form-row" @click="showBirthdayPicker = true">
-                <text class="label">出生年月</text>
-                <view class="value">
-                    <text>{{ profile.birthday || '请选择' }}</text>
-                    <text class="arrow">›</text>
+            <!-- 生日 -->
+            <view class="list-item" @click="handleClick('birthday')">
+                <text class="label">生日</text>
+                <view class="value-row">
+                    <uni-icons type="right" size="16" color="#666666" class="arrow-icon"></uni-icons>
                 </view>
             </view>
 
-            <!-- Height/Weight -->
-            <view class="form-row" @click="showHwPicker = true">
-                <text class="label">身高/体重</text>
-                <view class="value">
-                    <text>{{ profile.height }}cm / {{ profile.weight }}kg</text>
-                    <text class="arrow">›</text>
+            <!-- 所在地 -->
+            <view class="list-item" @click="handleClick('location')">
+                <text class="label">所在地</text>
+                <view class="value-row">
+                    <uni-icons type="right" size="16" color="#666666" class="arrow-icon"></uni-icons>
                 </view>
             </view>
 
-            <!-- Hotpot Type -->
-            <view class="form-row" @click="showHotpotPicker = true">
-                <text class="label">喜欢的火锅类型</text>
-                <view class="value">
-                    <text>{{ profile.hotpotType.join('、') || '请选择' }}</text>
-                    <text class="arrow">›</text>
+            <!-- 月最新号 -->
+            <view class="list-item" @click="handleClick('hotpot_id')">
+                <text class="label">月最新号</text>
+                <view class="value-row">
+                    <text class="value-text static-text">523656</text>
+                    <!-- 注意：原图中这一项右侧没有箭头，只有数字 -->
                 </view>
             </view>
 
-            <!-- Taste -->
-            <view class="form-row" @click="showTastePicker = true">
-                <text class="label">口味偏好</text>
-                <view class="value">
-                    <text>{{ profile.taste.join('、') || '请选择' }}</text>
-                    <text class="arrow">›</text>
+            <!-- 身高体重 -->
+            <view class="list-item" @click="handleClick('body_stats')">
+                <text class="label">身高体重</text>
+                <view class="value-row">
+                    <uni-icons type="right" size="16" color="#666666" class="arrow-icon"></uni-icons>
                 </view>
             </view>
 
-            <!-- WeChat -->
-            <view class="form-row">
-                <text class="label">微信号</text>
-                <view class="value">
-                    <input class="inline-input" v-model="profile.wechat" placeholder="选填" placeholder-style="color:#555" />
+            <!-- 火锅类型 -->
+            <view class="list-item" @click="handleClick('hotpot_type')">
+                <text class="label">火锅类型</text>
+                <view class="value-row">
+                    <uni-icons type="right" size="16" color="#666666" class="arrow-icon"></uni-icons>
                 </view>
             </view>
-        </scroll-view>
 
-        <view class="bottom-btn">
-            <view class="gradient-btn active_btn" @click="saveProfile">保存</view>
-        </view>
-
-        <!-- Pickers (same as setup page, simplified) -->
-        <view class="picker-overlay" v-if="showGenderPicker" @click="showGenderPicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">选择性别</text>
-                <view class="picker-options">
-                    <view v-for="g in ['男','女']" :key="g" class="picker-option" :class="{active:profile.gender===g}" @click="profile.gender=g;showGenderPicker=false">
-                        <text>{{g}}</text><text v-if="profile.gender===g" class="check">✓</text>
-                    </view>
+            <!-- 口味 -->
+            <view class="list-item" @click="handleClick('taste')">
+                <text class="label">口味</text>
+                <view class="value-row">
+                    <uni-icons type="right" size="16" color="#666666" class="arrow-icon"></uni-icons>
                 </view>
             </view>
-        </view>
 
-        <view class="picker-overlay" v-if="showHwPicker" @click="showHwPicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">身高/体重</text>
-                <picker-view class="wheel-picker" :value="hwIdx" @change="onHwChange" indicator-style="height:50px">
-                    <picker-view-column><view v-for="h in heights" :key="h" class="wheel-item">{{h}}cm</view></picker-view-column>
-                    <picker-view-column><view v-for="w in weights" :key="w" class="wheel-item">{{w}}kg</view></picker-view-column>
-                </picker-view>
-                <view class="picker-confirm" @click="confirmHw">确定</view>
-            </view>
-        </view>
-
-        <view class="picker-overlay" v-if="showHotpotPicker" @click="showHotpotPicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">火锅类型（可多选）</text>
-                <view class="tag-grid">
-                    <view v-for="t in hotpotTypeOptions" :key="t" class="tag" :class="{active:profile.hotpotType.includes(t)}" @click="toggleHotpot(t)">{{t}}</view>
+            <!-- 动力 -->
+            <view class="list-item" @click="handleClick('motivation')">
+                <text class="label">动力</text>
+                <view class="value-row">
+                    <uni-icons type="right" size="16" color="#666666" class="arrow-icon"></uni-icons>
                 </view>
-                <view class="picker-confirm" @click="showHotpotPicker=false">确定</view>
-            </view>
-        </view>
-
-        <view class="picker-overlay" v-if="showTastePicker" @click="showTastePicker = false">
-            <view class="picker-panel" @click.stop>
-                <text class="picker-title">口味偏好（可多选）</text>
-                <view class="tag-grid">
-                    <view v-for="t in tasteOptions" :key="t" class="tag" :class="{active:profile.taste.includes(t)}" @click="toggleTaste(t)">{{t}}</view>
-                </view>
-                <view class="picker-confirm" @click="showTastePicker=false">确定</view>
             </view>
         </view>
     </view>
 </template>
 
-<script setup lang="ts">
-import { ref } from 'vue';
-import { appState, hotpotTypeOptions, tasteOptions } from '@/utils/store';
+<script setup>
+import { ref, computed, onMounted } from 'vue';
 
-const profile = appState.userProfile;
-const showGenderPicker = ref(false);
-const showBirthdayPicker = ref(false);
-const showHwPicker = ref(false);
-const showHotpotPicker = ref(false);
-const showTastePicker = ref(false);
+const handleClick = (type) => {
+    console.log('点击了:', type);
+    // uni.navigateTo({ ... })
+};
 
-const heights = Array.from({length:81},(_,i)=>String(140+i));
-const weights = Array.from({length:121},(_,i)=>String(30+i));
-const hwIdx = ref([30,30]);
+const handleBack = () => {
+    uni.navigateBack({
+        fail: () => {
+            uni.switchTab({
+                url: '/pages/tabBar/me',
+            });
+        },
+    });
+};
 
-function goBack() { uni.navigateBack(); }
+const menuTop = ref(0);
+const menuHeight = ref(0);
+const statusBarHeight = ref(0);
 
-function onHwChange(e:any) { hwIdx.value = e.detail.value; }
-function confirmHw() {
-    profile.height = heights[hwIdx.value[0]];
-    profile.weight = weights[hwIdx.value[1]];
-    showHwPicker.value = false;
-}
+onMounted(() => {
+    const systemInfo = uni.getSystemInfoSync();
+    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    try {
+        // #ifdef MP-WEIXIN
+        const rect = uni.getMenuButtonBoundingClientRect();
+        menuTop.value = rect.top;
+        menuHeight.value = rect.height;
+        // #endif
+    } catch {
+        menuTop.value = 0;
+    }
+});
 
-function toggleHotpot(t:string) {
-    const i = profile.hotpotType.indexOf(t);
-    if(i>-1) profile.hotpotType.splice(i,1);
-    else profile.hotpotType.push(t);
-}
-
-function toggleTaste(t:string) {
-    const i = profile.taste.indexOf(t);
-    if(i>-1) profile.taste.splice(i,1);
-    else profile.taste.push(t);
-}
-
-function saveProfile() {
-    uni.showToast({title:'保存成功',icon:'success'});
-    setTimeout(()=>uni.navigateBack(),1000);
-}
+const navBarStyle = computed(() => {
+    if (menuTop.value > 0) {
+        return {
+            paddingTop: `${menuTop.value}px`,
+            height: `${menuHeight.value}px`,
+        };
+    }
+    return {
+        paddingTop: `${statusBarHeight.value}px`,
+        height: '44px',
+    };
+});
 </script>
 
 <style lang="scss" scoped>
-.edit-page{background:#1A1A1A;height:100vh;display:flex;flex-direction:column;}
-.nav-header{display:flex;align-items:center;padding:20rpx 30rpx 30rpx;padding-top:calc(60rpx + var(--status-bar-height,0px));border-bottom:1px solid #2A2A2A;}
-.back-btn{width:60rpx;height:60rpx;display:flex;align-items:center;justify-content:center;margin-right:20rpx;}
-.back-icon{font-size:48rpx;color:#FFF;}
-.nav-title{font-size:34rpx;color:#FFF;font-weight:600;}
-.content{flex:1;padding:0 40rpx;padding-bottom:160rpx;overflow-y:auto;}
-.avatar-section{display:flex;flex-direction:column;align-items:center;padding:50rpx 0;}
-.avatar-circle{width:140rpx;height:140rpx;border-radius:50%;background:linear-gradient(135deg,#FF6B3D,#FF3D3D);display:flex;align-items:center;justify-content:center;font-size:64rpx;margin-bottom:16rpx;}
-.change-avatar{font-size:26rpx;color:#FF6B3D;}
-.form-row{display:flex;align-items:center;justify-content:space-between;padding:36rpx 0;border-bottom:1px solid #2A2A2A;}
-.label{font-size:30rpx;color:#FFF;}
-.value{font-size:28rpx;color:#B0B0B0;display:flex;align-items:center;}
-.arrow{font-size:36rpx;color:#808080;margin-left:8rpx;}
-.inline-input{text-align:right;font-size:28rpx;color:#FFF;flex:1;}
-.bottom-btn{position:fixed;left:0;right:0;bottom:0;background:#1A1A1A;padding:30rpx 40rpx;padding-bottom:calc(30rpx + env(safe-area-inset-bottom));z-index:10;}
-.picker-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:999;display:flex;align-items:flex-end;}
-.picker-panel{width:100%;background:#242424;border-radius:32rpx 32rpx 0 0;padding:40rpx 30rpx;padding-bottom:calc(40rpx + env(safe-area-inset-bottom));}
-.picker-title{font-size:32rpx;color:#FFF;font-weight:600;text-align:center;display:block;margin-bottom:30rpx;}
-.picker-options{max-height:600rpx;overflow-y:auto;}
-.picker-option{display:flex;align-items:center;justify-content:space-between;padding:30rpx 20rpx;border-bottom:1px solid #333;font-size:30rpx;color:#B0B0B0;}
-.picker-option.active{color:#FF6B3D;}
-.check{color:#FF6B3D;font-weight:700;}
-.wheel-picker{width:100%;height:400rpx;margin-bottom:20rpx;}
-.wheel-item{display:flex;align-items:center;justify-content:center;font-size:30rpx;color:#FFF;}
-.picker-confirm{width:100%;text-align:center;padding:24rpx;background:linear-gradient(135deg,#FF6B3D,#FF3D3D);border-radius:50rpx;color:#FFF;font-size:30rpx;font-weight:600;margin-top:20rpx;}
-.tag-grid{display:flex;flex-wrap:wrap;padding:10rpx 0;}
-.tag-grid .tag{padding:16rpx 30rpx;margin:10rpx;font-size:28rpx;}
+/* 全局容器 */
+.container {
+    min-height: 100vh;
+    background-color: #000000;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* 导航栏区域 */
+.nav-bar {
+    display: flex;
+    align-items: center;
+    padding-left: 15px;
+}
+
+/* 头像区域 */
+.avatar-section {
+    display: flex;
+    justify-content: center;
+    padding: 20px 0 40px 0; /* 上下间距 */
+}
+
+.avatar-wrapper {
+    position: relative;
+    width: 100px;
+    height: 100px;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1); /* 轻微边框增加质感 */
+}
+
+.camera-btn {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 30px;
+    height: 30px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid #000000; /* 白色圆圈外的黑边，增加层次感 */
+    box-sizing: border-box;
+}
+
+/* 列表区域 */
+.list-container {
+    background-color: #000000;
+    /* 如果列表项之间有分割线，可以在这里加背景色，item加border-bottom */
+}
+
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px; /* 左右内边距 */
+    /* 可选：添加极细的分割线，如果原图有的话 */
+    /* border-bottom: 1px solid #1a1a1a; */
+}
+
+/* 列表项点击态 */
+.list-item:active {
+    background-color: #111111;
+}
+
+.label {
+    font-size: 16px;
+    color: #ffffff;
+    line-height: 1.4;
+}
+
+.value-row {
+    display: flex;
+    align-items: center;
+}
+
+.value-text {
+    font-size: 15px;
+    color: #8c8c8c; /* 浅灰色文字 */
+    margin-right: 8px;
+}
+
+/* 针对纯数字且无箭头的特殊处理 */
+.static-text {
+    margin-right: 0;
+}
+
+.arrow-icon {
+    opacity: 0.5; /* 降低箭头透明度使其更柔和 */
+}
 </style>
