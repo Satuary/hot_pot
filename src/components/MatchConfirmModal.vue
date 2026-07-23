@@ -3,7 +3,7 @@
         <view class="modal-container">
             <view class="avatar-wrapper">
                 <image :src="avatar" mode="aspectFill" class="avatar"></image>
-                <view class="view-btn">点击查看</view>
+                <view class="view-btn" @click.stop="goPartnerProfile">点击查看</view>
             </view>
 
             <text class="description">{{ description }}</text>
@@ -32,6 +32,10 @@ const props = defineProps({
         type: String,
         default: '系统把你推给我啦，咱俩的观影偏好超搭！这感觉就像拆盲盒开出了心心念念的隐藏款~要不要约一部片，沉浸式体验一场只属于我们的观影时光？',
     },
+    requestId: {
+        type: String,
+        default: '',
+    },
 });
 
 const emit = defineEmits(['cancel', 'confirm']);
@@ -42,6 +46,12 @@ const handleCancel = () => {
 
 const handleConfirm = () => {
     emit('confirm');
+};
+
+const goPartnerProfile = () => {
+    uni.navigateTo({
+        url: `/subPack/match/partnerProfile?id=${props.requestId}`,
+    });
 };
 </script>
 
@@ -61,12 +71,12 @@ const handleConfirm = () => {
 }
 
 .modal-container {
-    background: rgba(0, 0, 0, 0.6);
-    border: 2rpx solid rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(20rpx);
-    border-radius: 32rpx;
-    padding: 50rpx 40rpx;
-    width: 90%;
+    background: rgba(18, 18, 18, 0.85);
+    border: 2rpx solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(24rpx);
+    border-radius: 36rpx;
+    padding: 56rpx 44rpx;
+    width: 86%;
     max-width: 640rpx;
     box-sizing: border-box;
     display: flex;

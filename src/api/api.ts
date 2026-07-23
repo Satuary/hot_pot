@@ -134,6 +134,29 @@ export const applyRefund = (data: { orderId: string; reason: string }) => {
   return request('/api/order/refund', 'POST', data);
 };
 
+// ============= 好友请求相关 API =============
+
+/**
+ * 获取待处理的好友请求列表
+ */
+export const getPendingRequests = (data?: { page?: number; pageSize?: number }) => {
+  return request('/api/match/pending-requests', 'GET', data);
+};
+
+/**
+ * 同意好友请求
+ */
+export const acceptRequest = (data: { requestId: string }) => {
+  return request('/api/match/accept', 'POST', data);
+};
+
+/**
+ * 拒绝好友请求
+ */
+export const rejectRequest = (data: { requestId: string }) => {
+  return request('/api/match/reject', 'POST', data);
+};
+
 // ============= 支付相关 API =============
 
 /**
