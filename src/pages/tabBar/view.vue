@@ -29,7 +29,22 @@
           ></image>
         </view>
         <!-- 点击查看标签 -->
-        <view class="click-tag">点击查看</view>
+        <view class="click-tag" @click="goToPartnerProfile">点击查看</view>
+      </view>
+    </view>
+
+    <!-- 等待对方同意弹窗 -->
+    <view class="waiting-mask" v-if="showWaitingPopup" @click="closeWaitingPopup">
+      <view class="waiting-popup" @click.stop>
+        <text class="waiting-title">等待对方同意</text>
+        <view class="countdown">
+          <view class="countdown-digit">{{ countdownStr[0] }}</view>
+          <view class="countdown-digit">{{ countdownStr[1] }}</view>
+          <text class="countdown-colon">:</text>
+          <view class="countdown-digit">{{ countdownStr[2] }}</view>
+          <view class="countdown-digit">{{ countdownStr[3] }}</view>
+        </view>
+        <view class="waiting-cancel" @click="closeWaitingPopup">取消</view>
       </view>
     </view>
 
@@ -75,7 +90,69 @@
 </template>
 
 <script setup>
-// 页面逻辑
+import { ref, computed, onUnmounted } from 'vue';
+import { onShow, onHide } from '@dcloudio/uni-app';
+
+const showWaitingPopup = ref(false);
+const remainingSeconds = ref(10 * 60); // 默认 10 分钟倒计时
+let countdownTimer = null;
+
+const countdownStr = computed(() => {
+  const minutes = Math.floor(remainingSeconds.value / 60);
+  const seconds = remainingSeconds.value % 60;
+  const mm = String(minutes).padStart(2, '0');
+  const ss = String(seconds).padStart(2, '0');
+  return `${mm}${ss}`;
+});
+
+function startCountdown() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+  }
+  countdownTimer = setInterval(() => {
+    if (remainingSeconds.value > 0) {
+      remainingSeconds.value -= 1;
+    } else {
+      clearInterval(countdownTimer);
+      showWaitingPopup.value = false;
+    }
+  }, 1000);
+}
+
+function goToPartnerProfile() {
+  uni.navigateTo({ url: '/subPack/match/partnerProfile?from=view' });
+}
+
+function closeWaitingPopup() {
+  showWaitingPopup.value = false;
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+}
+
+onShow(() => {
+  const shouldShow = uni.getStorageSync('showWaitingPopup');
+  if (shouldShow) {
+    uni.removeStorageSync('showWaitingPopup');
+    remainingSeconds.value = 10 * 60;
+    showWaitingPopup.value = true;
+    startCountdown();
+  }
+});
+
+onHide(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+});
+
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+  }
+});
 </script>
 
 <style lang="scss" scoped>
@@ -268,5 +345,77 @@
   padding: 10rpx 30rpx;
   border-radius: 30rpx;
   border: 1rpx solid rgba(255, 255, 255, 0.3);
+}
+
+/* 等待对方同意弹窗 */
+.waiting-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.waiting-popup {
+  width: 560rpx;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
+  border-radius: 32rpx;
+  padding: 60rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  backdrop-filter: blur(20rpx);
+}
+
+.waiting-title {
+  font-size: 34rpx;
+  color: #ffffff;
+  font-weight: 500;
+  margin-bottom: 40rpx;
+}
+
+.countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 50rpx;
+}
+
+.countdown-digit {
+  width: 68rpx;
+  height: 84rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  background: linear-gradient(180deg, #58B4FF 0%, #C927FF 100%);
+  color: #ffffff;
+  font-size: 44rpx;
+  font-weight: 600;
+  margin: 0 8rpx;
+}
+
+.countdown-colon {
+  font-size: 44rpx;
+  color: #ffffff;
+  font-weight: 600;
+  margin: 0 8rpx;
+}
+
+.waiting-cancel {
+  width: 320rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  border-radius: 40rpx;
+  background: #ffffff;
+  color: #333333;
+  font-size: 30rpx;
 }
 </style>

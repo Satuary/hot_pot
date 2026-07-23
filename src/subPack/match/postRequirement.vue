@@ -214,15 +214,30 @@
         </view>
       </view>
     </view>
+
+    <!-- 店铺选择弹框 -->
+    <StoreSelectPopup
+      v-model:visible="storePopupVisible"
+      :stores="storeList"
+      :loading="storeLoading"
+      @select="onStoreSelect"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { postRequirement } from '@/api/api';
+import { postRequirement, getStoreList } from '@/api/api';
+import { mockStores } from '@/utils/store';
+import type { Store } from '@/utils/store';
 
 // 状态栏高度
 const statusBarHeight = ref(0);
+
+// 店铺选择弹框
+const storePopupVisible = ref(false);
+const storeList = ref<Store[]>([]);
+const storeLoading = ref(false);
 
 // 表单数据
 const formData = ref({
@@ -377,16 +392,25 @@ const selectPaymentMethod = (method: string) => {
 };
 
 // 选择火锅店
-const selectStore = () => {
-  uni.navigateTo({
-    url: '/subPack/match/storeSelection',
-    events: {
-      selectStore: (data: any) => {
-        formData.value.storeId = data.id;
-        formData.value.storeName = data.name;
-      },
-    },
-  });
+const selectStore = async () => {
+  storePopupVisible.value = true;
+  if (storeList.value.length) return;
+
+  storeLoading.value = true;
+  try {
+    const res = await getStoreList({ page: 1, pageSize: 20 });
+    storeList.value = (res?.list || res || []) as Store[];
+  } catch {
+    storeList.value = mockStores;
+  } finally {
+    storeLoading.value = false;
+  }
+};
+
+// 选中店铺
+const onStoreSelect = (store: Store) => {
+  formData.value.storeId = store.id;
+  formData.value.storeName = store.name;
 };
 
 // 显示日期时间选择器弹窗
@@ -496,10 +520,10 @@ const submitRequirement = async () => {
       icon: 'success',
     });
 
-    // 跳转到匹配页面
+    // 跳转到匹配成功页面
     setTimeout(() => {
       uni.navigateTo({
-        url: '/subPack/match/matching',
+        url: '/subPack/match/matchSuccess',
       });
     }, 1500);
   } catch (error: any) {

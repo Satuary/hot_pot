@@ -98,6 +98,13 @@
                         "navigationBarTitleText": "",
                         "navigationStyle": "custom"
                     }
+                },
+                {
+                    "path": "partnerProfile",
+                    "style": {
+                        "navigationBarTitleText": "",
+                        "navigationStyle": "custom"
+                    }
                 }
             ]
         },

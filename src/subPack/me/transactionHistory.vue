@@ -56,23 +56,25 @@
         </view>
 
         <!-- 时间选择器弹窗 -->
-        <view class="picker-mask" v-if="showPicker" @click="closePicker">
-            <view class="picker-popup" @click.stop>
-                <view class="picker-header">选择时间</view>
-                <picker-view
-                    class="picker-view"
-                    :value="pickerValue"
-                    @change="onPickerChange"
-                    indicator-style="height: 44px; border-radius: 12rpx;"
-                    mask-style="background-image: linear-gradient(to bottom, rgba(26, 26, 26, 0.45), rgba(26, 26, 26, 0)), linear-gradient(to top, rgba(26, 26, 26, 0.45), rgba(26, 26, 26, 0)); background-position: top, bottom; background-size: 100% 80rpx; background-repeat: no-repeat;"
-                >
-                    <picker-view-column>
-                        <view v-for="year in yearRange" :key="year" class="picker-item">{{ year }}年</view>
-                    </picker-view-column>
-                    <picker-view-column>
-                        <view v-for="month in monthRange" :key="month" :class="['picker-item']">{{ month }}月</view>
-                    </picker-view-column>
-                </picker-view>
+        <view v-if="showPicker" class="mask" @click="closePicker">
+            <view class="picker-modal" @click.stop>
+                <view class="picker-modal-title">选择时间</view>
+                <view class="picker-body">
+                    <picker-view
+                        class="picker-view"
+                        :value="pickerValue"
+                        @change="onPickerChange"
+                        indicator-style="height: 88rpx;"
+                        mask-style="background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5)), linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5)); background-position: top, bottom;"
+                    >
+                        <picker-view-column>
+                            <view v-for="year in yearRange" :key="year" class="picker-view-item">{{ year }}年</view>
+                        </picker-view-column>
+                        <picker-view-column>
+                            <view v-for="month in monthRange" :key="month" class="picker-view-item">{{ month }}月</view>
+                        </picker-view-column>
+                    </picker-view>
+                </view>
                 <view class="picker-actions">
                     <view class="picker-btn cancel" @click="closePicker">取消</view>
                     <view class="picker-btn confirm" @click="confirmPicker">确认</view>
@@ -346,86 +348,101 @@ onMounted(() => {
     color: #666;
 }
 
-/* 选择器弹窗 */
-.picker-mask {
+/* 弹窗遮罩 */
+.mask {
     position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
     z-index: 200;
     display: flex;
     align-items: flex-end;
 }
 
-.picker-popup {
+/* 选择器弹窗 - 底部弹出 */
+.picker-modal {
     width: 100%;
-    background: #1a1a1a;
+    background: #000;
     border-radius: 32rpx 32rpx 0 0;
-    padding: 32rpx;
-    padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
-}
+    border-top: 1rpx solid rgba(255, 255, 255, 0.3);
+    padding: 40rpx 32rpx;
+    padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
 
-.picker-header {
-    text-align: center;
-    font-size: 32rpx;
-    color: #fff;
-    margin-bottom: 24rpx;
-}
-
-.picker-view {
-    height: 340rpx;
-    background: #1a1a1a;
-}
-
-.picker-item {
-    line-height: 88rpx;
-    text-align: center;
-    font-size: 32rpx;
-    font-weight: 500;
-    color: #fff;
-    background-color: #1a1a1a;
-}
-
-.picker-actions {
-    display: flex;
-    gap: 24rpx;
-    margin-top: 24rpx;
-}
-
-.picker-btn {
-    flex: 1;
-    height: 88rpx;
-    border-radius: 44rpx;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 30rpx;
-
-    &.cancel {
-        background: rgba(255, 255, 255, 0.1);
-        color: #fff;
+    .picker-modal-title {
+        font-size: 30rpx;
+        color: #999999;
+        text-align: center;
+        padding-bottom: 24rpx;
+        font-weight: 400;
     }
 
-    &.confirm {
-        background: linear-gradient(90deg, #6d5dfc 0%, #c84dfb 100%);
-        color: #fff;
+    .picker-body {
+        height: 440rpx;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.05) 100%);
+        border-radius: 24rpx;
+    }
+
+    .picker-view {
+        width: 100%;
+        height: 100%;
+    }
+
+    .picker-view-item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32rpx;
+        color: #ffffff;
+        height: 88rpx;
+    }
+
+    .picker-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 24rpx;
+        gap: 24rpx;
+
+        .picker-btn {
+            flex: 1;
+            height: 76rpx;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 152rpx;
+            font-size: 30rpx;
+            font-weight: 400;
+
+            &.cancel {
+                background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.1) 100%);
+                border: 1rpx solid #ffffff;
+                color: #ffffff;
+            }
+
+            &.confirm {
+                background: linear-gradient(270deg, #58B4FF 0%, #C927FF 100%);
+                color: #ffffff;
+            }
+        }
     }
 }
 </style>
 
 <style lang="scss">
 /* 去除picker-view默认的斑马条纹背景 + 所有选项文字均为白色 */
-.picker-item {
-    background-color: #1a1a1a !important;
+.picker-view-item {
+    background-color: #000 !important;
     color: #fff !important;
     line-height: 88rpx;
     font-weight: 500;
-    // opacity: 1 !important;
 }
 
 .picker-view,
 .picker-view picker-view-column,
 .picker-view uni-picker-view-column {
     color: #fff !important;
-    // opacity: 1 !important;
 }
 </style>

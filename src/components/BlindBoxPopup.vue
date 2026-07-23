@@ -22,7 +22,7 @@
 
                 <!-- 右侧用户 -->
                 <view class="user-item">
-                    <view class="avatar-wrapper">
+                    <view class="avatar-wrapper" @click="handleViewProfile">
                         <image class="avatar" src="/static/images/avatar2.png" mode="aspectFill"></image>
                         <view class="view-btn">点击查看</view>
                     </view>
@@ -67,7 +67,7 @@ const close = () => {
 };
 
 /**
- * 处理“不合适”按钮点击
+ * 处理"不合适"按钮点击
  */
 const handleCancel = () => {
     close();
@@ -76,12 +76,26 @@ const handleCancel = () => {
 };
 
 /**
- * 处理“确认匹配”按钮点击
+ * 处理"确认匹配"按钮点击
  */
 const handleConfirm = () => {
     close();
     // 通知父组件
     emit('confirm');
+    // 跳转到查看页并标记显示等待弹窗
+    uni.setStorageSync('showWaitingPopup', true);
+    uni.switchTab({
+        url: '/pages/tabBar/view',
+    });
+};
+
+/**
+ * 查看对方资料
+ */
+const handleViewProfile = () => {
+    uni.navigateTo({
+        url: '/subPack/match/partnerProfile',
+    });
 };
 
 // 将方法暴露给父组件调用
@@ -91,20 +105,24 @@ defineExpose({
 });
 </script>
 
-<style scoped>
+<style>
+/* uni-popup type="center" 内部容器 overflow:hidden 会裁掉边框 */
+.uni-popup__wrapper-box,
+.uni-popup__wrapper {
+  overflow: visible !important;
+}
+
 .popup-container {
     background: rgba(0, 0, 0, 0.6);
     border: 2rpx solid rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(20rpx);
     border-radius: 32rpx;
     padding: 50rpx 40rpx;
-    width: 90%;
     max-width: 640rpx;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: center;
-    animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .title {
@@ -210,16 +228,5 @@ defineExpose({
 .btn-confirm {
     background: linear-gradient(270deg, #58b4ff 0%, #c927ff 100%);
     color: #ffffff;
-}
-
-@keyframes scaleIn {
-    from {
-        transform: scale(0.8);
-        opacity: 0;
-    }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
 }
 </style>
