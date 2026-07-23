@@ -12,6 +12,7 @@ declare module '@vue/runtime-core' {
     BlindBoxPopup: typeof import('./src/components/BlindBoxPopup.vue')['default']
     LoadingOverlay: typeof import('./src/components/LoadingOverlay.vue')['default']
     MatchConfirmModal: typeof import('./src/components/MatchConfirmModal.vue')['default']
+    MatchIntroModal: typeof import('./src/components/MatchIntroModal.vue')['default']
     MatchSuccessModal: typeof import('./src/components/MatchSuccessModal.vue')['default']
     NavBar: typeof import('./src/components/NavBar.vue')['default']
     TagSelector: typeof import('./src/components/TagSelector.vue')['default']

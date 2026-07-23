@@ -44,6 +44,7 @@
     </view>
     <MatchSuccessModal :visible="showMatchModal" :user-list="matchedUsers" @close="handleCloseModal" @unlock="handleUnlock" />
     <BlindBoxPopup ref="blindBoxPopup" />
+    <MatchIntroModal :visible="showIntroModal" @close="handleCloseIntroModal" />
 </template>
 
 <script setup lang="ts">
@@ -52,8 +53,10 @@ import { onShow } from '@dcloudio/uni-app';
 import { isLogin, isProfileComplete } from '@/utils/auth';
 import MatchSuccessModal from '@/components/MatchSuccessModal.vue';
 import BlindBoxPopup from '@/components/BlindBoxPopup.vue';
+import MatchIntroModal from '@/components/MatchIntroModal.vue';
 
 const showMatchModal = ref(false);
+const showIntroModal = ref(false);
 const blindBoxPopup = ref<InstanceType<typeof BlindBoxPopup> | null>(null);
 const matchedUsers = ref([
     {
@@ -86,6 +89,11 @@ const handleUnlock = (user: any) => {
 
 const handleCloseModal = () => {
     showMatchModal.value = false;
+};
+
+const handleCloseIntroModal = () => {
+    showIntroModal.value = false;
+    uni.setStorageSync('hasSeenMatchIntro', true);
 };
 
 const statusBarHeight = ref(0);
@@ -127,6 +135,10 @@ onShow(() => {
     if (showModal) {
         uni.removeStorageSync('showMatchSuccessModal');
         showMatchModal.value = true;
+    }
+    const hasSeenIntro = uni.getStorageSync('hasSeenMatchIntro');
+    if (!hasSeenIntro) {
+        showIntroModal.value = true;
     }
 });
 
