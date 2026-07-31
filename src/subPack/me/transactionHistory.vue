@@ -1,5 +1,8 @@
 <template>
     <view class="page history-page">
+        <!-- 背景图 -->
+        <image class="page-bg" src="/static/imgs/index_bg.png" mode="aspectFill"></image>
+
         <!-- 导航栏 -->
         <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
             <view class="nav-content">
@@ -202,6 +205,17 @@ onMounted(() => {
 .history-page {
     min-height: 100vh;
     background: #000;
+    position: relative;
+}
+
+/* 页面背景图 */
+.page-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
 }
 
 /* 导航栏 */
@@ -210,7 +224,7 @@ onMounted(() => {
     top: 0;
     left: 0;
     right: 0;
-    background: #000;
+    // background: #000;
     z-index: 100;
 
     .nav-content {
@@ -243,9 +257,12 @@ onMounted(() => {
 .main-card {
     margin: 20rpx 30rpx 30rpx;
     border-radius: 30rpx;
-    border: 2rpx solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.03);
+    border: 2rpx solid rgba(255, 255, 255, 0.5);
+    // background: rgba(255, 255, 255, 0.03);
+    background: #000;
     overflow: hidden;
+    position: relative;
+    z-index: 1;
 }
 
 /* 标签页 */

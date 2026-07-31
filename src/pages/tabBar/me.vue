@@ -1,7 +1,7 @@
 <template>
     <view class="me-page">
         <!-- 背景图 -->
-        <image class="bg-image" src="https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800&fit=crop" mode="aspectFill"></image>
+        <image class="bg-image" src="/static/imgs/index_bg.png" mode="aspectFill"></image>
         <!-- 顶部到底部的暗色蒙层，让文字更清晰 -->
         <view class="bg-mask"></view>
 
@@ -25,7 +25,7 @@
                     <view class="desc-row">
                         <text class="desc-text">ID:{{ userInfo.id || '30145' }}</text>
                         <view class="copy-btn" @click="copyId">
-                            <uni-icons type="redo" size="16" color="rgba(255,255,255,0.45)"></uni-icons>
+                            <image class="copy-icon" src="/static/imgs/file-copy-line.png" mode="aspectFit"></image>
                         </view>
                         <text class="desc-text">地址：{{ userInfo.address || '美景大厦' }}</text>
                     </view>
@@ -35,11 +35,11 @@
             <!-- 信息标签组：身高/年龄/性别 -->
             <view class="tags-row">
                 <view class="tag-item">
-                    <uni-icons type="compose" size="16" color="rgba(255,255,255,0.85)"></uni-icons>
+                    <image class="tag-icon" src="/static/imgs/ruler-line.png" mode="aspectFit"></image>
                     <text class="tag-txt">{{ userInfo.height || '170' }}cm {{ userInfo.weight || '60' }}kg</text>
                 </view>
                 <view class="tag-item">
-                    <uni-icons type="person" size="16" color="rgba(255,255,255,0.85)"></uni-icons>
+                    <image class="tag-icon" src="/static/imgs/lz.png" mode="aspectFit"></image>
                     <text class="tag-txt">{{ userInfo.age || '25' }}岁</text>
                 </view>
                 <view class="tag-item">
@@ -144,8 +144,8 @@ const goEditProfile = () => {
     width: 100%;
     height: 100%;
     z-index: 0;
-    filter: blur(8px);
-    opacity: 0.45;
+    // filter: blur(8px);
+    // opacity: 0.45;
 }
 
 /* 暗色蒙层 */
@@ -156,7 +156,7 @@ const goEditProfile = () => {
     width: 100%;
     height: 100%;
     z-index: 0;
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(13, 13, 13, 0.6) 100%);
+    // background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(13, 13, 13, 0.6) 100%);
 }
 
 /* ======== 个人信息 ======== */
@@ -261,6 +261,11 @@ const goEditProfile = () => {
     }
 }
 
+.copy-icon {
+    width: 32rpx;
+    height: 32rpx;
+}
+
 .desc-divider {
     width: 1rpx;
     height: 22rpx;
@@ -288,6 +293,11 @@ const goEditProfile = () => {
     border: 1rpx solid rgba(255, 255, 255, 0.12);
     border-radius: 30rpx;
     box-sizing: border-box;
+
+    .tag-icon {
+        width: 28rpx;
+        height: 28rpx;
+    }
 
     .tag-txt {
         font-size: 24rpx;

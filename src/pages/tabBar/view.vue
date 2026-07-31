@@ -1,5 +1,7 @@
 <template>
   <view class="page-container">
+    <!-- 背景图 -->
+    <image class="page-bg" src="/static/imgs/index_bg.png" mode="aspectFill"></image>
     <!-- 顶部状态栏占位 -->
     <view class="status-bar"></view>
 
@@ -159,7 +161,6 @@ onUnmounted(() => {
 /* 全局容器 */
 .page-container {
   min-height: 100vh;
-  background: #000000;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -167,9 +168,21 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
+/* 页面背景图 */
+.page-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
 .status-bar {
   height: var(--status-bar-height);
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 /* 顶部头像区域 - 精确间距与层级 */
@@ -180,6 +193,7 @@ onUnmounted(() => {
   justify-content: center;
   width: 100%;
   position: relative;
+  z-index: 1;
 }
 
 .avatar-box {
@@ -257,6 +271,8 @@ onUnmounted(() => {
   padding: 30rpx;
   box-sizing: border-box;
   box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
 }
 
 /* 左侧时间区 - 精确间距与字体 */

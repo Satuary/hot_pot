@@ -1,5 +1,8 @@
 <template>
     <view class="page partner-profile-page">
+        <!-- 背景图 -->
+        <image class="page-bg" src="/static/imgs/index_bg.png" mode="aspectFill"></image>
+
         <!-- 导航栏 -->
         <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
             <view class="nav-content">
@@ -14,7 +17,9 @@
             <view class="profile-main">
                 <view class="avatar-wrap">
                     <image class="avatar" src="https://picsum.photos/200" mode="aspectFill"></image>
-                    <view class="avatar-change"></view>
+                    <view class="avatar-change">
+                        <uni-icons type="compose" size="16" color="#ffffff"></uni-icons>
+                    </view>
                 </view>
                 <view class="profile-info">
                     <view class="name-row">
@@ -23,7 +28,7 @@
                     </view>
                     <view class="id-address-row">
                         <text class="id-text">ID:30145</text>
-                        <uni-icons class="copy-icon" type="compose" size="14" color="#999999"></uni-icons>
+                        <image class="copy-icon" src="/static/imgs/file-copy-line.png" mode="aspectFit"></image>
                         <text class="address-text">地址：美景大厦</text>
                     </view>
                 </view>
@@ -31,11 +36,11 @@
 
             <view class="info-tags">
                 <view class="info-tag">
-                    <uni-icons type="compose" size="12" color="#cccccc"></uni-icons>
+                    <image class="info-tag-icon" src="/static/imgs/ruler-line.png" mode="aspectFit"></image>
                     <text>170cm 60kg</text>
                 </view>
                 <view class="info-tag">
-                    <uni-icons type="calendar" size="12" color="#cccccc"></uni-icons>
+                    <image class="info-tag-icon" src="/static/imgs/lz.png" mode="aspectFit"></image>
                     <text>25岁</text>
                 </view>
                 <view class="info-tag">
@@ -51,12 +56,12 @@
             <!-- 交换联系方式 -->
             <view class="contact-bar" v-if="showContactBar">
                 <view class="contact-item">
-                    <uni-icons type="phone-filled" size="20" color="#58B4FF"></uni-icons>
+                    <image class="contact-icon" src="/static/imgs/dh.png" mode="aspectFit"></image>
                     <text class="contact-text">请求交换电话</text>
                 </view>
                 <view class="contact-divider"></view>
                 <view class="contact-item">
-                    <uni-icons type="chatbubble-filled" size="20" color="#52C41A"></uni-icons>
+                    <image class="contact-icon" src="/static/imgs/wx.png" mode="aspectFit"></image>
                     <text class="contact-text">点击查看</text>
                 </view>
             </view>
@@ -90,11 +95,24 @@ function goBack() {
 .partner-profile-page {
     min-height: 100vh;
     background: #000000;
+    position: relative;
+}
+
+/* 页面背景图 */
+.page-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
 }
 
 .nav-bar {
     width: 100%;
     box-sizing: border-box;
+    position: relative;
+    z-index: 1;
 }
 
 .nav-content {
@@ -114,6 +132,8 @@ function goBack() {
 
 .profile-card {
     padding: 20rpx 32rpx;
+    position: relative;
+    z-index: 1;
 }
 
 .profile-main {
@@ -145,31 +165,9 @@ function goBack() {
     background: rgba(255, 255, 255, 0.25);
     border: 2rpx solid rgba(255, 255, 255, 0.4);
     backdrop-filter: blur(4rpx);
-}
-
-/* 假的头像切换小图标 */
-.avatar-change::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(45deg);
-    width: 2rpx;
-    height: 12rpx;
-    background: #fff;
-    border-radius: 1rpx;
-}
-
-.avatar-change::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 10rpx;
-    height: 2rpx;
-    background: #fff;
-    border-radius: 1rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .profile-info {
@@ -213,6 +211,8 @@ function goBack() {
 }
 
 .copy-icon {
+    width: 28rpx;
+    height: 28rpx;
     margin-left: 8rpx;
     margin-right: 20rpx;
 }
@@ -240,7 +240,9 @@ function goBack() {
     font-size: 24rpx;
 }
 
-.info-tag .uni-icons {
+.info-tag-icon {
+    width: 24rpx;
+    height: 24rpx;
     margin-right: 6rpx;
 }
 
@@ -291,5 +293,10 @@ function goBack() {
 .contact-text {
     font-size: 28rpx;
     color: #ffffff;
+}
+
+.contact-icon {
+    width: 40rpx;
+    height: 40rpx;
 }
 </style>

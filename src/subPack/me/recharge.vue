@@ -1,20 +1,27 @@
 <template>
     <view class="page recharge-page">
+        <!-- 背景图 -->
+        <image class="page-bg" src="/static/imgs/index_bg.png" mode="aspectFill"></image>
+
         <!-- 导航栏 -->
         <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
             <view class="nav-content">
                 <view class="nav-back" @click="goBack">
                     <uni-icons type="left" size="22" color="#FFFFFF"></uni-icons>
                 </view>
-                <view class="nav-title">充值</view>
-                <text class="nav-right" @click="goHistory">交易明细</text>
+                <view class="nav-title">充值</view> 
             </view>
         </view>
 
         <!-- 剩余次数卡片 -->
         <view class="count-card">
-            <text class="count-number">{{ appState.userProfile.matchCount }}</text>
-            <text class="count-label">剩余次数</text>
+            <view style="display: flex;flex-direction: column;justify-content: center;align-items: center;">
+                <view class="count-number">{{ appState.userProfile.matchCount }}</view>
+                <view class="count-label">剩余次数</view>
+            </view> 
+            <view class="nav-right-btn">
+                 <text class="nav-right" @click="goHistory">交易明细</text>
+            </view>
         </view>
 
         <!-- 切换选项 -->
@@ -195,6 +202,17 @@ onMounted(() => {
     min-height: 100vh;
     background: #000;
     padding-bottom: 200rpx;
+    position: relative;
+}
+
+/* 页面背景图 */
+.page-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
 }
 
 /* 导航栏 */
@@ -203,7 +221,7 @@ onMounted(() => {
     top: 0;
     left: 0;
     right: 0;
-    background: #000;
+    // background: #000;
     z-index: 100;
 
     .nav-content {
@@ -234,13 +252,17 @@ onMounted(() => {
     .nav-right {
         position: absolute;
         right: 200rpx;
-        font-size: 28rpx;
+        font-size: 23rpx;
         color: #fff;
+        font-weight: normal;
+        
     }
 }
 
 .container-wrap {
     padding: 30rpx;
+    position: relative;
+    z-index: 1;
 }
 
 /* 剩余次数卡片 */
@@ -249,15 +271,21 @@ onMounted(() => {
     border-radius: 24rpx;
     padding: 60rpx 0;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: space-around;
     position: relative;
+    z-index: 1;
     overflow: hidden;
     background: linear-gradient(45deg, rgba(92, 175, 255, 0.2) 0%, rgba(198, 43, 255, 0.2) 100%);
     border-radius: 30rpx 30rpx 30rpx 30rpx;
     border: 2rpx solid;
     margin-bottom: 60rpx;
+    .nav-right-btn{
+        border: 2rpx solid #554562;
+        border-radius: 30rpx;
+        padding: 10rpx 30rpx;
+        background: rgba(56, 40, 69,0.5);
+    }
 
     &::before {
         content: '';
@@ -294,6 +322,8 @@ onMounted(() => {
     border-radius: 30rpx;
     overflow: hidden;
     background: linear-gradient( 180deg, #444444 0%, rgba(17,17,17,0) 100%);
+    position: relative;
+    z-index: 1;
 }
 
 .mode-tab {

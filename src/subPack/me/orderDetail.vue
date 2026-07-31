@@ -1,5 +1,8 @@
 <template>
     <view class="page-container">
+        <!-- 背景图 -->
+        <image class="page-bg" src="/static/imgs/index_bg.png" mode="aspectFill"></image>
+
         <!-- 1. 顶部导航栏 -->
         <view class="custom-navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
             <view class="navbar-content">
@@ -88,12 +91,25 @@ $font-size-base: 30rpx;
     color: $text-primary;
     display: flex;
     flex-direction: column;
+    position: relative;
+}
+
+/* 页面背景图 */
+.page-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
 }
 
 /* --- 1. 导航栏样式 --- */
 .custom-navbar {
     width: 100%;
     background-color: transparent; /* 透明背景，融入页面 */
+    position: relative;
+    z-index: 1;
 
     .navbar-content {
         height: 88rpx;
@@ -133,13 +149,15 @@ $font-size-base: 30rpx;
     padding: 20rpx 30rpx;
     display: flex;
     flex-direction: column;
+    border-radius: 30rpx;
+    border: 2rpx solid rgba(255, 255, 255, 0.5);
+    margin: 30rpx;
+    position: relative;
+    z-index: 1;
 }
 
 /* 卡片样式 */
-.order-card {
-    background-color: $card-bg;
-    border-radius: 16rpx;
-    border: 1rpx solid #333335; /* 极细微的边框 */
+.order-card {  
     overflow: hidden;
     margin-bottom: 60rpx; /* 与底部的距离 */
 }
