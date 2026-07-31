@@ -131,20 +131,20 @@ const showMatchModal = ref(false);
 const matchedUsers = ref([
   {
     id: 1,
-    avatar: 'https://i.pravatar.cc/150?img=1', // 使用在线占位图
+    avatar: 'https://picsum.photos/200', // 使用在线占位图
     status: 'locked',
     statusText: '点击解锁',
   },
   {
     id: 2,
-    avatar: 'https://i.pravatar.cc/150?img=2',
+    avatar: 'https://picsum.photos/200',
     status: 'pending',
     statusText: '已发送申请',
     subStatusText: '等待对方同意',
   },
   {
     id: 3,
-    avatar: 'https://i.pravatar.cc/150?img=3',
+    avatar: 'https://picsum.photos/200',
     status: 'locked',
     statusText: '点击解锁',
   },

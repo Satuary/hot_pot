@@ -71,20 +71,20 @@ const blindBoxPopup = ref<InstanceType<typeof BlindBoxPopup> | null>(null);
 const matchedUsers = ref([
     {
         id: 1,
-        avatar: 'https://i.pravatar.cc/150?img=1',
+        avatar: 'https://picsum.photos/200',
         status: 'locked',
         statusText: '点击解锁',
     },
     {
         id: 2,
-        avatar: 'https://i.pravatar.cc/150?img=2',
+        avatar: 'https://picsum.photos/200',
         status: 'pending',
         statusText: '已发送申请',
         subStatusText: '等待对方同意',
     },
     {
         id: 3,
-        avatar: 'https://i.pravatar.cc/150?img=3',
+        avatar: 'https://picsum.photos/200',
         status: 'locked',
         statusText: '点击解锁',
     },
@@ -128,19 +128,19 @@ const POLL_INTERVAL = 5000; // 5秒轮询一次
 const mockRequestPool = [
     {
         id: 'req_001',
-        avatar: 'https://i.pravatar.cc/150?img=5',
+        avatar: 'https://picsum.photos/200',
         nickname: '火锅达人小王',
         description: 'Hi~ 看到你也喜欢吃重庆火锅，我也是麻辣爱好者！要不要一起约个海底捞？我就在附近，随时可以出发~',
     },
     {
         id: 'req_002',
-        avatar: 'https://i.pravatar.cc/150?img=9',
+        avatar: 'https://picsum.photos/200',
         nickname: '美食探险家',
         description: '系统把你推给我啦，咱俩的火锅偏好超搭！这感觉就像拆盲盒开出了心心念念的隐藏款~要不要约一锅，沉浸式体验一场只属于我们的火锅时光？',
     },
     {
         id: 'req_003',
-        avatar: 'https://i.pravatar.cc/150?img=20',
+        avatar: 'https://picsum.photos/200',
         nickname: '吃货小分队',
         description: '嘿！看到你的匹配信息了，我也在附近，刚好也想吃火锅。一起拼个桌吧，人多更热闹，还能多点几个菜！',
     },

@@ -1,5 +1,7 @@
 <template>
     <view class="container">
+        <!-- 背景图片 -->
+        <image src="/static/imgs/bg.png" mode="aspectFill" class="bg-image"></image>
         <!-- 背景装饰：流星 -->
         <view class="meteor meteor-1"></view>
         <view class="meteor meteor-2"></view>
@@ -12,14 +14,14 @@
 
             <!-- 中心火锅图片 -->
             <view class="center-hub">
-                <image src="/static/hotpot.png" mode="aspectFill" class="hotpot-img"></image>
+                <image src="https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&h=400&fit=crop" mode="aspectFill" class="hotpot-img"></image>
             </view>
 
             <!-- 动态旋转层：包含头像和装饰球 -->
             <view class="rotating-layer" :style="{ animationDuration: duration + 's' }">
                 <!-- 元素 1: 用户头像 (左上) -->
                 <view class="item user-avatar-1">
-                    <image src="/static/avatar1.png" mode="aspectFill" class="avatar"></image>
+                    <image src="https://picsum.photos/200" mode="aspectFill" class="avatar"></image>
                 </view>
 
                 <!-- 元素 2: 装饰球 (右上) -->
@@ -28,7 +30,7 @@
                 <!-- 元素 3: 用户头像 (右下) -->
                 <view class="item user-avatar-2">
                     <!-- 这里用简单的色块模拟唐老鸭风格头像，实际开发请替换图片 -->
-                    <image src="/static/avatar2.png" mode="aspectFill" class="avatar"></image>
+                    <image src="https://picsum.photos/200" mode="aspectFill" class="avatar"></image>
                 </view>
 
                 <!-- 元素 4: 装饰球 (左下) -->
@@ -83,13 +85,23 @@ const handleCancel = () => {
 .container {
     width: 100vw;
     height: 100vh;
-    background: linear-gradient(180deg, #2b1d4e 0%, #1a103c 100%); /* 深紫色渐变背景 */
+    background: #1a103c;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
     position: relative;
     overflow: hidden;
+}
+
+/* 背景图片层 */
+.bg-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
 }
 
 /* --- 背景流星特效 --- */
@@ -101,6 +113,7 @@ const handleCancel = () => {
     transform: rotate(-45deg);
     opacity: 0;
     animation: meteorFall 3s infinite ease-in-out;
+    z-index: 1;
 }
 .meteor-1 {
     top: 20%;
@@ -136,6 +149,7 @@ const handleCancel = () => {
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 1;
 }
 
 /* 轨道光晕 */

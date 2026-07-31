@@ -30,18 +30,18 @@ const props = defineProps({
         type: Array,
         default: () => [
             {
-                avatar: '/static/default-avatar-1.png',
+                avatar: 'https://picsum.photos/200',
                 status: 'locked',
                 statusText: '点击解锁',
             },
             {
-                avatar: '/static/default-avatar-2.png',
+                avatar: 'https://picsum.photos/200',
                 status: 'pending',
                 statusText: '已发送申请',
                 subStatusText: '等待对方同意',
             },
             {
-                avatar: '/static/default-avatar-3.png',
+                avatar: 'https://picsum.photos/200',
                 status: 'locked',
                 statusText: '点击解锁',
             },

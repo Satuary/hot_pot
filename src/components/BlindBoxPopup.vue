@@ -11,20 +11,21 @@
             <view class="users-wrapper">
                 <!-- 左侧用户 -->
                 <view class="user-item">
-                    <image class="avatar" src="/static/images/avatar1.png" mode="aspectFill"></image>
+                    <view class="avatar-area">
+                        <image class="flame-bg flame-left" src="/static/imgs/flame2.png" mode="widthFix"></image>
+                        <image class="avatar" src="https://picsum.photos/200" mode="aspectFill"></image>
+                    </view>
                     <text class="username">好汉共</text>
-                </view>
-
-                <!-- 中间连接符 -->
-                <view class="connector">
-                    <image class="connector-img" src="/static/images/lightning-bolt.png" mode="widthFix"></image>
                 </view>
 
                 <!-- 右侧用户 -->
                 <view class="user-item">
-                    <view class="avatar-wrapper" @click="handleViewProfile">
-                        <image class="avatar" src="/static/images/avatar2.png" mode="aspectFill"></image>
-                        <view class="view-btn">点击查看</view>
+                    <view class="avatar-area">
+                        <image class="flame-bg flame-right" src="/static/imgs/flame.png" mode="widthFix"></image>
+                        <view class="avatar-wrapper" @click="handleViewProfile">
+                            <image class="avatar" src="https://picsum.photos/200" mode="aspectFill"></image>
+                            <view class="view-btn">点击查看</view>
+                        </view>
                     </view>
                     <text class="username">大吉大</text>
                 </view>
@@ -156,11 +157,39 @@ defineExpose({
     flex: 1;
 }
 
+.avatar-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flame-bg {
+    position: absolute;
+    width: 294rpx;
+    height: 253rpx;
+    z-index: 0;
+}
+
+.flame-left {
+    top: 48%;
+    left: 75%;
+    transform: translate(-50%, -50%);
+}
+
+.flame-right {
+    top: 42%;
+    left: 16%;
+    transform: translate(-50%, -50%);
+}
+
 .avatar {
     width: 140rpx;
     height: 140rpx;
     border-radius: 50%;
     border: 3rpx solid rgba(255, 255, 255, 0.15);
+    position: relative;
+    z-index: 1;
 }
 
 .username {
@@ -168,23 +197,13 @@ defineExpose({
     font-size: 26rpx;
     font-weight: 500;
     margin-top: 24rpx;
-}
-
-.connector {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 120rpx;
-}
-
-.connector-img {
-    width: 100rpx;
-    opacity: 0.8;
+    position: relative;
+    z-index: 1;
 }
 
 .avatar-wrapper {
     position: relative;
+    z-index: 1;
 }
 
 .view-btn {
@@ -198,6 +217,7 @@ defineExpose({
     padding: 4rpx 12rpx;
     border-radius: 20rpx;
     white-space: nowrap;
+    z-index: 2;
 }
 
 .button-group {
