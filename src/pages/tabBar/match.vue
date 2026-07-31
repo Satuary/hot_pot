@@ -5,7 +5,7 @@
             <view class="navbar-inner">
                 <!-- 左侧位置 -->
                 <view class="location-picker" @click="chooseLocation">
-                    <uni-icons type="location-filled" size="20" color="#FFFFFF"></uni-icons>
+                    <image class="location-icon" src="/static/imgs/map-pin-2-line.png" mode="aspectFit" />
                     <text class="location-text">{{ location }}</text>
                 </view>
 
@@ -392,6 +392,11 @@ const goToBlindMatch = () => {
         display: flex;
         align-items: center;
         gap: 8rpx;
+
+        .location-icon {
+            width: 40rpx;
+            height: 40rpx;
+        }
 
         .location-text {
             font-size: 30rpx;
