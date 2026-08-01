@@ -53,6 +53,12 @@
         @cancel="handleRejectRequest"
         @confirm="handleAcceptRequest"
     />
+    <!-- 定位选择弹窗 -->
+    <LocationPickerPopup
+        :visible="showLocationPicker"
+        @update:visible="showLocationPicker = $event"
+        @select="handleLocationSelect"
+    />
 </template>
 
 <script setup lang="ts">
@@ -63,7 +69,10 @@ import MatchSuccessModal from '@/components/MatchSuccessModal.vue';
 import BlindBoxPopup from '@/components/BlindBoxPopup.vue';
 import MatchIntroModal from '@/components/MatchIntroModal.vue';
 import MatchConfirmModal from '@/components/MatchConfirmModal.vue';
+import LocationPickerPopup from '@/components/LocationPickerPopup.vue';
+import type { LocationItem } from '@/components/LocationPickerPopup.vue';
 import { getPendingRequests, acceptRequest, rejectRequest } from '@/api/api';
+import { getUserLocation, reverseGeocode } from '@/utils/map';
 
 const showMatchModal = ref(false);
 const showIntroModal = ref(false);
@@ -110,7 +119,8 @@ const statusBarHeight = ref(0);
 const navbarPaddingTop = ref(0);
 const navbarHeight = ref(0);
 const topOffset = ref(0);
-const location = ref('万达广场');
+const location = ref('正在定位...');
+const showLocationPicker = ref(false);
 const isToggleOn = ref(true);
 
 // 好友请求相关状态
@@ -175,6 +185,8 @@ onShow(() => {
         uni.reLaunch({ url: '/pages/profile/complete' });
         return;
     }
+    // 自动定位获取当前地址
+    autoLocate();
     // 开关打开时恢复轮询
     if (isToggleOn.value) {
         startPolling();
@@ -195,13 +207,43 @@ onHide(() => {
     stopPolling();
 });
 
-// 选择位置
+// 选择位置：打开自定义定位弹窗
 const chooseLocation = () => {
-    uni.chooseLocation({
-        success: (res) => {
-            location.value = res.name || res.address || '万达广场';
-        },
-    });
+  showLocationPicker.value = true;
+};
+
+// 自动定位（页面加载时获取当前地址描述）
+const autoLocate = async () => {
+  // 先从缓存恢复上次选择的位置
+  const cached = uni.getStorageSync('user_location_name');
+  if (cached) {
+    location.value = cached;
+  }
+
+  try {
+    const loc = await getUserLocation();
+    const addr = await reverseGeocode(loc);
+    const desc = addr.shortDescription || addr.formattedAddress;
+    location.value = desc;
+    uni.setStorageSync('user_location_name', desc);
+    // 同时缓存坐标
+    uni.setStorageSync('user_location_coord', JSON.stringify(loc));
+  } catch {
+    // 定位失败则不更新，保留缓存值或兜底
+    if (location.value === '正在定位...') {
+      location.value = '定位失败，点击重试';
+    }
+  }
+};
+
+// 定位弹窗选择回调
+const handleLocationSelect = (item: LocationItem) => {
+  location.value = item.name;
+  uni.setStorageSync('user_location_name', item.name);
+  uni.setStorageSync('user_location_coord', JSON.stringify({
+    longitude: item.longitude,
+    latitude: item.latitude,
+  }));
 };
 
 // 切换开关

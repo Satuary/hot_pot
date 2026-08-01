@@ -59,7 +59,13 @@
         "optimizatiom" : {
             "subPackages" : true
         },
-        "usingComponents" : true
+        "usingComponents" : true,
+        "requiredPrivateInfos" : [ "getFuzzyLocation" ],
+        "permission" : {
+            "scope.userFuzzyLocation" : {
+                "desc" : "用于获取您的位置，搜索附近火锅店"
+            }
+        }
     },
     "mp-alipay" : {
         "usingComponents" : true

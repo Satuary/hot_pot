@@ -227,9 +227,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { postRequirement, getStoreList } from '@/api/api';
+import { postRequirement } from '@/api/api';
 import { mockStores } from '@/utils/store';
 import type { Store } from '@/utils/store';
+import { getUserLocation, searchNearbyHotPotStore } from '@/utils/map';
 
 // 状态栏高度
 const statusBarHeight = ref(0);
@@ -391,16 +392,25 @@ const selectPaymentMethod = (method: string) => {
   formData.value.paymentMethod = method;
 };
 
-// 选择火锅店
+// 选择火锅店（通过高德地图 API 获取附近火锅店）
 const selectStore = async () => {
   storePopupVisible.value = true;
   if (storeList.value.length) return;
 
   storeLoading.value = true;
   try {
-    const res = await getStoreList({ page: 1, pageSize: 20 });
-    storeList.value = (res?.list || res || []) as Store[];
-  } catch {
+    // 1. 获取用户当前定位
+    const location = await getUserLocation();
+    // 2. 通过高德地图周边搜索 API 获取附近火锅店
+    const stores = await searchNearbyHotPotStore(location);
+    if (stores.length === 0) {
+      uni.showToast({ title: '附近暂无火锅店', icon: 'none' });
+    }
+    storeList.value = stores;
+  } catch (err: any) {
+    console.error('获取附近火锅店失败:', err);
+    uni.showToast({ title: err.message || '获取附近火锅店失败，使用默认数据', icon: 'none' });
+    // 高德 API 不可用时降级使用 mock 数据
     storeList.value = mockStores;
   } finally {
     storeLoading.value = false;
