@@ -218,16 +218,30 @@ async function initLocation() {
     currentLocation.value = loc;
 
     // 2. 逆地理编码获取地址
-    const addrInfo = await reverseGeocode(loc);
-    currentAddress.value = addrInfo.shortDescription || addrInfo.formattedAddress;
+    try {
+      const addrInfo = await reverseGeocode(loc);
+      currentAddress.value = addrInfo.shortDescription || addrInfo.formattedAddress;
+    } catch {
+      // 逆地理编码失败，使用坐标作为后备显示
+      currentAddress.value = `${loc.longitude.toFixed(2)}, ${loc.latitude.toFixed(2)}`;
+    }
 
     // 3. 搜索附近热门地标
-    const landmarks = await searchNearbyLandmarks(loc);
-    nearbyLandmarks.value = landmarks;
+    try {
+      const landmarks = await searchNearbyLandmarks(loc);
+      nearbyLandmarks.value = landmarks;
+    } catch {
+      nearbyLandmarks.value = [];
+    }
   } catch (err: any) {
     console.error('定位失败:', err);
     currentAddress.value = '定位失败，点击重新定位';
-    uni.showToast({ title: err.message || '定位失败', icon: 'none' });
+    // getUserLocation 内部已处理授权引导弹窗，这里只需要 toast 提示
+    const msg = err.message || '定位失败';
+    if (msg !== '位置权限未开启') {
+      // 权限未开启时已在 getUserLocation 中弹窗引导，无需重复 toast
+      uni.showToast({ title: msg, icon: 'none', duration: 2000 });
+    }
   } finally {
     loading.value = false;
   }

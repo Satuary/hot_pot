@@ -94,21 +94,22 @@ interface AmapRegeoResponse {
 /**
  * 获取用户当前定位（微信小程序）
  * 使用 getFuzzyLocation，无需高精度授权，更稳定
+ *
+ * 微信小程序注意：
+ * 1. manifest.json 需声明 requiredPrivateInfos: ["getFuzzyLocation"]
+ * 2. permission 中需配置 scope.userFuzzyLocation 的描述
+ * 3. 首次调用会弹授权弹窗，用户拒绝后需引导至设置页开启
+ * 4. 此接口无需用户开启「精确定位」开关，模糊定位即可
  */
 export function getUserLocation(): Promise<UserLocation> {
   return new Promise((resolve, reject) => {
-    uni.getFuzzyLocation({
-      type: 'gcj02',
-      success(res) {
-        resolve({
-          longitude: res.longitude,
-          latitude: res.latitude,
-        });
-      },
-      fail(err) {
-        const msg = err.errMsg || '';
-        if (msg.includes('auth deny') || msg.includes('deny')) {
-          // 用户拒绝过授权，需要引导去设置页开启
+    // #ifdef MP-WEIXIN
+    // 先检查系统定位是否开启（微信小程序特有）
+    uni.getSetting({
+      success(settingRes) {
+        const authSetting = settingRes.authSetting || {};
+        // 用户已明确拒绝过授权
+        if (authSetting['scope.userFuzzyLocation'] === false) {
           uni.showModal({
             title: '需要位置权限',
             content: '请在设置中允许使用位置信息，以便搜索附近火锅店',
@@ -120,11 +121,89 @@ export function getUserLocation(): Promise<UserLocation> {
             },
           });
           reject(new Error('位置权限未开启'));
+          return;
+        }
+
+        // 发起模糊定位请求
+        uni.getFuzzyLocation({
+          type: 'gcj02',
+          success(res) {
+            resolve({
+              longitude: res.longitude,
+              latitude: res.latitude,
+            });
+          },
+          fail(err) {
+            const msg = err.errMsg || '';
+            // 系统定位未开启（iOS/Android 系统级关闭了定位）
+            if (
+              msg.includes('system permission denied') ||
+              msg.includes('system') ||
+              msg.includes('location unavailable')
+            ) {
+              reject(new Error('请开启手机定位服务'));
+              return;
+            }
+            // 用户点击了拒绝授权
+            if (
+              msg.includes('auth deny') ||
+              msg.includes('deny') ||
+              msg.includes('cancel')
+            ) {
+              uni.showModal({
+                title: '需要位置权限',
+                content: '请在设置中允许使用位置信息，以便搜索附近火锅店',
+                confirmText: '去设置',
+                success(modalRes) {
+                  if (modalRes.confirm) {
+                    uni.openSetting({});
+                  }
+                },
+              });
+              reject(new Error('位置权限未开启'));
+              return;
+            }
+            reject(new Error(msg || '定位失败'));
+          },
+        });
+      },
+      fail() {
+        // getSetting 失败，直接尝试定位
+        uni.getFuzzyLocation({
+          type: 'gcj02',
+          success(res) {
+            resolve({
+              longitude: res.longitude,
+              latitude: res.latitude,
+            });
+          },
+          fail(err) {
+            reject(new Error(err.errMsg || '定位失败'));
+          },
+        });
+      },
+    });
+    // #endif
+
+    // #ifndef MP-WEIXIN
+    uni.getFuzzyLocation({
+      type: 'gcj02',
+      success(res) {
+        resolve({
+          longitude: res.longitude,
+          latitude: res.latitude,
+        });
+      },
+      fail(err) {
+        const msg = err.errMsg || '';
+        if (msg.includes('auth deny') || msg.includes('deny')) {
+          reject(new Error('位置权限未开启'));
         } else {
-          reject(new Error(`定位失败: ${msg || '未知错误'}`));
+          reject(new Error(msg || '定位失败'));
         }
       },
     });
+    // #endif
   });
 }
 

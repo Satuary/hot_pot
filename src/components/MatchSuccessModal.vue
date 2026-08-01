@@ -130,6 +130,7 @@ const handleUserClick = (user) => {
 .avatar {
     width: 100%;
     height: 100%;
+    border-radius: 50%;
     transition: filter 0.3s ease;
 }
 

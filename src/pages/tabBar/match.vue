@@ -2,7 +2,7 @@
     <view class="match-page">
         <!-- 自定义导航栏 -->
         <view class="navbar" :style="{ height: navbarHeight + 'px', paddingTop: navbarPaddingTop + 'px' }">
-            <view class="navbar-inner">
+            <view class="navbar-inner" :style="{ height: capsuleHeight + 'px' }">
                 <!-- 左侧位置 -->
                 <view class="location-picker" @click="chooseLocation">
                     <image class="location-icon" src="/static/imgs/map-pin-2-line.png" mode="aspectFit" />
@@ -10,7 +10,7 @@
                 </view>
 
                 <!-- 右侧开关 -->
-                <view class="toggle-switch" :class="{ active: isToggleOn }" @click="toggleSwitch">
+                <view class="toggle-switch" :class="{ active: isToggleOn }" :style="{ marginRight: capsuleRightMargin + 'px' }" @click="toggleSwitch">
                     <view class="toggle-circle"></view>
                 </view>
             </view>
@@ -118,6 +118,8 @@ const handleCloseIntroModal = () => {
 const statusBarHeight = ref(0);
 const navbarPaddingTop = ref(0);
 const navbarHeight = ref(0);
+const capsuleHeight = ref(32); // 胶囊按钮高度，默认 32px
+const capsuleRightMargin = ref(0); // 右侧避开胶囊的边距
 const topOffset = ref(0);
 const location = ref('正在定位...');
 const showLocationPicker = ref(false);
@@ -161,12 +163,16 @@ onMounted(() => {
     const systemInfo = uni.getSystemInfoSync();
     statusBarHeight.value = systemInfo.statusBarHeight || 0;
 
-    // 获取胶囊按钮信息，导航栏内容放在胶囊下方
+    // 获取胶囊按钮信息，导航栏内容与胶囊按钮同一水平线
     // #ifdef MP-WEIXIN
     const menuButtonInfo = uni.getMenuButtonBoundingClientRect();
+    capsuleHeight.value = menuButtonInfo.height;
     const gap = 8; // 胶囊底部间距
-    navbarPaddingTop.value = menuButtonInfo.bottom + gap;
-    navbarHeight.value = navbarPaddingTop.value + (88 * systemInfo.windowWidth) / 750;
+    // 右侧避免与胶囊重叠：胶囊宽度 + 间距
+    capsuleRightMargin.value = menuButtonInfo.width + gap;
+    // 导航栏内容顶部与胶囊顶部对齐
+    navbarPaddingTop.value = menuButtonInfo.top;
+    navbarHeight.value = menuButtonInfo.top + menuButtonInfo.height + gap;
     // #endif
     // #ifndef MP-WEIXIN
     navbarPaddingTop.value = statusBarHeight.value;
@@ -533,14 +539,14 @@ const goToBlindMatch = () => {
 
         // 霓虹边框 - 蓝色
         &.neon-blue {
-            border: 3rpx solid rgba(0, 212, 255, 0.5);
-            box-shadow: 0 0 40rpx rgba(0, 212, 255, 0.3), 0 0 80rpx rgba(0, 212, 255, 0.15), 0 0 140rpx rgba(0, 212, 255, 0.08);
+            //border: 3rpx solid rgb(173, 200, 226);
+            box-shadow: 0 0 40rpx rgba(173, 200, 226, 0.3), 0 0 80rpx rgba(173, 200, 226, 0.15), 0 0 140rpx rgba(173, 200, 226, 0.08);
         }
 
         // 霓虹边框 - 粉色
         &.neon-pink {
-            border: 3rpx solid rgba(255, 45, 149, 0.5);
-            box-shadow: 0 0 40rpx rgba(255, 45, 149, 0.3), 0 0 80rpx rgba(255, 45, 149, 0.15), 0 0 140rpx rgba(255, 45, 149, 0.08);
+            // border: 3rpx solid rgba(223, 135, 214, 0.5);
+            box-shadow: 0 0 40rpx rgba(223, 135, 214, 0.3), 0 0 80rpx rgba(223, 135, 214, 0.15), 0 0 140rpx rgba(223, 135, 214, 0.08);
         }
     }
 }
