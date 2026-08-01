@@ -94,6 +94,7 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue';
 import { onShow, onHide } from '@dcloudio/uni-app';
+import { isLogin, isProfileComplete } from '@/utils/auth';
 
 const showWaitingPopup = ref(false);
 const remainingSeconds = ref(10 * 60); // 默认 10 分钟倒计时
@@ -134,6 +135,16 @@ function closeWaitingPopup() {
 }
 
 onShow(() => {
+  // TabBar 页面守卫：每次显示时检查登录和资料完善状态
+  if (!isLogin()) {
+    uni.reLaunch({ url: '/pages/login/login' });
+    return;
+  }
+  if (!isProfileComplete()) {
+    uni.reLaunch({ url: '/pages/profile/complete' });
+    return;
+  }
+
   const shouldShow = uni.getStorageSync('showWaitingPopup');
   if (shouldShow) {
     uni.removeStorageSync('showWaitingPopup');
