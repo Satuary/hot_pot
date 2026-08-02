@@ -17,9 +17,6 @@
             <view class="profile-main">
                 <view class="avatar-wrap">
                     <image class="avatar" src="https://picsum.photos/200" mode="aspectFill"></image>
-                    <view class="avatar-change">
-                        <uni-icons type="compose" size="16" color="#ffffff"></uni-icons>
-                    </view>
                 </view>
                 <view class="profile-info">
                     <view class="name-row">
@@ -153,21 +150,6 @@ function goBack() {
     height: 140rpx;
     border-radius: 50%;
     border: 3rpx solid rgba(255, 255, 255, 0.3);
-}
-
-.avatar-change {
-    position: absolute;
-    right: 0;
-    bottom: 4rpx;
-    width: 36rpx;
-    height: 36rpx;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.25);
-    border: 2rpx solid rgba(255, 255, 255, 0.4);
-    backdrop-filter: blur(4rpx);
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .profile-info {

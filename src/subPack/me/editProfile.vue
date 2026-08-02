@@ -188,7 +188,7 @@
                         <view class="ruler-arrow left" @click.stop="adjustHeight(-1)">
                             <view class="arrow-triangle"></view>
                         </view>
-                        <view class="ruler-viewport">
+                        <view class="ruler-viewport" :style="heightViewportStyle">
                             <view class="ruler-ticks">
                                 <view v-for="(item, idx) in visibleHeightRange" :key="idx" class="ruler-tick" :class="{ active: item.isCurrent, empty: item.value === null }"></view>
                             </view>
@@ -214,7 +214,7 @@
                         <view class="ruler-arrow left" @click.stop="adjustWeight(-1)">
                             <view class="arrow-triangle"></view>
                         </view>
-                        <view class="ruler-viewport">
+                        <view class="ruler-viewport" :style="weightViewportStyle">
                             <view class="ruler-ticks">
                                 <view v-for="(item, idx) in visibleWeightRange" :key="idx" class="ruler-tick" :class="{ active: item.isCurrent, empty: item.value === null }"></view>
                             </view>
@@ -260,6 +260,30 @@
                 <view class="modal-actions">
                     <view class="modal-btn cancel" @click="closeModal">取消</view>
                     <view class="modal-btn confirm" @click="confirmModal(modalType)">确认</view>
+                </view>
+            </view>
+        </view>
+
+        <!-- ========== 所在地选择弹窗（picker-view） ========== -->
+        <view v-if="modalType === 'location'" class="mask location-mask" @click="closeModal">
+            <view class="modal-content location-modal" @click.stop>
+                <view class="modal-title">选择所在地</view>
+                <view class="picker-body">
+                    <picker-view
+                        class="picker-view"
+                        :value="[locationIndex]"
+                        indicator-style="height: 88rpx;"
+                        mask-style="background-image: linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.5)), linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.5)); background-position: top, bottom;"
+                        @change="(e: any) => locationIndex = e.detail.value[0]"
+                    >
+                        <picker-view-column>
+                            <view v-for="p in provinceOptions" :key="p" class="picker-item">{{ p }}</view>
+                        </picker-view-column>
+                    </picker-view>
+                </view>
+                <view class="modal-actions">
+                    <view class="modal-btn cancel" @click="closeModal">取消</view>
+                    <view class="modal-btn confirm" @click="confirmModal('location')">确认</view>
                 </view>
             </view>
         </view>
@@ -345,7 +369,7 @@ type ModalType = 'nickname' | 'gender' | 'birthday' | 'location' | 'hw' | 'hotpo
 
 const modalType = ref<ModalType>(null);
 const tagModalTypes: ModalType[] = ['hotpotType', 'taste', 'motivation'];
-const textModalTypes: ModalType[] = ['nickname', 'location', 'wechat'];
+const textModalTypes: ModalType[] = ['nickname', 'wechat'];
 
 const tagModalTitle = computed(() => {
     const map: Record<string, string> = { hotpotType: '选择火锅类型', taste: '选择口味', motivation: '选择动力' };
@@ -353,14 +377,26 @@ const tagModalTitle = computed(() => {
 });
 
 const textModalTitle = computed(() => {
-    const map: Record<string, string> = { nickname: '修改昵称', location: '修改所在地', wechat: '修改微信' };
+    const map: Record<string, string> = { nickname: '修改昵称', wechat: '修改微信' };
     return map[modalType.value || ''] || '';
 });
 
 const textModalPlaceholder = computed(() => {
-    const map: Record<string, string> = { nickname: '取一个好听的名字', location: '输入所在地', wechat: '方便联系' };
+    const map: Record<string, string> = { nickname: '取一个好听的名字', wechat: '方便联系' };
     return map[modalType.value || ''] || '';
 });
+
+const provinceOptions = [
+    '北京', '上海', '天津', '重庆',
+    '河北', '山西', '辽宁', '吉林', '黑龙江',
+    '江苏', '浙江', '安徽', '福建', '江西', '山东',
+    '河南', '湖北', '湖南', '广东', '海南',
+    '四川', '贵州', '云南', '陕西', '甘肃', '青海',
+    '台湾', '内蒙古', '广西', '西藏', '宁夏', '新疆',
+    '香港', '澳门',
+];
+
+const locationIndex = ref(0);
 
 const currentTagOptions = computed(() => {
     const map: Record<string, string[]> = {
@@ -411,7 +447,10 @@ function openModal(type: ModalType) {
         const maxDay = new Date(year, month, 0).getDate();
         tempDay.value = Math.min(day, maxDay);
     }
-    if (type === 'location') tempForm.location = form.location;
+    if (type === 'location') {
+        const idx = provinceOptions.indexOf(form.location);
+        locationIndex.value = idx >= 0 ? idx : 0;
+    }
     if (type === 'hw') {
         tempForm.height = form.height;
         tempForm.weight = form.weight;
@@ -432,7 +471,7 @@ function confirmModal(type: ModalType) {
     if (type === 'birthday') {
         form.birthday = `${tempYear.value}-${String(tempMonth.value).padStart(2, '0')}-${String(tempDay.value).padStart(2, '0')}`;
     }
-    if (type === 'location') form.location = tempForm.location;
+    if (type === 'location') form.location = provinceOptions[locationIndex.value];
     if (type === 'hw') {
         form.height = tempForm.height;
         form.weight = tempForm.weight;
@@ -519,31 +558,61 @@ const STEP_PX = 18;
 let hTouchStartX = 0, hTouchStartVal = 0;
 let wTouchStartX = 0, wTouchStartVal = 0;
 
+// 平滑视觉偏移
+const heightVisualOffset = ref(0);
+const weightVisualOffset = ref(0);
+const heightIsDragging = ref(false);
+const weightIsDragging = ref(false);
+
+const heightViewportStyle = computed(() => ({
+    transform: `translateX(${heightVisualOffset.value}%)`,
+    transition: heightIsDragging.value ? 'none' : 'transform 0.2s ease-out',
+}));
+
+const weightViewportStyle = computed(() => ({
+    transform: `translateX(${weightVisualOffset.value}%)`,
+    transition: weightIsDragging.value ? 'none' : 'transform 0.2s ease-out',
+}));
+
 function onHeightTouchStart(e: any) {
     hTouchStartX = e.touches[0].clientX;
     hTouchStartVal = Number(tempForm.height);
+    heightIsDragging.value = true;
+    heightVisualOffset.value = 0;
 }
 function onHeightTouchMove(e: any) {
     const deltaX = e.touches[0].clientX - hTouchStartX;
-    const steps = Math.round(-deltaX / STEP_PX);
-    const newVal = hTouchStartVal + steps;
+    const continuousSteps = -deltaX / STEP_PX;
+    const integerSteps = Math.round(continuousSteps);
+    const newVal = hTouchStartVal + integerSteps;
     const clamped = Math.max(140, Math.min(220, newVal));
     if (String(clamped) !== tempForm.height) tempForm.height = String(clamped);
+    heightVisualOffset.value = -(continuousSteps - integerSteps) * 20;
 }
-function onHeightTouchEnd(_e: any) {}
+function onHeightTouchEnd(_e: any) {
+    heightIsDragging.value = false;
+    heightVisualOffset.value = 0;
+}
 
 function onWeightTouchStart(e: any) {
     wTouchStartX = e.touches[0].clientX;
     wTouchStartVal = Number(tempForm.weight);
+    weightIsDragging.value = true;
+    weightVisualOffset.value = 0;
 }
 function onWeightTouchMove(e: any) {
     const deltaX = e.touches[0].clientX - wTouchStartX;
-    const steps = Math.round(-deltaX / STEP_PX);
-    const newVal = wTouchStartVal + steps;
+    const continuousSteps = -deltaX / STEP_PX;
+    const integerSteps = Math.round(continuousSteps);
+    const newVal = wTouchStartVal + integerSteps;
     const clamped = Math.max(30, Math.min(150, newVal));
     if (String(clamped) !== tempForm.weight) tempForm.weight = String(clamped);
+    weightVisualOffset.value = -(continuousSteps - integerSteps) * 20;
 }
-function onWeightTouchEnd(_e: any) {}
+function onWeightTouchEnd(_e: any) {
+    weightIsDragging.value = false;
+    weightVisualOffset.value = 0;
+}
 
 // ========== 保存 ==========
 const canSave = computed(() => {
@@ -861,6 +930,8 @@ function handleBack() {
     border: 2rpx solid rgba(255, 255, 255, 0.5);
     padding-bottom: 40rpx;
 }
+
+/* 所在地选择器 */
 
 .picker-body {
     height: 400rpx;

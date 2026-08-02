@@ -149,7 +149,7 @@
                         <view class="ruler-arrow left" @click.stop="adjustHeight(-1)">
                             <view class="arrow-triangle"></view>
                         </view>
-                        <view class="ruler-viewport">
+                        <view class="ruler-viewport" :style="heightViewportStyle">
                             <view class="ruler-ticks">
                                 <view v-for="(item, idx) in visibleHeightRange" :key="idx" class="ruler-tick" :class="{ active: item.isCurrent, empty: item.value === null }"></view>
                             </view>
@@ -175,7 +175,7 @@
                         <view class="ruler-arrow left" @click.stop="adjustWeight(-1)">
                             <view class="arrow-triangle"></view>
                         </view>
-                        <view class="ruler-viewport">
+                        <view class="ruler-viewport" :style="weightViewportStyle">
                             <view class="ruler-ticks">
                                 <view v-for="(item, idx) in visibleWeightRange" :key="idx" class="ruler-tick" :class="{ active: item.isCurrent, empty: item.value === null }"></view>
                             </view>
@@ -405,42 +405,68 @@ let weightTouchStartX = 0;
 let weightTouchStartValue = 0;
 const STEP_PX = 18;
 
+// 平滑视觉偏移
+const heightVisualOffset = ref(0);
+const weightVisualOffset = ref(0);
+const heightIsDragging = ref(false);
+const weightIsDragging = ref(false);
+
+const heightViewportStyle = computed(() => ({
+    transform: `translateX(${heightVisualOffset.value}%)`,
+    transition: heightIsDragging.value ? 'none' : 'transform 0.2s ease-out',
+}));
+
+const weightViewportStyle = computed(() => ({
+    transform: `translateX(${weightVisualOffset.value}%)`,
+    transition: weightIsDragging.value ? 'none' : 'transform 0.2s ease-out',
+}));
+
 function onHeightTouchStart(e: any) {
     heightTouchStartX = e.touches[0].clientX;
     heightTouchStartValue = Number(tempHeight.value);
+    heightIsDragging.value = true;
+    heightVisualOffset.value = 0;
 }
 
 function onHeightTouchMove(e: any) {
     const deltaX = e.touches[0].clientX - heightTouchStartX;
-    const steps = Math.round(-deltaX / STEP_PX);
-    const newVal = heightTouchStartValue + steps;
+    const continuousSteps = -deltaX / STEP_PX;
+    const integerSteps = Math.round(continuousSteps);
+    const newVal = heightTouchStartValue + integerSteps;
     const clampedVal = Math.max(140, Math.min(220, newVal));
     if (String(clampedVal) !== tempHeight.value) {
         tempHeight.value = String(clampedVal);
     }
+    heightVisualOffset.value = -(continuousSteps - integerSteps) * 20;
 }
 
 function onHeightTouchEnd(_e: any) {
-    // touchmove 已实时更新，无需额外处理
+    heightIsDragging.value = false;
+    heightVisualOffset.value = 0;
 }
 
 function onWeightTouchStart(e: any) {
     weightTouchStartX = e.touches[0].clientX;
     weightTouchStartValue = Number(tempWeight.value);
+    weightIsDragging.value = true;
+    weightVisualOffset.value = 0;
 }
 
 function onWeightTouchMove(e: any) {
     const deltaX = e.touches[0].clientX - weightTouchStartX;
-    const steps = Math.round(-deltaX / STEP_PX);
-    const newVal = weightTouchStartValue + steps;
+    const continuousSteps = -deltaX / STEP_PX;
+    const integerSteps = Math.round(continuousSteps);
+    const newVal = weightTouchStartValue + integerSteps;
     const clampedVal = Math.max(30, Math.min(150, newVal));
     if (String(clampedVal) !== tempWeight.value) {
         tempWeight.value = String(clampedVal);
     }
+    weightVisualOffset.value = -(continuousSteps - integerSteps) * 20;
 }
 
 function onWeightTouchEnd(_e: any) {
-    // touchmove 已实时更新，无需额外处理
+    weightIsDragging.value = false;
+    weightVisualOffset.value = 0;
 }
 
 function confirmHw() {
