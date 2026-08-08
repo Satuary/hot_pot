@@ -7,6 +7,7 @@ export interface UserProfile {
     nickname: string;
     gender: string;
     birthday: string;
+    location: string;
     height: string;
     weight: string;
     hotpotType: string[];
@@ -65,6 +66,7 @@ export const appState = reactive({
         nickname: '',
         gender: '',
         birthday: '',
+        location: '',
         height: '170',
         weight: '60',
         hotpotType: [] as string[],
