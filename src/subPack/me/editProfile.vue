@@ -318,6 +318,7 @@ import { ref, computed, reactive, onMounted } from 'vue';
 import { hotpotTypeOptions, tasteOptions, motivationOptions, appState } from '@/utils/store';
 import { setProfileComplete } from '@/utils/auth';
 import { regionData, findRegionIndexes } from '@/utils/region-data';
+import { completeUserInfo, getUserInfo } from '@/api/api';
 
 const defaultAvatar = 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80';
 
@@ -337,22 +338,63 @@ const form = reactive({
     id: '',
 });
 
-// 初始化时从 appState 加载已有数据
-onMounted(() => {
-    const profile = appState.userProfile;
-    if (profile.nickname) form.nickname = profile.nickname;
-    if (profile.gender) form.gender = profile.gender;
-    if (profile.birthday) form.birthday = profile.birthday;
-    if (profile.height) form.height = profile.height;
-    if (profile.weight) form.weight = profile.weight;
-    if (profile.wechat) form.wechat = profile.wechat;
-    if (profile.avatar) form.avatar = profile.avatar;
-    if (profile.id) form.id = profile.id;
-    if (profile.location) form.location = profile.location;
-    // hotpotType/taste 在 store 中是数组，这里用字符串存储单选值
-    if (profile.hotpotType && profile.hotpotType.length > 0) form.hotpotType = profile.hotpotType[0];
-    if (profile.taste && profile.taste.length > 0) form.taste = profile.taste[0];
-    if (profile.motivation) form.motivation = profile.motivation;
+// 初始化时从接口获取已有数据，失败则回退 appState
+onMounted(async () => {
+    try {
+        const res: any = await getUserInfo();
+        // 兼容两种返回结构：直接平铺 或 包在 miniUserInfo 内
+        const d = res?.miniUserInfo || res || {};
+        // 回显字段映射
+        form.nickname = d.nickname || '';
+        form.gender = d.gender === 1 ? 'male' : d.gender === 2 ? 'female' : 'male';
+        form.birthday = d.birthday || '';
+        form.height = d.height != null ? String(d.height) : '178';
+        form.weight = d.weight != null ? String(d.weight) : '70';
+        form.wechat = d.wechat || '';
+        form.avatar = d.avatar || '';
+        form.id = d.id || d.userId || '';
+        // 标签：接口返回数字，通过索引映射回字符串
+        const htIdx = Number(d.hotpotType) - 1;
+        if (hotpotTypeOptions[htIdx]) form.hotpotType = hotpotTypeOptions[htIdx];
+        const tIdx = Number(d.taste) - 1;
+        if (tasteOptions[tIdx]) form.taste = tasteOptions[tIdx];
+        const mIdx = Number(d.motivation) - 1;
+        if (motivationOptions[mIdx]) form.motivation = motivationOptions[mIdx];
+        // 所在地：拼接 province/city/district
+        if (d.province || d.city || d.district) {
+            form.location = [d.province, d.city, d.district].filter(Boolean).join(' ');
+        }
+        // 同步到 appState
+        Object.assign(appState.userProfile, {
+            nickname: form.nickname,
+            gender: form.gender,
+            birthday: form.birthday,
+            height: form.height,
+            weight: form.weight,
+            hotpotType: form.hotpotType ? [form.hotpotType] : [],
+            taste: form.taste ? [form.taste] : [],
+            motivation: form.motivation,
+            wechat: form.wechat,
+            location: form.location,
+            avatar: form.avatar,
+            id: form.id,
+        });
+    } catch {
+        // 接口失败则读取本地 appState 缓存
+        const profile = appState.userProfile;
+        if (profile.nickname) form.nickname = profile.nickname;
+        if (profile.gender) form.gender = profile.gender;
+        if (profile.birthday) form.birthday = profile.birthday;
+        if (profile.height) form.height = profile.height;
+        if (profile.weight) form.weight = profile.weight;
+        if (profile.wechat) form.wechat = profile.wechat;
+        if (profile.avatar) form.avatar = profile.avatar;
+        if (profile.id) form.id = profile.id;
+        if (profile.location) form.location = profile.location;
+        if (profile.hotpotType && profile.hotpotType.length > 0) form.hotpotType = profile.hotpotType[0];
+        if (profile.taste && profile.taste.length > 0) form.taste = profile.taste[0];
+        if (profile.motivation) form.motivation = profile.motivation;
+    }
 });
 
 // 性别选项
@@ -671,31 +713,75 @@ const canSave = computed(() => {
     return form.nickname.trim() || true; // 至少要有昵称
 });
 
-function onSave() {
+async function onSave() {
     if (!form.nickname.trim()) {
         uni.showToast({ title: '请输入昵称', icon: 'none' });
         return;
     }
-    // 同步到全局状态
-    Object.assign(appState.userProfile, {
+
+    // 表单数据映射为接口参数
+    const genderMap: Record<string, number> = { male: 1, female: 2 };
+    const locationParts = (form.location || '').split(' ').filter(Boolean);
+    const params = {
         nickname: form.nickname,
-        gender: form.gender,
-        birthday: form.birthday,
-        height: form.height,
-        weight: form.weight,
-        hotpotType: form.hotpotType ? [form.hotpotType] : [],
-        taste: form.taste ? [form.taste] : [],
-        motivation: form.motivation,
-        wechat: form.wechat,
-        location: form.location,
-        avatar: form.avatar || appState.userProfile.avatar,
-    });
-    // 标记资料已完善
-    setProfileComplete(true);
-    uni.showToast({ title: '保存成功', icon: 'success' });
-    setTimeout(() => {
-        uni.navigateBack({ delta: 1 });
-    }, 800);
+        avatar: form.avatar || '',
+        gender: genderMap[form.gender] || 1,
+        birthday: form.birthday || '',
+        height: parseFloat(form.height) || 0,
+        weight: parseFloat(form.weight) || 0,
+        hotpotType: hotpotTypeOptions.indexOf(form.hotpotType) + 1,
+        taste: tasteOptions.indexOf(form.taste) + 1,
+        motivation: motivationOptions.indexOf(form.motivation) + 1,
+        wechat: form.wechat || '',
+        stageName: form.nickname,
+        province: locationParts[0] || '',
+        city: locationParts[1] || '',
+        district: locationParts[2] || '',
+        address: '',
+        lat: 0,
+        lng: 0,
+    };
+
+    try {
+        await completeUserInfo(params);
+
+        // 同步到全局状态
+        Object.assign(appState.userProfile, {
+            nickname: form.nickname,
+            gender: form.gender,
+            birthday: form.birthday,
+            height: form.height,
+            weight: form.weight,
+            hotpotType: form.hotpotType ? [form.hotpotType] : [],
+            taste: form.taste ? [form.taste] : [],
+            motivation: form.motivation,
+            wechat: form.wechat,
+            location: form.location,
+            avatar: form.avatar || appState.userProfile.avatar,
+        });
+        setProfileComplete(true);
+
+        uni.showToast({ title: '保存成功', icon: 'success' });
+        setTimeout(() => {
+            uni.navigateBack({ delta: 1 });
+        }, 800);
+    } catch {
+        // 接口失败时仍然更新本地状态
+        Object.assign(appState.userProfile, {
+            nickname: form.nickname,
+            gender: form.gender,
+            birthday: form.birthday,
+            height: form.height,
+            weight: form.weight,
+            hotpotType: form.hotpotType ? [form.hotpotType] : [],
+            taste: form.taste ? [form.taste] : [],
+            motivation: form.motivation,
+            wechat: form.wechat,
+            location: form.location,
+            avatar: form.avatar || appState.userProfile.avatar,
+        });
+        setProfileComplete(true);
+    }
 }
 
 // ========== 头像更换 ==========

@@ -6,7 +6,7 @@ interface RequestConfig {
 }
 
 const config: RequestConfig = {
-  baseURL: 'https://cost.xx.com',
+  baseURL: 'https://6xk50612jg50.vicp.fun/hotpot-api',
   timeout: 30000,
   header: {
     'Content-Type': 'application/json',
@@ -42,7 +42,8 @@ export default function request(
         if (res.statusCode === 200) {
           const result = res.data as any;
           if (result.code === 0 || result.code === 200) {
-            resolve(result.data);
+            // 部分接口无 data 字段（如登录接口平铺返回 token/miniUserInfo），此时返回整个响应体
+            resolve(result.data !== undefined && result.data !== null ? result.data : result);
           } else {
             uni.showToast({
               title: result.message || '请求失败',
@@ -59,6 +60,7 @@ export default function request(
         }
       },
       fail: (err) => {
+        console.error('[request fail]', url, JSON.stringify(err));
         uni.showToast({
           title: '网络连接失败',
           icon: 'none',

@@ -206,7 +206,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue';
 import { hotpotTypeOptions, tasteOptions, motivationOptions, appState } from '@/utils/store';
-
+import { completeUserInfo } from '@/api/api';
 import { setProfileComplete, isProfileComplete } from '@/utils/auth';
 
 const today = new Date();
@@ -490,26 +490,54 @@ async function onSubmit() {
         return;
     }
 
-    // TODO: 后端接口就绪后恢复API调用
-    // 临时跳过后端接口，直接更新本地状态
-    Object.assign(appState.userProfile, {
-        gender: form.gender,
-        birthday: form.birthday,
-        height: form.height,
-        weight: form.weight,
-        hotpotType: [form.hotpotType],
-        taste: [form.taste],
-        motivation: form.motivation,
-        wechat: form.wechat,
+    // 表单数据映射为接口参数
+    const genderMap: Record<string, number> = { male: 1, female: 2 };
+    const params = {
         nickname: form.nickname,
-    });
+        avatar: appState.userProfile.avatar || '',
+        gender: genderMap[form.gender] || 1,
+        birthday: form.birthday,
+        height: parseFloat(form.height),
+        weight: parseFloat(form.weight),
+        hotpotType: hotpotTypeOptions.indexOf(form.hotpotType) + 1,
+        taste: tasteOptions.indexOf(form.taste) + 1,
+        motivation: motivationOptions.indexOf(form.motivation) + 1,
+        wechat: form.wechat,
+        stageName: form.nickname,
+        province: '',
+        city: '',
+        district: '',
+        address: '',
+        lat: 0,
+        lng: 0,
+    };
 
-    setProfileComplete(true);
+    try {
+        const res = await completeUserInfo(params);
 
-    uni.showToast({ title: '保存成功', icon: 'success' });
-    setTimeout(() => {
-        uni.switchTab({ url: '/pages/tabBar/match' });
-    }, 800);
+        // 更新本地状态
+        Object.assign(appState.userProfile, {
+            gender: form.gender,
+            birthday: form.birthday,
+            height: form.height,
+            weight: form.weight,
+            hotpotType: [form.hotpotType],
+            taste: [form.taste],
+            motivation: form.motivation,
+            wechat: form.wechat,
+            nickname: form.nickname,
+            avatar: res.avatar || appState.userProfile.avatar,
+        });
+
+        setProfileComplete(true);
+
+        uni.showToast({ title: '保存成功', icon: 'success' });
+        setTimeout(() => {
+            uni.switchTab({ url: '/pages/tabBar/match' });
+        }, 800);
+    } catch (err) {
+        console.error('完善资料失败:', err);
+    }
 }
 </script>
 

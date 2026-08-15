@@ -407,6 +407,8 @@ const selectStore = async () => {
       uni.showToast({ title: '附近暂无火锅店', icon: 'none' });
     }
     storeList.value = stores;
+    console.log('通过高德地图周边搜索 API 获取附近火锅店===',stores);
+    
   } catch (err: any) {
     console.error('获取附近火锅店失败:', err);
     uni.showToast({ title: err.message || '获取附近火锅店失败，使用默认数据', icon: 'none' });
@@ -486,15 +488,6 @@ const confirmDateTime = () => {
 
 // 提交需求
 const submitRequirement = async () => {
-  // 验证必填项
-  if (!formData.value.storeId) {
-    uni.showToast({
-      title: '请选择火锅店',
-      icon: 'none',
-    });
-    return;
-  }
-
   if (!formData.value.dateTime) {
     uni.showToast({
       title: '请选择时间',
@@ -508,22 +501,22 @@ const submitRequirement = async () => {
       title: '提交中...',
     });
 
+    const genderMap: Record<string, number> = { male: 1, female: 2 };
+    const payTypeMap: Record<string, number> = { me: 0, AA: 1, other: 2 };
+
     const params = {
-      gender: formData.value.gender,
-      ageMin: formData.value.ageMin,
-      ageMax: formData.value.ageMax,
-      hotpotType: formData.value.hotpotType,
-      flavor: formData.value.flavor,
-      motivation: formData.value.motivation,
-      storeId: formData.value.storeId,
-      storeName: formData.value.storeName,
-      dateTime: formData.value.dateTime,
-      paymentMethod: formData.value.paymentMethod,
+      gender: genderMap[formData.value.gender],
+      ageRange: `${formData.value.ageMin},${formData.value.ageMax}`,
+      matchType: 1,
+      hotpotType: String(hotpotTypes.indexOf(formData.value.hotpotType)),
+      taste: String(flavors.indexOf(formData.value.flavor)),
+      motivation: String(motivations.indexOf(formData.value.motivation)),
+      meetingTime: formData.value.dateTime,
+      payType: payTypeMap[formData.value.paymentMethod],
     };
 
-    // 这里调用实际的 API
-    // const res = await postRequirement(params);
-    
+    await postRequirement(params);
+
     uni.hideLoading();
     uni.showToast({
       title: '发布成功',

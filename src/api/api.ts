@@ -3,7 +3,7 @@ import request from '@/utils/request';
 // 常量配置
 export const APP_CONFIG = {
   appid: 'wxdd83019598f922ec',
-  host: 'https://cost.xx.com/api',
+  host: 'https://6xk50612jg50.vicp.fun/hotpot-api',
 };
 
 // ============= 用户相关 API =============
@@ -24,9 +24,10 @@ export const updatePersonInfo = (data: any) => {
 
 /**
  * 微信登录
+ * 后端接口通过 @RequestParam 接收 code，需以 query 参数形式传递
  */
 export const wechatLogin = (data: { code: string }) => {
-  return request('/api/auth/wechat', 'POST', data);
+  return request(`/loginByWechat?code=${encodeURIComponent(data.code)}`, 'POST');
 };
 
 /**
@@ -49,14 +50,16 @@ export const sendSmsCode = (data: { phone: string }) => {
  * 发布匹配需求
  */
 export const postRequirement = (data: {
-  storeId: string;
-  time: string;
-  peopleCount: number;
-  gender?: string;
-  tags?: string[];
-  remark?: string;
+  gender: number;
+  ageRange: string;
+  matchType: number;
+  hotpotType: string;
+  taste: string;
+  motivation: string;
+  meetingTime: string;
+  payType: number;
 }) => {
-  return request('/api/match/publish', 'POST', data);
+  return request('/mini/demand/publish', 'POST', data);
 };
 
 /**
@@ -212,6 +215,38 @@ export const uploadImage = (filePath: string) => {
  */
 export const getAppConfig = () => {
   return request('/api/config', 'GET');
+};
+
+/**
+ * 获取用户信息（编辑资料回显）
+ */
+export const getUserInfo = () => {
+  return request('/mini/user/getUserInfo', 'GET');
+};
+
+/**
+ * 完善用户信息
+ */
+export const completeUserInfo = (data: {
+  nickname: string;
+  avatar: string;
+  gender: number;
+  birthday: string;
+  height: number;
+  weight: number;
+  hotpotType: number;
+  taste: number;
+  motivation: number;
+  wechat: string;
+  stageName: string;
+  province: string;
+  city: string;
+  district: string;
+  address: string;
+  lat: number;
+  lng: number;
+}) => {
+  return request('/mini/user/completeUserInfo', 'POST', data);
 };
 
 

@@ -23,6 +23,7 @@ import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import logoImg from '@/static/imgs/logo@3x.png';
 import { isLogin, isProfileComplete, setToken, setUserInfo, setProfileComplete } from '@/utils/auth';
+import { wechatLogin } from '@/api/api';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 const loading = ref(false);
@@ -38,28 +39,6 @@ onLoad(() => {
   }
 });
 
-// 模拟后端返回的登录数据（后续接入真实 API 后替换）
-const mockLoginApi = async (_code: string) => {
-  // 模拟网络延迟
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  return {
-    token: 'mock_token_' + Date.now(),
-    userInfo: {
-      id: 'user_001',
-      nickname: '火锅爱好者',
-      avatar: 'https://picsum.photos/200',
-      gender: 'male' as const,
-      age: 28,
-      tags: ['海底捞', '麻辣', '无肉不欢'],
-      intro: '喜欢和朋友们一起吃火锅',
-      balance: 100,
-      matchCount: 5,
-      isProfileComplete: true,
-    },
-  };
-};
-
 // 微信快捷登录
 const handleWechatLogin = async () => {
   loading.value = true;
@@ -74,13 +53,12 @@ const handleWechatLogin = async () => {
       throw new Error('获取微信授权失败');
     }
 
-    // 2. 模拟后端接口：用 code 换取 token 和用户信息
-    //    正式环境替换为: const result = await wechatLogin({ code: loginRes.code });
-    const result = await mockLoginApi(loginRes.code);
+    // 2. 用 code 换取 token 和用户信息
+    const result = await wechatLogin({ code: loginRes.code });
 
     // 3. 保存认证信息
     setToken(result.token);
-    setUserInfo(result.userInfo);
+    setUserInfo(result.miniUserInfo);
     setProfileComplete(false);
 
     uni.showToast({
