@@ -27,7 +27,7 @@
                         <view class="copy-btn" @click="copyId">
                             <image class="copy-icon" src="/static/imgs/file-copy-line.png" mode="aspectFit"></image>
                         </view>
-                        <text class="desc-text">地址：{{ userInfo.address || '美景大厦' }}</text>
+                        <text class="desc-text desc-address">地址：{{ userInfo.address || '美景大厦' }}</text>
                     </view>
                 </view>
             </view>
@@ -251,6 +251,12 @@ const goEditProfile = () => {
     font-size: 24rpx;
     color: rgba(255, 255, 255, 0.75);
     white-space: nowrap;
+}
+
+.desc-address {
+    width: 300rpx;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .copy-btn {

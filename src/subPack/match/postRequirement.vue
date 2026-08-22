@@ -239,6 +239,8 @@ const statusBarHeight = ref(0);
 const storePopupVisible = ref(false);
 const storeList = ref<Store[]>([]);
 const storeLoading = ref(false);
+// 当前选中的店铺（用于提交 shop 字段）
+const selectedStore = ref<Store | null>(null);
 
 // 表单数据
 const formData = ref({
@@ -408,7 +410,13 @@ const selectStore = async () => {
     }
     storeList.value = stores;
     console.log('通过高德地图周边搜索 API 获取附近火锅店===',stores);
-    
+    //存shop字段
+      // [{ "address": "位中心84197号",
+  //       "distance": "sit Ut in irure in",
+  //       "id": "B0L0BHTZCM",
+  //       "name": "建一全",
+  //       "image": "https://loremflickr.com/400/400?lock=5206352026233355",
+  //       "rating": "3.2"}]
   } catch (err: any) {
     console.error('获取附近火锅店失败:', err);
     uni.showToast({ title: err.message || '获取附近火锅店失败，使用默认数据', icon: 'none' });
@@ -423,6 +431,7 @@ const selectStore = async () => {
 const onStoreSelect = (store: Store) => {
   formData.value.storeId = store.id;
   formData.value.storeName = store.name;
+  selectedStore.value = store;
 };
 
 // 显示日期时间选择器弹窗
@@ -504,18 +513,40 @@ const submitRequirement = async () => {
     const genderMap: Record<string, number> = { male: 1, female: 2 };
     const payTypeMap: Record<string, number> = { me: 0, AA: 1, other: 2 };
 
+    const shop:
+      | {
+          id: string;
+          name: string;
+          address: string;
+          distance: string;
+          image: string;
+          rating: string;
+        }
+      | Record<string, never> = selectedStore.value
+      ? {
+          id: selectedStore.value.id,
+          name: selectedStore.value.name,
+          address: selectedStore.value.address,
+          distance: selectedStore.value.distance,
+          image: selectedStore.value.image,
+          rating: String(selectedStore.value.rating),
+        }
+      : {};
+
     const params = {
-      gender: genderMap[formData.value.gender],
+      gender: String(genderMap[formData.value.gender] ?? 1),
       ageRange: `${formData.value.ageMin},${formData.value.ageMax}`,
-      matchType: 1,
+      matchType: '1',
       hotpotType: String(hotpotTypes.indexOf(formData.value.hotpotType)),
-      taste: String(flavors.indexOf(formData.value.flavor)),
+      taste: String(flavors.indexOf(formData.value.flavor) + 1),
       motivation: String(motivations.indexOf(formData.value.motivation)),
+      shop,
       meetingTime: formData.value.dateTime,
-      payType: payTypeMap[formData.value.paymentMethod],
+      payType: String(payTypeMap[formData.value.paymentMethod] ?? ''),
     };
 
-    await postRequirement(params);
+    const res = await postRequirement(params);
+    const demandId = res?.demandId || '';
 
     uni.hideLoading();
     uni.showToast({
@@ -523,10 +554,10 @@ const submitRequirement = async () => {
       icon: 'success',
     });
 
-    // 跳转到匹配成功页面
+    // 跳转到匹配成功页面（携带需求ID，用于拉取推荐用户）
     setTimeout(() => {
-      uni.navigateTo({
-        url: '/subPack/match/matchSuccess',
+      uni.redirectTo({
+        url: `/subPack/match/matchSuccess?demandId=${encodeURIComponent(demandId)}`,
       });
     }, 1500);
   } catch (error: any) {

@@ -27,21 +27,21 @@ export const updatePersonInfo = (data: any) => {
  * 后端接口通过 @RequestParam 接收 code，需以 query 参数形式传递
  */
 export const wechatLogin = (data: { code: string }) => {
-  return request(`/loginByWechat?code=${encodeURIComponent(data.code)}`, 'POST');
+  return request(`/loginByWechat?code=${encodeURIComponent(data.code)}`, 'POST', undefined, { noAuth: true });
 };
 
 /**
  * 手机号登录
  */
 export const phoneLogin = (data: { phone: string; code: string }) => {
-  return request('/api/auth/phone', 'POST', data);
+  return request('/api/auth/phone', 'POST', data, { noAuth: true });
 };
 
 /**
  * 发送验证码
  */
 export const sendSmsCode = (data: { phone: string }) => {
-  return request('/api/auth/sms', 'POST', data);
+  return request('/api/auth/sms', 'POST', data, { noAuth: true });
 };
 
 // ============= 匹配相关 API =============
@@ -50,14 +50,24 @@ export const sendSmsCode = (data: { phone: string }) => {
  * 发布匹配需求
  */
 export const postRequirement = (data: {
-  gender: number;
+  gender: string;
   ageRange: string;
-  matchType: number;
+  matchType: string;
   hotpotType: string;
   taste: string;
   motivation: string;
+  shop:
+    | {
+        id: string;
+        name: string;
+        address: string;
+        distance: string;
+        image: string;
+        rating: string;
+      }
+    | Record<string, never>;
   meetingTime: string;
-  payType: number;
+  payType: string;
 }) => {
   return request('/mini/demand/publish', 'POST', data);
 };
@@ -67,6 +77,23 @@ export const postRequirement = (data: {
  */
 export const getMatchList = (data?: { page?: number; pageSize?: number }) => {
   return request('/api/match/list', 'GET', data);
+};
+
+/**
+ * 获取推荐用户列表（匹配成功后）
+ */
+export const getMatchRecommend = (data: { demandId: string }) => {
+  return request('/mini/match/recommend', 'GET', data);
+};
+
+/**
+ * 解锁匹配用户（创建匹配关系），参数以 query 形式拼在地址栏
+ */
+export const createMatch = (data: { demandId: string; matchUserId: number | string }) => {
+  return request(
+    `/mini/match/create?demandId=${encodeURIComponent(data.demandId)}&matchUserId=${encodeURIComponent(String(data.matchUserId))}`,
+    'POST',
+  );
 };
 
 /**

@@ -51,16 +51,26 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 
 const duration = ref(20);
 const statusText = ref('正在匹配...');
 
 let matchTimer: any = null;
+let demandId = '';
+
+// 接收发布需求后返回的 demandId，匹配成功后传递给匹配页
+onLoad((options) => {
+    demandId = (options as any)?.demandId || '';
+});
 
 onMounted(() => {
     matchTimer = setTimeout(() => {
         statusText.value = '匹配成功！';
         uni.setStorageSync('showMatchSuccessModal', true);
+        if (demandId) {
+            uni.setStorageSync('matchSuccessDemandId', demandId);
+        }
         setTimeout(() => {
             uni.navigateBack();
         }, 800);

@@ -4,7 +4,7 @@
             <text class="title">恭喜盲盒影友匹配成功，点击解锁影友吧~</text>
 
             <view class="user-list">
-                <view v-for="(user, index) in userList" :key="index" class="user-item" @click="handleUserClick(user)">
+                <view v-for="(user, index) in list" :key="index" class="user-item" @click="handleUserClick(user)">
                     <view class="avatar-wrapper" :class="{ locked: user.status === 'locked' }">
                         <image :src="user.avatar" mode="aspectFill" class="avatar"></image>
                         <image v-if="user.status === 'locked'" src="/static/imgs/lock-icon.png" mode="aspectFit" class="lock-icon"></image>
@@ -19,7 +19,8 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+import { ref, watch } from 'vue';
+import { getMatchRecommend, createMatch } from '@/api/api';
 
 const props = defineProps({
     visible: {
@@ -47,13 +48,95 @@ const props = defineProps({
             },
         ],
     },
+    // 发布需求后返回的需求ID，用于拉取推荐用户列表
+    demandId: {
+        type: String,
+        default: '',
+    },
 });
 
 const emit = defineEmits(['close', 'unlock']);
 
-const handleUserClick = (user) => {
-    if (user.status === 'locked') {
+// 弹窗内展示的用户列表（优先使用推荐接口数据）
+const list = ref([...props.userList]);
+
+watch(
+    () => props.userList,
+    (val) => {
+        if (val && val.length) {
+            list.value = val;
+        }
+    },
+    { immediate: true },
+);
+
+watch(
+    () => props.visible,
+    (val) => {
+        if (val) {
+            if (props.demandId) {
+                fetchRecommend();
+            } else {
+                list.value = props.userList;
+            }
+        }
+    },
+    { immediate: true },
+);
+
+// 根据 demandId 获取推荐用户列表
+const fetchRecommend = async () => {
+    try {
+        const res = await getMatchRecommend({ demandId: props.demandId });
+        // request 已解包 data，返回即用户数组；仍兼容 list/users/data 等结构
+        const users = Array.isArray(res) ? res : res?.list || res?.users || res?.data || [];
+        if (Array.isArray(users) && users.length) {
+            list.value = users.map((user) => ({
+                id: user.userId || user.id,
+                avatar: user.avatar || 'https://picsum.photos/200',
+                nickname: user.nickname || user.stageName || '',
+                stageName: user.stageName || '',
+                sex: user.sex,
+                age: user.age,
+                height: user.height,
+                weight: user.weight,
+                distance: user.distance,
+                status: 'locked',
+                statusText: '点击解锁',
+            }));
+        }
+    } catch {
+        // 拉取失败时保留默认/兜底列表
+    }
+};
+
+// 点击解锁：调用 createMatch 创建匹配关系，成功后等待对方同意
+const handleUserClick = async (user) => {
+    if (user.status !== 'locked' || user.unlocking) {
+        return;
+    }
+    if (!props.demandId || !user.id) {
         emit('unlock', user);
+        return;
+    }
+
+    user.unlocking = true;
+    try {
+        await createMatch({
+            demandId: props.demandId,
+            matchUserId: user.id,
+        });
+        user.status = 'pending';
+        user.statusText = '已发送申请';
+        user.subStatusText = '等待对方同意';
+    } catch {
+        // 申请失败不改变状态，可再次点击
+        uni.showToast({
+            title: '解锁失败，请重试',
+            icon: 'none',
+        });
+    } finally {
+        user.unlocking = false;
     }
 };
 </script>

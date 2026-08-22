@@ -5,6 +5,11 @@ interface RequestConfig {
   header?: Record<string, string>;
 }
 
+// 请求选项，noAuth 为 true 时不携带 token（如登录、发送验证码等）
+export interface RequestOptions {
+  noAuth?: boolean;
+}
+
 const config: RequestConfig = {
   baseURL: 'https://6xk50612jg50.vicp.fun/hotpot-api',
   timeout: 30000,
@@ -23,21 +28,24 @@ const config: RequestConfig = {
 export default function request(
   url: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'get' | 'post' | 'put' | 'delete' = 'GET',
-  data?: any
+  data?: any,
+  options: RequestOptions = {}
 ): Promise<any> {
   return new Promise((resolve, reject) => {
     // 获取token
     const token = uni.getStorageSync('token') || '';
+    const header: Record<string, string> = { ...config.header };
+    // 除登录等无需鉴权接口外，其他接口一律携带 token
+    if (!options.noAuth && token) {
+      header.Authorization = `Bearer ${token}`;
+    }
     
     uni.request({
       url: config.baseURL + url,
       method: method.toUpperCase() as any,
       data,
       timeout: config.timeout,
-      header: {
-        ...config.header,
-        Authorization: token ? `Bearer ${token}` : '',
-      },
+      header,
       success: (res) => {
         if (res.statusCode === 200) {
           const result = res.data as any;

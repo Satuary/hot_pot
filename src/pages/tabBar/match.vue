@@ -42,7 +42,7 @@
             </view>
         </view>
     </view>
-    <MatchSuccessModal :visible="showMatchModal" :user-list="matchedUsers" @close="handleCloseModal" @unlock="handleUnlock" />
+    <MatchSuccessModal :visible="showMatchModal" :user-list="matchedUsers" :demand-id="matchedDemandId" @close="handleCloseModal" @unlock="handleUnlock" />
     <BlindBoxPopup ref="blindBoxPopup" />
     <MatchIntroModal :visible="showIntroModal" @close="handleCloseIntroModal" />
     <MatchConfirmModal
@@ -71,10 +71,12 @@ import MatchIntroModal from '@/components/MatchIntroModal.vue';
 import MatchConfirmModal from '@/components/MatchConfirmModal.vue';
 import LocationPickerPopup from '@/components/LocationPickerPopup.vue';
 import type { LocationItem } from '@/components/LocationPickerPopup.vue';
-import { getPendingRequests, acceptRequest, rejectRequest } from '@/api/api';
+import { getPendingRequests, acceptRequest, rejectRequest, completeUserInfo } from '@/api/api';
 import { getUserLocation, reverseGeocode } from '@/utils/map';
+import { appState, hotpotTypeOptions, tasteOptions, motivationOptions } from '@/utils/store';
 
 const showMatchModal = ref(false);
+const matchedDemandId = ref('');
 const showIntroModal = ref(false);
 const blindBoxPopup = ref<InstanceType<typeof BlindBoxPopup> | null>(null);
 const matchedUsers = ref([
@@ -200,6 +202,9 @@ onShow(() => {
     const showModal = uni.getStorageSync('showMatchSuccessModal');
     if (showModal) {
         uni.removeStorageSync('showMatchSuccessModal');
+        const demandId = uni.getStorageSync('matchSuccessDemandId');
+        uni.removeStorageSync('matchSuccessDemandId');
+        matchedDemandId.value = demandId || '';
         showMatchModal.value = true;
     }
     const hasSeenIntro = uni.getStorageSync('hasSeenMatchIntro');
@@ -234,11 +239,48 @@ const autoLocate = async () => {
     uni.setStorageSync('user_location_name', desc);
     // 同时缓存坐标
     uni.setStorageSync('user_location_coord', JSON.stringify(loc));
+    // 获取到经纬度时同步位置信息到服务端
+    syncLocationToServer(loc, addr);
   } catch {
     // 定位失败则不更新，保留缓存值或兜底
     if (location.value === '正在定位...') {
       location.value = '定位失败，点击重试';
     }
+  }
+};
+
+// 定位成功后调用 completeUserInfo 接口同步位置
+const syncLocationToServer = async (
+  loc: { longitude: number; latitude: number },
+  addr: {
+    formattedAddress: string;
+    addressComponent: { province: string; city: string; district: string };
+  },
+) => {
+  const profile = appState.userProfile;
+  const genderMap: Record<string, number> = { male: 1, female: 2 };
+  try {
+    await completeUserInfo({
+      nickname: profile.nickname || '',
+      avatar: profile.avatar || '',
+      gender: genderMap[profile.gender] || 1,
+      birthday: profile.birthday || '',
+      height: parseFloat(profile.height) || 0,
+      weight: parseFloat(profile.weight) || 0,
+      hotpotType: hotpotTypeOptions.indexOf(profile.hotpotType[0] || '') + 1,
+      taste: tasteOptions.indexOf(profile.taste[0] || '') + 1,
+      motivation: motivationOptions.indexOf(profile.motivation || '') + 1,
+      wechat: profile.wechat || '',
+      stageName: profile.nickname || '',
+      province: addr.addressComponent.province || '',
+      city: addr.addressComponent.city || '',
+      district: addr.addressComponent.district || '',
+      address: addr.formattedAddress || '',
+      lat: loc.latitude,
+      lng: loc.longitude,
+    });
+  } catch {
+    // 同步失败不影响页面展示
   }
 };
 
