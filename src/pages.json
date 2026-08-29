@@ -182,16 +182,22 @@
         "backgroundColor": "#000000",
         "list": [
             {
+                "text": "匹配",
                 "pagePath": "pages/tabBar/match",
-                "text": "匹配"
+                "iconPath": "static/tabBarIcon/huoguo1.png",
+                "selectedIconPath": "static/tabBarIcon/huoguo1-active.png"
             },
             {
+                "text": "查看",
                 "pagePath": "pages/tabBar/view",
-                "text": "查看"
+                "iconPath": "static/tabBarIcon/chakan1.png",
+                "selectedIconPath": "static/tabBarIcon/chakan1-active.png"
             },
             {
+                "text": "我",
                 "pagePath": "pages/tabBar/me",
-                "text": "我"
+                "iconPath": "static/tabBarIcon/a-wode.png",
+                "selectedIconPath": "static/tabBarIcon/a-wode-active.png"
             }
         ]
     },

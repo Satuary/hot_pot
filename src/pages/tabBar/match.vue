@@ -9,9 +9,13 @@
                     <text class="location-text">{{ location }}</text>
                 </view>
 
-                <!-- 右侧开关 -->
-                <view class="toggle-switch" :class="{ active: isToggleOn }" :style="{ marginRight: capsuleRightMargin + 'px' }" @click="toggleSwitch">
-                    <view class="toggle-circle"></view>
+                <!-- 右侧匹配开关（胶囊：状态点 + 文字 + 开关） -->
+                <view class="match-toggle" :class="{ active: isToggleOn }" :style="{ marginRight: capsuleRightMargin + 'px' }" @click="toggleSwitch">
+                    <view class="status-dot"></view>
+                    <text class="status-text">{{ isToggleOn ? '匹配中' : '已关闭' }}</text>
+                    <view class="toggle-switch">
+                        <view class="toggle-circle"></view>
+                    </view>
                 </view>
             </view>
         </view>
@@ -555,41 +559,82 @@ const goToBlindMatch = () => {
         }
     }
 
-    // 右侧开关
-    .toggle-switch {
-        width: 100rpx;
-        height: 52rpx;
-        border-radius: 26rpx;
-        background: linear-gradient(270deg, #58b4ff 0%, #c927ff 100%);
-        position: relative;
+    // 右侧匹配开关胶囊
+    .match-toggle {
+        display: flex;
+        align-items: center;
+        gap: 12rpx;
+        height: 56rpx;
+        padding: 0 16rpx 0 20rpx;
+        border-radius: 28rpx;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1rpx solid rgba(255, 255, 255, 0.15);
         transition: all 0.3s ease;
 
-        &.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
-            .toggle-circle {
-                transform: translateX(48rpx);
-            }
+        &:active {
+            transform: scale(0.96);
         }
 
-        &:not(.active) {
-            background: rgba(255, 255, 255, 0.3);
-
-            .toggle-circle {
-                transform: translateX(4rpx);
-            }
-        }
-
-        .toggle-circle {
-            position: absolute;
-            top: 4rpx;
-            left: 0;
-            width: 44rpx;
-            height: 44rpx;
+        // 状态指示点
+        .status-dot {
+            width: 14rpx;
+            height: 14rpx;
             border-radius: 50%;
-            background: #ffffff;
-            transition: transform 0.3s ease;
-            box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        // 状态文字
+        .status-text {
+            font-size: 24rpx;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.6);
+            transition: color 0.3s ease;
+        }
+
+        // 开关本体
+        .toggle-switch {
+            width: 72rpx;
+            height: 40rpx;
+            border-radius: 20rpx;
+            background: rgba(255, 255, 255, 0.3);
+            position: relative;
+            transition: background 0.3s ease;
+
+            .toggle-circle {
+                position: absolute;
+                top: 4rpx;
+                left: 4rpx;
+                width: 32rpx;
+                height: 32rpx;
+                border-radius: 50%;
+                background: #ffffff;
+                transition: transform 0.3s ease;
+                box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        // 开启状态
+        &.active {
+            background: rgba(88, 180, 255, 0.15);
+            border-color: rgba(88, 180, 255, 0.4);
+
+            .status-dot {
+                background: #52e39a;
+                box-shadow: 0 0 8rpx rgba(82, 227, 154, 0.8);
+            }
+
+            .status-text {
+                color: #ffffff;
+            }
+
+            .toggle-switch {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+                .toggle-circle {
+                    transform: translateX(32rpx);
+                }
+            }
         }
     }
 }
