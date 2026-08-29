@@ -3,7 +3,7 @@ import request from '@/utils/request';
 // 常量配置
 export const APP_CONFIG = {
   appid: 'wxdd83019598f922ec',
-  host: 'https://6xk50612jg50.vicp.fun/hotpot-api',
+  host: 'http://159.75.239.8:9090/hotpot-api',
 };
 
 // ============= 用户相关 API =============
@@ -84,6 +84,34 @@ export const getMatchList = (data?: { page?: number; pageSize?: number }) => {
  */
 export const getMatchRecommend = (data: { demandId: string }) => {
   return request('/mini/match/recommend', 'GET', data);
+};
+
+/**
+ * 获取匹配记录详情
+ */
+export const getMatchDetail = (data: { recordId: string }) => {
+  return request('/mini/match/detail', 'GET', data);
+};
+
+/**
+ * 同意匹配（POST，recordId 拼在地址栏）
+ */
+export const confirmMatchRecord = (data: { recordId: string }) => {
+  return request(`/mini/match/confirm?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
+};
+
+/**
+ * 拒绝匹配（POST，recordId 拼在地址栏）
+ */
+export const rejectMatchRecord = (data: { recordId: string }) => {
+  return request(`/mini/match/reject?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
+};
+
+/**
+ * 取消匹配（POST，recordId 拼在地址栏）
+ */
+export const cancelMatchRecord = (data: { recordId: string }) => {
+  return request(`/mini/match/cancel?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
 };
 
 /**
@@ -185,6 +213,64 @@ export const acceptRequest = (data: { requestId: string }) => {
  */
 export const rejectRequest = (data: { requestId: string }) => {
   return request('/api/match/reject', 'POST', data);
+};
+
+// ============= 联系方式交换相关 API =============
+
+/**
+ * 请求交换电话（POST）
+ */
+export const applyPhoneExchange = (data: { matchId: string }) => {
+  return request('/mini/match/phone/apply', 'POST', data);
+};
+
+/**
+ * 同意电话申请（POST）
+ */
+export const approvePhoneExchange = (data: { matchId: string }) => {
+  return request('/mini/match/phone/approve', 'POST', data);
+};
+
+/**
+ * 拒绝电话申请（POST）
+ */
+export const rejectPhoneExchange = (data: { matchId: string }) => {
+  return request('/mini/match/phone/reject', 'POST', data);
+};
+
+/**
+ * 查看对方电话（GET，参数拼在地址栏）
+ */
+export const viewPartnerPhone = (data: { matchId: string }) => {
+  return request(`/mini/match/phone/view?matchId=${encodeURIComponent(data.matchId)}`, 'GET');
+};
+
+/**
+ * 查看对方微信（GET，参数拼在地址栏）
+ */
+export const viewPartnerWechat = (data: { matchId: string }) => {
+  return request(`/mini/match/wechat/view?matchId=${encodeURIComponent(data.matchId)}`, 'GET');
+};
+
+/**
+ * 请求交换微信（POST）
+ */
+export const applyWechatExchange = (data: { matchId: string }) => {
+  return request('/mini/match/wechat/apply', 'POST', data);
+};
+
+/**
+ * 同意交换微信（POST）
+ */
+export const approveWechatExchange = (data: { matchId: string }) => {
+  return request('/mini/match/wechat/approve', 'POST', data);
+};
+
+/**
+ * 拒绝交换微信（POST）
+ */
+export const rejectWechatExchange = (data: { matchId: string }) => {
+  return request('/mini/match/wechat/reject', 'POST', data);
 };
 
 // ============= 支付相关 API =============

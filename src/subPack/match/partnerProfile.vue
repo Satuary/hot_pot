@@ -52,14 +52,14 @@
 
             <!-- 交换联系方式 -->
             <view class="contact-bar" v-if="showContactBar">
-                <view class="contact-item">
+                <view class="contact-item" @click="handlePhoneClick">
                     <image class="contact-icon" src="/static/imgs/dh.png" mode="aspectFit"></image>
-                    <text class="contact-text">请求交换电话</text>
+                    <text class="contact-text">{{ phoneText }}</text>
                 </view>
                 <view class="contact-divider"></view>
-                <view class="contact-item">
+                <view class="contact-item" @click="handleWechatClick">
                     <image class="contact-icon" src="/static/imgs/wx.png" mode="aspectFit"></image>
-                    <text class="contact-text">点击查看</text>
+                    <text class="contact-text">{{ wechatText }}</text>
                 </view>
             </view>
         </view>
@@ -67,11 +67,49 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
+import {
+    applyPhoneExchange,
+    viewPartnerPhone,
+    applyWechatExchange,
+    viewPartnerWechat,
+} from '@/api/api';
 
 const statusBarHeight = ref(0);
 const showContactBar = ref(false);
+const matchId = ref('');
+
+// 电话交换状态：idle-未申请  applied-已申请待对方同意  viewed-已可查看
+const phoneStatus = ref<'idle' | 'applied' | 'viewed'>('idle');
+// 微信交换状态：idle-未交换  applied-已申请待对方同意  viewed-已可查看
+const wechatStatus = ref<'idle' | 'applied' | 'viewed'>('idle');
+
+// 请求进行中标记，防止重复点击
+const phoneSubmitting = ref(false);
+const wechatSubmitting = ref(false);
+
+const phoneText = computed(() => {
+    switch (phoneStatus.value) {
+        case 'applied':
+            return '已申请，等待同意';
+        case 'viewed':
+            return '查看对方电话';
+        default:
+            return '请求交换电话';
+    }
+});
+
+const wechatText = computed(() => {
+    switch (wechatStatus.value) {
+        case 'applied':
+            return '已申请，等待同意';
+        case 'viewed':
+            return '查看对方微信';
+        default:
+            return '点击查看';
+    }
+});
 
 // 获取状态栏高度
 const systemInfo = uni.getSystemInfoSync();
@@ -80,8 +118,104 @@ statusBarHeight.value = systemInfo.statusBarHeight || 30;
 onLoad((options: any) => {
     if (options?.from === 'view') {
         showContactBar.value = true;
+        // 联系方式交换接口均以 matchId 为参数，优先取地址栏，其次兜底本地存储的匹配记录ID
+        matchId.value = options?.matchId || options?.id || uni.getStorageSync('recordId') || '';
     }
 });
+
+// 展示联系方式，支持一键复制
+function showContactModal(title: string, value: string) {
+    if (!value) {
+        uni.showToast({ title: '暂未获取到联系方式', icon: 'none' });
+        return;
+    }
+    uni.showModal({
+        title,
+        content: `${title}：${value}`,
+        confirmText: '复制',
+        showCancel: false,
+        success: () => {
+            uni.setClipboardData({ data: value });
+        },
+    });
+}
+
+// 从接口返回中提取手机号
+function extractPhone(res: any): string {
+    return res?.phone || res?.mobile || res?.phoneNumber || '';
+}
+
+// 从接口返回中提取微信号
+function extractWechat(res: any): string {
+    return res?.wechat || res?.wechatId || res?.wxId || '';
+}
+
+// 点击电话项：未申请则发起申请，已申请/已可查看则尝试查看对方电话
+async function handlePhoneClick() {
+    if (!matchId.value) {
+        uni.showToast({ title: '暂无匹配记录', icon: 'none' });
+        return;
+    }
+    if (phoneSubmitting.value) return;
+    phoneSubmitting.value = true;
+    try {
+        if (phoneStatus.value === 'idle') {
+            await applyPhoneExchange({ matchId: matchId.value });
+            phoneStatus.value = 'applied';
+            uni.showToast({ title: '已发送电话交换申请', icon: 'success' });
+        } else {
+            const res = await viewPartnerPhone({ matchId: matchId.value });
+            phoneStatus.value = 'viewed';
+            showContactModal('对方电话', extractPhone(res));
+        }
+    } catch {
+        // 查看失败说明对方尚未同意，接口错误已由 request 统一提示
+        if (phoneStatus.value !== 'idle') {
+            uni.showToast({ title: '对方还未同意，请耐心等待', icon: 'none' });
+        }
+    } finally {
+        phoneSubmitting.value = false;
+    }
+}
+
+// 点击微信项：未交换时先尝试查看，失败则引导发起交换申请
+async function handleWechatClick() {
+    if (!matchId.value) {
+        uni.showToast({ title: '暂无匹配记录', icon: 'none' });
+        return;
+    }
+    if (wechatSubmitting.value) return;
+    wechatSubmitting.value = true;
+    try {
+        const res = await viewPartnerWechat({ matchId: matchId.value });
+        wechatStatus.value = 'viewed';
+        showContactModal('对方微信', extractWechat(res));
+    } catch {
+        // 尚未建立交换：引导用户发起微信交换申请
+        if (wechatStatus.value !== 'applied') {
+            uni.showModal({
+                title: '交换微信',
+                content: '尚未交换微信，是否向对方发起交换申请？',
+                confirmText: '申请',
+                success: async (res) => {
+                    if (res.confirm) {
+                        try {
+                            await applyWechatExchange({ matchId: matchId.value });
+                            wechatStatus.value = 'applied';
+                            uni.showToast({ title: '已发送微信交换申请', icon: 'success' });
+                        } catch {
+                            // 申请失败错误已由 request 统一提示
+                        }
+                    }
+                },
+            });
+        } else {
+            uni.showToast({ title: '对方还未同意，请耐心等待', icon: 'none' });
+        }
+    } finally {
+        wechatSubmitting.value = false;
+    }
+}
 
 function goBack() {
     uni.navigateBack();

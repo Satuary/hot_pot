@@ -17,7 +17,8 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+import { ref } from 'vue';
+import { confirmMatchRecord, rejectMatchRecord } from '@/api/api';
 
 const props = defineProps({
     visible: {
@@ -32,7 +33,7 @@ const props = defineProps({
         type: String,
         default: '系统把你推给我啦，咱俩的观影偏好超搭！这感觉就像拆盲盒开出了心心念念的隐藏款~要不要约一部片，沉浸式体验一场只属于我们的观影时光？',
     },
-    requestId: {
+    recordId: {
         type: String,
         default: '',
     },
@@ -40,17 +41,42 @@ const props = defineProps({
 
 const emit = defineEmits(['cancel', 'confirm']);
 
-const handleCancel = () => {
-    emit('cancel');
+// 请求进行中，防止重复点击
+const submitting = ref(false);
+
+const handleCancel = async () => {
+    if (submitting.value) return;
+    submitting.value = true;
+    try {
+        if (props.recordId) {
+            await rejectMatchRecord({ recordId: props.recordId });
+        }
+        emit('cancel');
+    } catch {
+        // 失败提示已由 request 统一处理，不关闭弹窗，可重试
+    } finally {
+        submitting.value = false;
+    }
 };
 
-const handleConfirm = () => {
-    emit('confirm');
+const handleConfirm = async () => {
+    if (submitting.value) return;
+    submitting.value = true;
+    try {
+        if (props.recordId) {
+            await confirmMatchRecord({ recordId: props.recordId });
+        }
+        emit('confirm');
+    } catch {
+        // 失败提示已由 request 统一处理，不关闭弹窗，可重试
+    } finally {
+        submitting.value = false;
+    }
 };
 
 const goPartnerProfile = () => {
     uni.navigateTo({
-        url: `/subPack/match/partnerProfile?id=${props.requestId}`,
+        url: `/subPack/match/partnerProfile?id=${props.recordId}`,
     });
 };
 </script>

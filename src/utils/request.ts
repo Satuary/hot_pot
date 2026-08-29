@@ -11,7 +11,7 @@ export interface RequestOptions {
 }
 
 const config: RequestConfig = {
-  baseURL: 'https://6xk50612jg50.vicp.fun/hotpot-api',
+  baseURL: 'http://159.75.239.8:9090/hotpot-api',
   timeout: 30000,
   header: {
     'Content-Type': 'application/json',

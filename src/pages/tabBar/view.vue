@@ -46,7 +46,7 @@
           <view class="countdown-digit">{{ countdownStr[2] }}</view>
           <view class="countdown-digit">{{ countdownStr[3] }}</view>
         </view>
-        <view class="waiting-cancel" @click="closeWaitingPopup">取消</view>
+        <view class="waiting-cancel" @click="handleCancelMatch">取消</view>
       </view>
     </view>
 
@@ -95,9 +95,11 @@
 import { ref, computed, onUnmounted } from 'vue';
 import { onShow, onHide } from '@dcloudio/uni-app';
 import { isLogin, isProfileComplete } from '@/utils/auth';
+import { getMatchDetail, cancelMatchRecord } from '@/api/api';
 
 const showWaitingPopup = ref(false);
 const remainingSeconds = ref(10 * 60); // 默认 10 分钟倒计时
+const recordId = ref('');
 let countdownTimer = null;
 
 const countdownStr = computed(() => {
@@ -123,7 +125,7 @@ function startCountdown() {
 }
 
 function goToPartnerProfile() {
-  uni.navigateTo({ url: '/subPack/match/partnerProfile?from=view' });
+  uni.navigateTo({ url: `/subPack/match/partnerProfile?from=view&matchId=${recordId.value}` });
 }
 
 function closeWaitingPopup() {
@@ -132,6 +134,18 @@ function closeWaitingPopup() {
     clearInterval(countdownTimer);
     countdownTimer = null;
   }
+}
+
+// 取消匹配：调用取消接口后关闭等待弹窗
+async function handleCancelMatch() {
+  if (recordId.value) {
+    try {
+      await cancelMatchRecord({ recordId: recordId.value });
+    } catch {
+      // 取消失败不阻塞关闭弹窗，错误提示已由 request 统一处理
+    }
+  }
+  closeWaitingPopup();
 }
 
 onShow(() => {
@@ -152,7 +166,30 @@ onShow(() => {
     showWaitingPopup.value = true;
     startCountdown();
   }
+
+  // 读取匹配成功后传递的匹配记录ID
+  const storedRecordId = uni.getStorageSync('recordId');
+  if (storedRecordId) {
+    uni.removeStorageSync('recordId');
+    recordId.value = storedRecordId;
+    fetchMatchDetail();
+  }
 });
+
+// 请求匹配详情，成功后显示等待对方同意弹窗
+const fetchMatchDetail = async () => {
+  if (!recordId.value) {
+    return;
+  }
+  try {
+    await getMatchDetail({ recordId: recordId.value });
+    remainingSeconds.value = 10 * 60;
+    showWaitingPopup.value = true;
+    startCountdown();
+  } catch {
+    // 请求失败不显示弹窗
+  }
+};
 
 onHide(() => {
   if (countdownTimer) {

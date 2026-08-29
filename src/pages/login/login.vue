@@ -12,6 +12,17 @@
         <text class="btn-text">快捷登录</text>
       </view>
       <text class="register-hint" @click="goToPhoneLogin">使用验证码登录</text>
+
+      <!-- 用户协议 -->
+      <view class="agreement-box" @click="toggleAgreement">
+        <view class="checkbox" :class="{ checked: agreed }">
+          <text v-if="agreed" class="check-icon">✓</text>
+        </view>
+        <text class="agreement-text">已阅读并同意</text>
+        <text class="link" @click.stop="showUserAgreement">用户协议</text>
+        <text class="agreement-text">和</text>
+        <text class="link" @click.stop="showPrivacy">隐私政策</text>
+      </view>
     </view>
 
     <LoadingOverlay :visible="loading" text="登录中..." />
@@ -27,6 +38,30 @@ import { wechatLogin } from '@/api/api';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 const loading = ref(false);
+const agreed = ref(false);
+
+// 切换协议勾选
+const toggleAgreement = () => {
+  agreed.value = !agreed.value;
+};
+
+// 显示隐私政策
+const showPrivacy = () => {
+  uni.showModal({
+    title: '隐私政策',
+    content: '这里是隐私政策内容...',
+    showCancel: false,
+  });
+};
+
+// 显示用户协议
+const showUserAgreement = () => {
+  uni.showModal({
+    title: '用户协议',
+    content: '这里是用户协议内容...',
+    showCancel: false,
+  });
+};
 
 // 已登录 -> 未完善资料则去完善页，已完善则去首页
 onLoad(() => {
@@ -41,6 +76,14 @@ onLoad(() => {
 
 // 微信快捷登录
 const handleWechatLogin = async () => {
+  if (!agreed.value) {
+    uni.showToast({
+      title: '请先同意用户协议和隐私政策',
+      icon: 'none',
+    });
+    return;
+  }
+
   loading.value = true;
 
   try {
@@ -153,6 +196,45 @@ const goToPhoneLogin = () => {
     margin-top: 30rpx;
     font-size: 28rpx;
     color: #999999;
+  }
+
+  // 用户协议
+  .agreement-box {
+    display: flex;
+    align-items: center;
+    margin-top: 40rpx;
+
+    .checkbox {
+      width: 32rpx;
+      height: 32rpx;
+      border: 2rpx solid #CCCCCC;
+      border-radius: 50%;
+      margin-right: 12rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &.checked {
+        background: #000000;
+        border-color: #000000;
+      }
+
+      .check-icon {
+        font-size: 20rpx;
+        color: #FFFFFF;
+      }
+    }
+
+    .agreement-text {
+      font-size: 24rpx;
+      color: #666666;
+    }
+
+    .link {
+      font-size: 24rpx;
+      color: #1890FF;
+      margin: 0 4rpx;
+    }
   }
 }
 </style>

@@ -42,14 +42,14 @@
             </view>
         </view>
     </view>
-    <MatchSuccessModal :visible="showMatchModal" :user-list="matchedUsers" :demand-id="matchedDemandId" @close="handleCloseModal" @unlock="handleUnlock" />
+    <MatchSuccessModal :visible="showMatchModal" :demand-id="matchedDemandId" @close="handleCloseModal" @unlock="handleUnlock" />
     <BlindBoxPopup ref="blindBoxPopup" />
     <MatchIntroModal :visible="showIntroModal" @close="handleCloseIntroModal" />
     <MatchConfirmModal
         :visible="showFriendRequest"
         :avatar="currentRequest.avatar"
         :description="currentRequest.description"
-        :requestId="currentRequest.requestId"
+        :recordId="currentRequest.requestId"
         @cancel="handleRejectRequest"
         @confirm="handleAcceptRequest"
     />
@@ -63,44 +63,30 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { onShow, onHide } from '@dcloudio/uni-app';
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app';
+// 登录和完善资料检查
 import { isLogin, isProfileComplete } from '@/utils/auth';
+// 匹配到的三个用户，适配盲配和精准匹配
 import MatchSuccessModal from '@/components/MatchSuccessModal.vue';
+// 盲盒弹窗vs两个
 import BlindBoxPopup from '@/components/BlindBoxPopup.vue';
+// 匹配介绍弹窗
 import MatchIntroModal from '@/components/MatchIntroModal.vue';
+// 好友请求弹窗
 import MatchConfirmModal from '@/components/MatchConfirmModal.vue';
+// 定位选择弹窗
 import LocationPickerPopup from '@/components/LocationPickerPopup.vue';
+// 定位选择弹窗
 import type { LocationItem } from '@/components/LocationPickerPopup.vue';
-import { getPendingRequests, acceptRequest, rejectRequest, completeUserInfo } from '@/api/api';
+import { approveWechatExchange, rejectWechatExchange, approvePhoneExchange, rejectPhoneExchange, completeUserInfo } from '@/api/api';
 import { getUserLocation, reverseGeocode } from '@/utils/map';
+import { connectWebSocket, disconnectWebSocket } from '@/utils/websocket';
 import { appState, hotpotTypeOptions, tasteOptions, motivationOptions } from '@/utils/store';
 
 const showMatchModal = ref(false);
 const matchedDemandId = ref('');
 const showIntroModal = ref(false);
 const blindBoxPopup = ref<InstanceType<typeof BlindBoxPopup> | null>(null);
-const matchedUsers = ref([
-    {
-        id: 1,
-        avatar: 'https://picsum.photos/200',
-        status: 'locked',
-        statusText: '点击解锁',
-    },
-    {
-        id: 2,
-        avatar: 'https://picsum.photos/200',
-        status: 'pending',
-        statusText: '已发送申请',
-        subStatusText: '等待对方同意',
-    },
-    {
-        id: 3,
-        avatar: 'https://picsum.photos/200',
-        status: 'locked',
-        statusText: '点击解锁',
-    },
-]);
-
 const handleUnlock = (user: any) => {
     showMatchModal.value = false;
     setTimeout(() => {
@@ -135,31 +121,21 @@ const currentRequest = ref({
     description: '',
     requestId: '',
 });
-let pollingTimer: number | null = null;
-const POLL_INTERVAL = 5000; // 5秒轮询一次
 
-// Mock 请求池，用于模拟收到的好友请求
-const mockRequestPool = [
-    {
-        id: 'req_001',
-        avatar: 'https://picsum.photos/200',
-        nickname: '火锅达人小王',
-        description: 'Hi~ 看到你也喜欢吃重庆火锅，我也是麻辣爱好者！要不要一起约个海底捞？我就在附近，随时可以出发~',
-    },
-    {
-        id: 'req_002',
-        avatar: 'https://picsum.photos/200',
-        nickname: '美食探险家',
-        description: '系统把你推给我啦，咱俩的火锅偏好超搭！这感觉就像拆盲盒开出了心心念念的隐藏款~要不要约一锅，沉浸式体验一场只属于我们的火锅时光？',
-    },
-    {
-        id: 'req_003',
-        avatar: 'https://picsum.photos/200',
-        nickname: '吃货小分队',
-        description: '嘿！看到你的匹配信息了，我也在附近，刚好也想吃火锅。一起拼个桌吧，人多更热闹，还能多点几个菜！',
-    },
-];
-let mockRequestIndex = 0;
+// WebSocket 推送事件类型
+const WS_EVENT = {
+    MATCH_CREATED: 'MATCH_CREATED',
+    MATCH_CONFIRMED: 'MATCH_CONFIRMED',
+    MATCH_REJECTED: 'MATCH_REJECTED',
+    MATCH_CANCELED: 'MATCH_CANCELED',
+    MATCH_TIMEOUT: 'MATCH_TIMEOUT',
+    WECHAT_REJECTED: 'WECHAT_REJECTED',
+    WECHAT_APPLY: 'WECHAT_APPLY',
+    WECHAT_APPROVED: 'WECHAT_APPROVED',
+    PHONE_APPLY: 'PHONE_APPLY',
+    PHONE_APPROVED: 'PHONE_APPROVED',
+    PHONE_REJECTED: 'PHONE_REJECTED',
+} as const;
 
 onMounted(() => {
     const systemInfo = uni.getSystemInfoSync();
@@ -195,9 +171,9 @@ onShow(() => {
     }
     // 自动定位获取当前地址
     autoLocate();
-    // 开关打开时恢复轮询
+    // 开关打开时建立 WebSocket 连接，实时接收匹配推送
     if (isToggleOn.value) {
-        startPolling();
+        connectMatchSocket();
     }
     const showModal = uni.getStorageSync('showMatchSuccessModal');
     if (showModal) {
@@ -213,9 +189,14 @@ onShow(() => {
     }
 });
 
-// 页面隐藏时停止轮询，节省资源
+// 页面隐藏时断开 WebSocket，节省资源
 onHide(() => {
-    stopPolling();
+    disconnectWebSocket();
+});
+
+// 页面卸载时断开 WebSocket
+onUnload(() => {
+    disconnectWebSocket();
 });
 
 // 选择位置：打开自定义定位弹窗
@@ -298,75 +279,166 @@ const handleLocationSelect = (item: LocationItem) => {
 const toggleSwitch = () => {
     isToggleOn.value = !isToggleOn.value;
     if (isToggleOn.value) {
-        startPolling();
+        // 打开开关时建立 WebSocket 连接，实时接收匹配推送
+        connectMatchSocket();
     } else {
-        stopPolling();
-        // 关闭开关时清空待处理请求
+        // 关闭开关时断开连接并清空待处理请求
+        disconnectWebSocket();
         pendingRequests.value = [];
         showFriendRequest.value = false;
     }
 };
 
-// 开始轮询匹配请求
-const startPolling = () => {
-    if (pollingTimer !== null) return;
-    console.log('开始监听好友匹配请求...');
-    pollingTimer = setInterval(() => {
-        fetchPendingRequests();
-    }, POLL_INTERVAL);
-    // 立即执行一次
-    fetchPendingRequests();
+// 建立 WebSocket 连接，实时接收匹配推送
+const connectMatchSocket = () => {
+    connectWebSocket({
+        onOpen: () => {
+            console.log('已建立 WebSocket 连接，开始实时接收匹配推送...');
+        },
+        onMessage: handleWsMessage,
+        onClose: (code, reason) => {
+            console.log('WebSocket 连接已断开', code, reason);
+        },
+        onError: (err) => {
+            console.error('WebSocket 连接出错', err);
+        },
+    });
 };
 
-// 停止轮询
-const stopPolling = () => {
-    if (pollingTimer !== null) {
-        clearInterval(pollingTimer);
-        pollingTimer = null;
-        console.log('停止监听好友匹配请求');
-    }
-};
+// 处理 WebSocket 推送的消息
+const handleWsMessage = (data: any) => {
+    if (!data || typeof data !== 'object') return;
+    const type = data.type || data.eventType || data.event;
+    const payload = data.data || data.payload || data;
+    if (!type) return;
 
-// 获取待处理的好友请求
-const fetchPendingRequests = async () => {
-    if (!isToggleOn.value) return;
-    
-    try {
-        // 尝试调用真实 API
-        const res: any = await getPendingRequests();
-        if (res && res.data && res.data.requests && res.data.requests.length > 0) {
-            // 检查是否有新请求
-            const existingIds = new Set(pendingRequests.value.map((r: any) => r.id));
-            const newRequests = res.data.requests.filter((r: any) => !existingIds.has(r.id));
-            if (newRequests.length > 0) {
-                pendingRequests.value = [...pendingRequests.value, ...newRequests];
-                // 展示第一个待处理的请求
+    switch (type) {
+        // 有人向你发起匹配
+        case WS_EVENT.MATCH_CREATED: {
+            const req = {
+                // 优先取 recordId，组件同意/拒绝接口均以 recordId 为参数
+                id: payload.recordId || payload.requestId || payload.id || 'req_' + Date.now(),
+                avatar: payload.avatar || payload.user?.avatar || '',
+                nickname: payload.nickname || payload.user?.nickname || '神秘火锅搭子',
+                description: payload.description || payload.reason || `${payload.nickname || '对方'} 想与你一起恰火锅~`,
+            };
+            // 去重
+            if (pendingRequests.value.some((r: any) => r.id === req.id)) return;
+            pendingRequests.value.push(req);
+            // 当前没有正在展示的请求时，弹出确认框
+            if (!showFriendRequest.value) {
                 showNextRequest();
             }
+            break;
         }
-    } catch {
-        // API 不可用时，使用 Mock 数据模拟
-        mockFetchRequest();
+        // 对方已同意匹配
+        case WS_EVENT.MATCH_CONFIRMED: {
+            matchedDemandId.value = payload.demandId || '';
+            showMatchModal.value = true;
+            break;
+        }
+        // 对方已拒绝匹配
+        case WS_EVENT.MATCH_REJECTED: {
+            uni.showToast({ title: '对方已拒绝匹配', icon: 'none' });
+            break;
+        }
+        // 对方已取消匹配
+        case WS_EVENT.MATCH_CANCELED: {
+            uni.showToast({ title: '对方已取消匹配', icon: 'none' });
+            break;
+        }
+        // 匹配已超时
+        case WS_EVENT.MATCH_TIMEOUT: {
+            uni.showToast({ title: '匹配已超时', icon: 'none' });
+            break;
+        }
+        // 有人申请交换微信
+        case WS_EVENT.WECHAT_APPLY: {
+            uni.showModal({
+                title: '微信交换申请',
+                content: `${payload.nickname || '对方'} 想与你交换微信，是否同意？`,
+                confirmText: '同意',
+                cancelText: '拒绝',
+                success: (res) => {
+                    if (res.confirm) {
+                        approveWechatExchange({ matchId: payload.matchId })
+                            .then(() => {
+                                uni.showToast({ title: '已同意交换微信', icon: 'success' });
+                            })
+                            .catch(() => {});
+                    } else {
+                        rejectWechatExchange({ matchId: payload.matchId }).catch(() => {});
+                    }
+                },
+            });
+            break;
+        }
+        // 对方已同意交换微信
+        case WS_EVENT.WECHAT_APPROVED: {
+            const wechat = payload.wechat || payload.wechatId || '';
+            uni.showModal({
+                title: '对方已同意交换微信',
+                content: wechat ? `对方微信号：${wechat}` : '对方已同意交换微信，快去打个招呼吧~',
+                confirmText: '复制微信号',
+                showCancel: false,
+                success: () => {
+                    if (wechat) {
+                        uni.setClipboardData({ data: wechat });
+                    }
+                },
+            });
+            break;
+        }
+        // 对方拒绝交换微信
+        case WS_EVENT.WECHAT_REJECTED: {
+            uni.showToast({ title: '对方拒绝交换微信', icon: 'none' });
+            break;
+        }
+        // 有人申请交换电话
+        case WS_EVENT.PHONE_APPLY: {
+            uni.showModal({
+                title: '电话交换申请',
+                content: `${payload.nickname || '对方'} 想与你交换电话，是否同意？`,
+                confirmText: '同意',
+                cancelText: '拒绝',
+                success: (res) => {
+                    if (res.confirm) {
+                        approvePhoneExchange({ matchId: payload.matchId })
+                            .then(() => {
+                                uni.showToast({ title: '已同意交换电话', icon: 'success' });
+                            })
+                            .catch(() => {});
+                    } else {
+                        rejectPhoneExchange({ matchId: payload.matchId }).catch(() => {});
+                    }
+                },
+            });
+            break;
+        }
+        // 对方已同意交换电话
+        case WS_EVENT.PHONE_APPROVED: {
+            const phone = payload.phone || payload.mobile || payload.phoneNumber || '';
+            uni.showModal({
+                title: '对方已同意交换电话',
+                content: phone ? `对方电话：${phone}` : '对方已同意交换电话，快去联系吧~',
+                confirmText: '复制电话',
+                showCancel: false,
+                success: () => {
+                    if (phone) {
+                        uni.setClipboardData({ data: phone });
+                    }
+                },
+            });
+            break;
+        }
+        // 对方拒绝交换电话
+        case WS_EVENT.PHONE_REJECTED: {
+            uni.showToast({ title: '对方拒绝交换电话', icon: 'none' });
+            break;
+        }
+        default:
+            console.log('[match] 未处理的事件类型:', type, payload);
     }
-};
-
-// Mock 模拟收到好友请求
-const mockFetchRequest = () => {
-    // 30% 概率模拟收到新请求
-    if (Math.random() > 0.3 || pendingRequests.value.length > 0) return;
-    
-    const mockReq = mockRequestPool[mockRequestIndex % mockRequestPool.length];
-    mockRequestIndex++;
-    
-    const newRequest = {
-        id: mockReq.id + '_' + Date.now(),
-        avatar: mockReq.avatar,
-        nickname: mockReq.nickname,
-        description: mockReq.description,
-    };
-    
-    pendingRequests.value = [...pendingRequests.value, newRequest];
-    showNextRequest();
 };
 
 // 展示下一个待处理请求
@@ -387,52 +459,40 @@ const showNextRequest = () => {
     // #endif
 };
 
-// 同意好友请求
-const handleAcceptRequest = async () => {
+// 同意好友请求（接口调用已在 MatchConfirmModal 内完成）
+const handleAcceptRequest = () => {
     const reqId = currentRequest.value.requestId;
     showFriendRequest.value = false;
-    
-    try {
-        await acceptRequest({ requestId: reqId });
-    } catch {
-        // API 不可用时静默处理
-    }
-    
+
     // 从队列中移除当前请求
     pendingRequests.value = pendingRequests.value.filter((r: any) => r.id !== reqId);
-    
+
     uni.showToast({
         title: '已同意，快去聊聊吧',
         icon: 'success',
         duration: 2000,
     });
-    
+
     // 继续展示下一个请求
     setTimeout(() => {
         showNextRequest();
     }, 500);
 };
 
-// 拒绝好友请求
-const handleRejectRequest = async () => {
+// 拒绝好友请求（接口调用已在 MatchConfirmModal 内完成）
+const handleRejectRequest = () => {
     const reqId = currentRequest.value.requestId;
     showFriendRequest.value = false;
-    
-    try {
-        await rejectRequest({ requestId: reqId });
-    } catch {
-        // API 不可用时静默处理
-    }
-    
+
     // 从队列中移除当前请求
     pendingRequests.value = pendingRequests.value.filter((r: any) => r.id !== reqId);
-    
+
     uni.showToast({
         title: '已拒绝',
         icon: 'none',
         duration: 1500,
     });
-    
+
     // 继续展示下一个请求
     setTimeout(() => {
         showNextRequest();

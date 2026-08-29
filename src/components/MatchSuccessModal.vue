@@ -19,34 +19,16 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, onUnmounted } from 'vue';
 import { getMatchRecommend, createMatch } from '@/api/api';
+
+// 解锁成功后跳转页面的定时器
+let redirectTimer = null;
 
 const props = defineProps({
     visible: {
         type: Boolean,
         default: false,
-    },
-    userList: {
-        type: Array,
-        default: () => [
-            {
-                avatar: 'https://picsum.photos/200',
-                status: 'locked',
-                statusText: '点击解锁',
-            },
-            {
-                avatar: 'https://picsum.photos/200',
-                status: 'pending',
-                statusText: '已发送申请',
-                subStatusText: '等待对方同意',
-            },
-            {
-                avatar: 'https://picsum.photos/200',
-                status: 'locked',
-                statusText: '点击解锁',
-            },
-        ],
     },
     // 发布需求后返回的需求ID，用于拉取推荐用户列表
     demandId: {
@@ -57,27 +39,17 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'unlock']);
 
-// 弹窗内展示的用户列表（优先使用推荐接口数据）
-const list = ref([...props.userList]);
-
-watch(
-    () => props.userList,
-    (val) => {
-        if (val && val.length) {
-            list.value = val;
-        }
-    },
-    { immediate: true },
-);
 
 watch(
     () => props.visible,
     (val) => {
         if (val) {
             if (props.demandId) {
+                // 精准匹配到的用户list
                 fetchRecommend();
             } else {
-                list.value = props.userList;
+                // 随机匹配到的用户list
+                fetchRecommend();
             }
         }
     },
@@ -87,7 +59,7 @@ watch(
 // 根据 demandId 获取推荐用户列表
 const fetchRecommend = async () => {
     try {
-        const res = await getMatchRecommend({ demandId: props.demandId });
+        const res = await getMatchRecommend({ demandId: props.demandId || '' });
         // request 已解包 data，返回即用户数组；仍兼容 list/users/data 等结构
         const users = Array.isArray(res) ? res : res?.list || res?.users || res?.data || [];
         if (Array.isArray(users) && users.length) {
@@ -122,13 +94,24 @@ const handleUserClick = async (user) => {
 
     user.unlocking = true;
     try {
-        await createMatch({
+        const res = await createMatch({
             demandId: props.demandId,
             matchUserId: user.id,
         });
+        // 取出匹配记录ID，switchTab 无法在 URL 上传参，改用全局存储传递给查看页
+        const recordId = res?.recordId || res?.matchId || res?.id || '';
+        if (recordId) {
+            uni.setStorageSync('recordId', recordId);
+        }
         user.status = 'pending';
         user.statusText = '已发送申请';
         user.subStatusText = '等待对方同意';
+        // 等待对方同意，2s 后跳转到查看页
+        redirectTimer = setTimeout(() => {
+            uni.switchTab({
+                url: '/pages/tabBar/view',
+            });
+        }, 2000);
     } catch {
         // 申请失败不改变状态，可再次点击
         uni.showToast({
@@ -139,6 +122,13 @@ const handleUserClick = async (user) => {
         user.unlocking = false;
     }
 };
+
+onUnmounted(() => {
+    if (redirectTimer) {
+        clearTimeout(redirectTimer);
+        redirectTimer = null;
+    }
+});
 </script>
 
 <style scoped>

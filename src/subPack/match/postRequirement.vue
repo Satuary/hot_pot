@@ -563,7 +563,7 @@ const submitRequirement = async () => {
   } catch (error: any) {
     uni.hideLoading();
     uni.showToast({
-      title: error.message || '发布失败',
+      title: error.msg || '发布失败',
       icon: 'none',
     });
   }
