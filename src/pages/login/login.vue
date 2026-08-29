@@ -102,18 +102,26 @@ const handleWechatLogin = async () => {
     // 3. 保存认证信息
     setToken(result.token);
     setUserInfo(result.miniUserInfo);
-    setProfileComplete(false);
+    // 后端 isNew 表示是否为新用户：新用户需完善资料，老用户资料已完善
+    const isNewUser = !!result.isNew;
+    setProfileComplete(!isNewUser);
 
     uni.showToast({
       title: '登录成功',
       icon: 'success',
     });
 
-    // 4. 跳转到完善资料页
+    // 4. 新用户去完善资料页，老用户直接进匹配主页
     setTimeout(() => {
-      uni.redirectTo({
-        url: '/pages/profile/complete',
-      });
+      if (isNewUser) {
+        uni.redirectTo({
+          url: '/pages/profile/complete',
+        });
+      } else {
+        uni.switchTab({
+          url: '/pages/tabBar/match',
+        });
+      }
     }, 1500);
   } catch (error: any) {
     uni.showToast({

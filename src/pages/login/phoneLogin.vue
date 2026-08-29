@@ -205,23 +205,29 @@ const handleLogin = async () => {
   try {
     // 正式环境替换为: const result = await phoneLogin({ phone: phone.value, code: code.value });
     const result = await mockPhoneLogin(phone.value, code.value);
-    
+
     setToken(result.token);
     setUserInfo(result.userInfo);
-    // 登录后将资料状态标记为未完善，统一走完善资料页
-    setProfileComplete(false);
-    
+    // 新用户需完善资料，老用户资料已完善
+    setProfileComplete(!result.isNewUser);
+
     const msg = result.isNewUser ? '注册成功，请完善个人资料' : '登录成功';
     uni.showToast({
       title: msg,
       icon: 'success',
     });
-    
+
     setTimeout(() => {
-      // 统一跳转到资料完善页
-      uni.redirectTo({
-        url: '/pages/profile/complete',
-      });
+      // 新用户去完善资料页，老用户直接进匹配主页
+      if (result.isNewUser) {
+        uni.redirectTo({
+          url: '/pages/profile/complete',
+        });
+      } else {
+        uni.switchTab({
+          url: '/pages/tabBar/match',
+        });
+      }
     }, 1500);
   } catch (error: any) {
     uni.showToast({
