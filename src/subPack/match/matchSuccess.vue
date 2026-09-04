@@ -19,18 +19,17 @@
 
             <!-- 动态旋转层：包含头像和装饰球 -->
             <view class="rotating-layer" :style="{ animationDuration: duration + 's' }">
-                <!-- 元素 1: 用户头像 (左上) -->
-                <view class="item user-avatar-1">
-                    <image src="https://picsum.photos/200" mode="aspectFill" class="avatar"></image>
-                </view>
-
                 <!-- 元素 2: 装饰球 (右上) -->
                 <view class="item ball ball-purple"></view>
 
-                <!-- 元素 3: 用户头像 (右下) -->
-                <view class="item user-avatar-2">
-                    <!-- 这里用简单的色块模拟唐老鸭风格头像，实际开发请替换图片 -->
-                    <image src="https://picsum.photos/200" mode="aspectFill" class="avatar"></image>
+                <!-- 匹配中的用户头像：数据有几个就展示几个，沿轨道按人数均分分布 -->
+                <view
+                    v-for="(user, index) in recommendUsers"
+                    :key="user.userId || user.id || index"
+                    class="item user-avatar"
+                    :style="getAvatarStyle(index, recommendUsers.length)"
+                >
+                    <image :src="user.avatar" mode="aspectFill" class="avatar"></image>
                 </view>
 
                 <!-- 元素 4: 装饰球 (左下) -->
@@ -52,9 +51,24 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
+import { getMatchRecommend } from '@/api/api';
 
 const duration = ref(20);
 const statusText = ref('正在匹配...');
+
+// 匹配中的用户列表
+const recommendUsers = ref<any[]>([]);
+
+// 用户头像在轨道上的分布半径 (rpx)
+const ORBIT_RADIUS = 200;
+
+// 按人数均分圆周，计算每个头像在轨道上的偏移位置
+const getAvatarStyle = (index: number, total: number) => {
+    const angle = ((360 / total) * index - 90) * (Math.PI / 180);
+    const x = Math.round(ORBIT_RADIUS * Math.cos(angle));
+    const y = Math.round(ORBIT_RADIUS * Math.sin(angle));
+    return { transform: `translate(${x}rpx, ${y}rpx)` };
+};
 
 let matchTimer: any = null;
 let demandId = '';
@@ -64,17 +78,34 @@ onLoad((options) => {
     demandId = (options as any)?.demandId || '';
 });
 
-onMounted(() => {
-    matchTimer = setTimeout(() => {
-        statusText.value = '匹配成功！';
-        uni.setStorageSync('showMatchSuccessModal', true);
-        if (demandId) {
-            uni.setStorageSync('matchSuccessDemandId', demandId);
+// 根据 demandId 拉取匹配中的用户列表
+const fetchRecommend = async () => {
+    try {
+        const res = await getMatchRecommend({ demandId });
+        // request 已解包 data，返回即用户数组；仍兼容 list/users/data 等结构
+        const users = Array.isArray(res) ? res : res?.list || res?.users || res?.data || [];
+        if (Array.isArray(users) && users.length) {
+            recommendUsers.value = users;
         }
-        setTimeout(() => {
-            uni.navigateBack();
-        }, 800);
-    }, 3000);
+    } catch {
+        // 拉取失败时不渲染用户头像
+    }
+};
+
+onMounted(() => {
+    if (demandId) {
+        fetchRecommend();
+    }
+    // matchTimer = setTimeout(() => {
+    //     statusText.value = '匹配成功！';
+    //     uni.setStorageSync('showMatchSuccessModal', true);
+    //     if (demandId) {
+    //         uni.setStorageSync('matchSuccessDemandId', demandId);
+    //     }
+    //     setTimeout(() => {
+    //         uni.navigateBack();
+    //     }, 800);
+    // }, 3000);
 });
 
 onUnmounted(() => {
@@ -233,11 +264,8 @@ const handleCancel = () => {
 
 /* --- 具体元素的位置分布 (使用三角函数近似值定位) --- */
 
-/* 1. 左上角头像 (约 200度位置) */
-.user-avatar-1 {
-    transform: translate(-180rpx, 80rpx);
-}
-.user-avatar-1 .avatar {
+/* 轨道上的用户头像（位置由脚本按人数均分计算） */
+.user-avatar .avatar {
     width: 80rpx;
     height: 80rpx;
     border-radius: 50%;
@@ -253,18 +281,6 @@ const handleCancel = () => {
     border-radius: 50%;
     background: radial-gradient(circle at 30% 30%, #e0aaff, #9d4edd);
     box-shadow: 0 0 15rpx #9d4edd;
-}
-
-/* 3. 右下角头像 (约 330度位置) */
-.user-avatar-2 {
-    transform: translate(120rpx, 180rpx);
-}
-.user-avatar-2 .avatar {
-    width: 90rpx;
-    height: 90rpx;
-    border-radius: 50%;
-    border: 4rpx solid #fff;
-    background: #eee;
 }
 
 /* 4. 下方黄色球 (约 260度位置) */

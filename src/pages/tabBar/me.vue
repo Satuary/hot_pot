@@ -40,10 +40,10 @@
                 </view>
                 <view class="tag-item">
                     <image class="tag-icon" src="/static/imgs/lz.png" mode="aspectFit"></image>
-                    <text class="tag-txt">{{ userInfo.age || '25' }}岁</text>
+                    <text class="tag-txt">{{ ageText }}岁</text>
                 </view>
                 <view class="tag-item">
-                    <text class="tag-txt">{{ userInfo.gender || '男' }}</text>
+                    <text class="tag-txt">{{ genderText }}</text>
                 </view>
             </view>
 
@@ -69,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { isLogin, isProfileComplete, getUserInfo } from '@/utils/auth';
 
@@ -80,17 +80,44 @@ const defaultAvatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377
 // 顶部"重庆火锅"、"尝鲜打卡"等标签
 const tasteTags = ref<string[]>(['重庆火锅', '尝鲜打卡']);
 
-onMounted(() => {
-    const systemInfo = uni.getSystemInfoSync();
-    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+// 性别数字/英文 -> 中文
+const genderText = computed(() => {
+    const g = userInfo.value.gender;
+    if (g === 1 || g === 'male' || g === '男') return '男';
+    if (g === 2 || g === 'female' || g === '女') return '女';
+    return '男';
+});
 
+// 由生日推算年龄（兼容多种日期格式）
+const ageText = computed(() => {
+    const raw = userInfo.value.birthday;
+    if (!raw) return userInfo.value.age || '25';
+    const nums = String(raw).match(/\d+/g);
+    if (!nums || nums.length < 3) return userInfo.value.age || '25';
+    const birth = new Date(Number(nums[0]), Number(nums[1]) - 1, Number(nums[2]));
+    if (isNaN(birth.getTime())) return userInfo.value.age || '25';
+    const now = new Date();
+    let age = now.getFullYear() - birth.getFullYear();
+    const m = now.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+    return age >= 0 ? age : (userInfo.value.age || '25');
+});
+
+// 读取用户信息（onMounted 与 onShow 复用，保证返回时刷新）
+const loadUserInfo = () => {
     const info = getUserInfo();
     if (info) {
         userInfo.value = info;
     }
+};
+
+onMounted(() => {
+    const systemInfo = uni.getSystemInfoSync();
+    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    loadUserInfo();
 });
 
-// TabBar 页面守卫：每次显示时检查登录和资料完善状态
+// TabBar 页面守卫：每次显示时检查登录和资料完善状态，并刷新资料
 onShow(() => {
     if (!isLogin()) {
         uni.reLaunch({ url: '/pages/login/login' });
@@ -98,7 +125,10 @@ onShow(() => {
     }
     if (!isProfileComplete()) {
         uni.reLaunch({ url: '/pages/profile/complete' });
+        return;
     }
+    // 从编辑资料页返回时重新读取，保证展示最新数据
+    loadUserInfo();
 });
 
 // 复制 ID
@@ -199,6 +229,10 @@ const goEditProfile = () => {
         align-items: center;
         justify-content: center;
         box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.4);
+
+        uni-icons{
+            font-size: 0;
+        }
     }
 }
 

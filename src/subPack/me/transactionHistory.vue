@@ -32,7 +32,7 @@
                         <text class="item-title">{{ item.title }}</text>
                         <text class="item-time">{{ item.time }}</text>
                     </view>
-                    <view v-if="!usageList.length" class="empty-tip">暂无使用明细</view>
+                    <view v-if="!usageList.length" class="empty-tip">{{ usageLoading ? '加载中...' : '暂无使用明细' }}</view>
                 </view>
             </scroll-view>
 
@@ -53,7 +53,7 @@
                             </view>
                         </view>
                     </view>
-                    <view v-if="!transactionGroups.length" class="empty-tip">暂无交易记录</view>
+                    <view v-if="!transactionGroups.length" class="empty-tip">{{ loading ? '加载中...' : '暂无交易记录' }}</view>
                 </view>
             </scroll-view>
         </view>
@@ -90,57 +90,77 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { appState } from '@/utils/store';
+import { getWxPayOrderList, getMatchUsageList, type WxPayOrderItem, type MatchUsageItem } from '@/api/api';
 
 const statusBarHeight = ref(0);
 const activeTab = ref<'usage' | 'transaction'>('transaction');
 
-// 使用明细数据（优先从订单生成，否则使用模拟数据）
-const usageList = computed(() => {
-    if (appState.orders && appState.orders.length) {
-        return appState.orders.map((order, index) => ({
-            id: order.id || `u${index}`,
-            title: `匹配消耗1次`,
-            time: order.createTime || '2025.10.29 10:25',
-        }));
-    }
-    return [
-        { id: 'u1', title: '匹配消耗1次', time: '2025.10.29 10:25' },
-        { id: 'u2', title: '匹配消耗1次', time: '2025.10.29 10:25' },
-        { id: 'u3', title: '匹配消耗1次', time: '2025.10.29 10:25' },
-    ];
-});
+// 使用明细接口数据
+const usageRaw = ref<MatchUsageItem[]>([]);
+const usageLoading = ref(false);
 
-// 交易记录数据
-const rawTransactions = computed(() => {
-    const list: any[] = [];
-    if (appState.transactions && appState.transactions.length) {
-        appState.transactions.forEach((t) => {
-            list.push({
-                id: t.id || Date.now().toString(),
-                date: t.date || '2025-10-29',
-                time: t.time ? `${t.date.replace(/-/g, '.')} ${t.time}` : '2025.10.29 10:25',
-                desc: t.desc ? t.desc.split(' - ')[0] : '按次充值',
-                amountText: t.amount ? `${t.amount}元` : '',
-                amount: t.amount || 0,
-            });
-        });
+// 将后端使用记录转换为页面展示所需结构
+function normalizeUsage(u: MatchUsageItem, index: number) {
+    const rawTime = u.createTime || '';
+    const count = typeof u.count === 'number' ? u.count : Number(u.count) || 1;
+    return {
+        id: u.id != null ? String(u.id) : `u${index}`,
+        title: u.remark || `匹配消耗${count}次`,
+        time: rawTime ? rawTime.replace(/-/g, '.').slice(0, 16) : '',
+    };
+}
+
+const usageList = computed(() => usageRaw.value.map(normalizeUsage));
+
+// 加载使用明细列表
+async function loadUsage() {
+    usageLoading.value = true;
+    try {
+        const res = await getMatchUsageList({ pageNum: 1, pageSize: 100 });
+        // 兼容分页结构（records）与直接返回数组两种形式
+        usageRaw.value = Array.isArray(res) ? res : res?.records ?? [];
+        console.log('[transactionHistory] 使用明细列表 =', res);
+    } catch (e) {
+        console.error('[transactionHistory] 获取使用明细失败', e);
+        usageRaw.value = [];
+    } finally {
+        usageLoading.value = false;
     }
-    // 补充模拟数据，确保有分组展示
-    list.push(
-        { id: 't1', date: '2023-07-15', time: '2025.10.29 10:25', desc: '按次充值', amountText: '20元', amount: 20 },
-        { id: 't2', date: '2023-07-10', time: '2025.10.29 10:25', desc: '按月充值', amountText: '20元', amount: 20 },
-        { id: 't3', date: '2023-06-20', time: '2025.10.29 10:25', desc: '按次充值', amountText: '20元', amount: 20 },
-        { id: 't4', date: '2023-06-15', time: '2025.10.29 10:25', desc: '按月充值', amountText: '20元', amount: 20 },
-    );
-    return list;
-});
+}
+
+// 交易记录接口数据
+const orderList = ref<WxPayOrderItem[]>([]);
+const loading = ref(false);
+
+// 将后端订单转换为页面展示所需结构
+function normalizeOrder(o: WxPayOrderItem) {
+    const rawTime = o.payTime || o.createTime || '';
+    // 日期部分（yyyy-MM-dd），用于分组和筛选
+    const date = rawTime ? rawTime.slice(0, 10) : '';
+    // 展示时间：yyyy.MM.dd HH:mm
+    const time = rawTime ? rawTime.replace(/-/g, '.').slice(0, 16) : '';
+    const amount = typeof o.price === 'number' ? o.price : Number(o.price) || 0;
+    // 订单类别：1=充值
+    const desc = o.orderCategory === 1 ? '按次充值' : (o.remark || '充值');
+    return {
+        id: o.orderId || (o.relationId != null ? String(o.relationId) : Date.now().toString()),
+        date,
+        time,
+        desc,
+        amountText: amount ? `${amount}元` : '',
+        amount,
+    };
+}
+
+const rawTransactions = computed(() => orderList.value.map(normalizeOrder));
 
 const now = new Date();
-const selectedYear = ref(2023);
-const selectedMonth = ref(7);
+const selectedYear = ref(now.getFullYear());
+const selectedMonth = ref(now.getMonth() + 1);
 
 const transactionGroups = computed(() => {
     const filtered = rawTransactions.value.filter((t) => {
+        if (!t.date) return false;
         const d = new Date(t.date);
         return d.getFullYear() === selectedYear.value && d.getMonth() + 1 === selectedMonth.value;
     });
@@ -156,6 +176,22 @@ const transactionGroups = computed(() => {
         items: map[month],
     }));
 });
+
+// 加载交易记录列表
+async function loadOrders() {
+    loading.value = true;
+    try {
+        const res = await getWxPayOrderList({ pageNum: 1, pageSize: 100 });
+        // 列表在 rows 字段；兼容直接返回数组的形式
+        orderList.value = Array.isArray(res) ? res : res?.rows ?? [];
+        console.log('[transactionHistory] 交易记录列表 =', res);
+    } catch (e) {
+        console.error('[transactionHistory] 获取交易记录失败', e);
+        orderList.value = [];
+    } finally {
+        loading.value = false;
+    }
+}
 
 // 时间选择器
 const showPicker = ref(false);
@@ -198,6 +234,8 @@ function goToDetail(item: any) {
 onMounted(() => {
     const systemInfo = uni.getSystemInfoSync();
     statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    loadUsage();
+    loadOrders();
 });
 </script>
 

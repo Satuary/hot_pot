@@ -23,10 +23,10 @@
                 <!-- 第一行：金额与时间 -->
                 <view class="card-row header-row">
                     <view class="title-group">
-                        <text class="label-text">按次充值金额</text>
-                        <text class="highlight-price">20元</text>
+                        <text class="label-text">{{ desc }}</text>
+                        <text class="highlight-price">{{ amountText }}</text>
                     </view>
-                    <text class="time-text">2025.10.29 10:25</text>
+                    <text class="time-text">{{ time }}</text>
                 </view>
 
                 <!-- 分割线 -->
@@ -39,8 +39,21 @@
 
                 <!-- 第三行：具体状态值 -->
                 <view class="card-row status-row">
-                    <text class="status-val left">未使用</text>
-                    <text class="status-val right">退款完成</text>
+                    <!-- 左侧：使用状态（已使用红色高亮） -->
+                    <text class="status-val left" :class="{ used: detail?.useStatus === 1 }">{{ useStatusText }}</text>
+
+                    <!-- 右侧：已退款时展示退款状态文字，否则展示申请退款按钮（未使用可点，已使用置灰） -->
+                    <text v-if="refundStatusText" class="status-val right" :class="{ refunding: isRefunding }">
+                        {{ refundStatusText }}
+                    </text>
+                    <view
+                        v-else
+                        class="refund-btn"
+                        :class="{ disabled: !canApplyRefund }"
+                        @click="goRefund"
+                    >
+                        申请退款
+                    </view>
                 </view>
             </view>
 
@@ -57,16 +70,120 @@
     </view>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue';
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
+import { getWxPayOrderDetail, type WxPayOrderDetail } from '@/api/api';
 
 // 获取系统状态栏高度，适配刘海屏
 const statusBarHeight = ref(0);
 
-onMounted(() => {
+// 订单 id（由上级页面通过路由传入）
+const orderId = ref('');
+// 订单详情数据
+const detail = ref<WxPayOrderDetail | null>(null);
+// 是否可申请退款（后端返回）
+const canRefund = ref(false);
+const loading = ref(false);
+
+// 上级页面传入的初始展示字段（详情返回前先行展示，避免白屏）
+const passedDesc = ref('');
+const passedAmount = ref<number | null>(null);
+const passedTime = ref('');
+
+// 订单描述：按 orderCategory 推导，其次取上级传入
+const desc = computed(() => {
+    switch (detail.value?.orderCategory) {
+        case 1:
+            return '按次充值金额';
+        case 2:
+            return '按月套餐金额';
+        default:
+            return passedDesc.value || '按次充值金额';
+    }
+});
+
+// 金额展示（单位：元）
+const amountText = computed(() => {
+    const price = detail.value?.price;
+    const amount = typeof price === 'number' ? price : passedAmount.value;
+    return amount != null ? `${amount}元` : '';
+});
+
+// 时间展示：yyyy.MM.dd HH:mm
+const time = computed(() => {
+    const raw = detail.value?.payTime || detail.value?.createTime || '';
+    if (raw) return raw.replace(/-/g, '.').slice(0, 16);
+    return passedTime.value;
+});
+
+// 使用状态：0=未使用，1=已使用
+const useStatusText = computed(() => {
+    switch (detail.value?.useStatus) {
+        case 0:
+            return '未使用';
+        case 1:
+            return '已使用';
+        default:
+            return '';
+    }
+});
+
+// 退款状态文字：按 refundStatus 映射（0=未退款，1=已退款，2=退款失败，3=退款中）
+const refundStatusText = computed(() => {
+    switch (detail.value?.refundStatus) {
+        case 1:
+            return '退款完成';
+        case 2:
+            return '退款失败';
+        case 3:
+            return '退款中';
+        default:
+            return '';
+    }
+});
+
+// 是否处于退款中（用于红色高亮）
+const isRefunding = computed(() => detail.value?.refundStatus === 3);
+
+// 是否可申请退款：未使用（useStatus=0）且后端允许（canRefund）
+const canApplyRefund = computed(() => detail.value?.useStatus === 0 && canRefund.value);
+
+// 加载订单详情
+async function loadDetail() {
+    if (!orderId.value) return;
+    loading.value = true;
+    try {
+        const res = await getWxPayOrderDetail({ orderId: orderId.value });
+        detail.value = res?.order || null;
+        canRefund.value = !!res?.canRefund;
+        console.log('[orderDetail] 订单详情 =', res);
+    } catch (e) {
+        console.error('[orderDetail] 获取订单详情失败', e);
+    } finally {
+        loading.value = false;
+    }
+}
+
+onLoad((options: any) => {
     const systemInfo = uni.getSystemInfoSync();
     statusBarHeight.value = systemInfo.statusBarHeight || 0;
+
+    if (options?.id) orderId.value = decodeURIComponent(options.id);
+    if (options?.desc) passedDesc.value = decodeURIComponent(options.desc);
+    if (options?.amount != null && options.amount !== '') passedAmount.value = Number(options.amount);
+    if (options?.time) passedTime.value = decodeURIComponent(options.time);
+
+    loadDetail();
 });
+
+// 申请退款：仅未使用且后端允许时可跳转
+function goRefund() {
+    if (!canApplyRefund.value) return;
+    uni.navigateTo({
+        url: `/subPack/me/refund?id=${encodeURIComponent(orderId.value)}`,
+    });
+}
 
 const goBack = () => {
     uni.navigateBack({
@@ -224,8 +341,34 @@ $font-size-base: 30rpx;
         font-size: 32rpx;
         color: $text-primary;
 
+        /* 已使用：红色高亮 */
+        &.used {
+            color: #ff4d4f;
+        }
+
         &.right {
             /* 右侧文字如果需要不同颜色可在此修改，目前图示为白色 */
+        }
+
+        /* 退款中：红色高亮 */
+        &.refunding {
+            color: #ff4d4f;
+        }
+    }
+
+    /* 申请退款按钮 */
+    .refund-btn {
+        padding: 10rpx 28rpx;
+        border-radius: 40rpx;
+        border: 2rpx solid $accent-green;
+        color: $accent-green;
+        font-size: 26rpx;
+        line-height: 1;
+
+        /* 不可退款：灰色不可点击 */
+        &.disabled {
+            border-color: $text-secondary;
+            color: $text-secondary;
         }
     }
 }

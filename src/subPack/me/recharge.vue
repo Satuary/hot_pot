@@ -38,12 +38,12 @@
         <view class="container-wrap">
             <!-- 金额选项网格 -->
             <view class="amount-grid">
-                <view v-for="item in amountOptions" :key="item.value" class="amount-item"
-                    :class="{ active: selectedAmount === item.value && !customAmount }"
-                    @click="selectAmount(item.value)">
+                <view v-for="item in amountOptions" :key="item.id" class="amount-item"
+                    :class="{ active: selectedId === item.id && !customAmount }"
+                    @click="selectAmount(item.id)">
                     <view class="amount-inner">
-                        <text class="amount-value">{{ item.value }}</text>
-                        <text class="amount-unit">{{ rechargeMode === 'monthly' ? `元/${item.count}次` : '元' }}</text>
+                        <text class="amount-value">{{ item.price }}</text>
+                        <text class="amount-unit">{{ rechargeMode === 'monthly' ? `元/${item.times}次` : '元' }}</text>
                     </view>
                 </view>
             </view>
@@ -51,7 +51,7 @@
             <!-- 自定义金额输入 -->
             <view v-if="rechargeMode === 'perUse'" class="custom-input-wrap">
                 <input class="custom-input" type="digit" placeholder="请输入其他金额"
-                    placeholder-class="custom-input-placeholder" v-model="customAmount" @focus="selectedAmount = 0" />
+                    placeholder-class="custom-input-placeholder" v-model="customAmount" @focus="selectedId = null" />
             </view>
 
             <!-- 协议提醒 -->
@@ -70,7 +70,7 @@
 
                 <!-- 充值按钮 -->
                 <view class="bottom-btn-wrap">
-                    <view class="recharge-btn" :class="{ disabled: !canRecharge }" @click="handleRecharge">
+                    <view class="recharge-btn" @click="handleRecharge">
                         <text class="btn-text">充值（{{ currentAmount }}元）</text>
                     </view>
                 </view>
@@ -84,58 +84,73 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { appState } from '@/utils/store';
+import { getPackageList, wxUnifiedOrder, type PackageItem } from '@/api/api';
 
 // 状态栏高度
 const statusBarHeight = ref(0);
 
 const rechargeMode = ref<'perUse' | 'monthly'>('perUse');
-const selectedAmount = ref(3);
+const selectedId = ref<number | null>(null);
 const customAmount = ref('');
 const agreed = ref(false);
 
-interface AmountOption {
-    value: number;
-    count?: number;
-}
-
-const perUseOptions: AmountOption[] = [
-    { value: 3 },
-    { value: 10 },
-    { value: 20 },
-    { value: 50 },
-    { value: 100 },
-    { value: 200 },
-];
-
-const monthlyOptions: AmountOption[] = [
-    { value: 50, count: 55 },
-    { value: 100, count: 120 },
-    { value: 200, count: 260 },
-];
+// 套餐列表（接口返回，按次 / 按月分组）
+const perUseOptions = ref<PackageItem[]>([]);
+const monthlyOptions = ref<PackageItem[]>([]);
+const loading = ref(false);
 
 const amountOptions = computed(() => {
-    return rechargeMode.value === 'monthly' ? monthlyOptions : perUseOptions;
+    return rechargeMode.value === 'monthly' ? monthlyOptions.value : perUseOptions.value;
+});
+
+// 当前选中的套餐
+const selectedPackage = computed(() => {
+    return amountOptions.value.find((p) => p.id === selectedId.value) || null;
 });
 
 watch(rechargeMode, () => {
-    selectedAmount.value = amountOptions.value[0].value;
+    selectedId.value = amountOptions.value[0]?.id ?? null;
     customAmount.value = '';
+    // 打印当前选中的套餐数据（调试用）
+    console.log('[recharge] 当前选中套餐 =', selectedPackage.value);
 });
 
 const currentAmount = computed(() => {
     if (customAmount.value && Number(customAmount.value) > 0) {
         return Number(customAmount.value);
     }
-    return selectedAmount.value;
+    return selectedPackage.value ? selectedPackage.value.price : 0;
 });
 
 const canRecharge = computed(() => {
     return agreed.value && currentAmount.value > 0;
 });
 
-function selectAmount(value: number) {
-    selectedAmount.value = value;
+function selectAmount(id: number) {
+    selectedId.value = id;
     customAmount.value = '';
+    // 打印当前选中的套餐数据（调试用）
+    console.log('[recharge] 当前选中套餐 =', selectedPackage.value);
+}
+
+// 加载套餐列表
+// 按次取 perPackages，按月取 monthlyPackages
+// 默认选中当前模式下的第一个套餐
+async function loadPackages() {
+    loading.value = true;
+    try {
+        const res = await getPackageList();
+        perUseOptions.value = res?.perPackages ?? [];
+        monthlyOptions.value = res?.monthlyPackages ?? [];
+        // 打印加载的套餐数据（调试用）
+        console.log('[recharge] 加载的套餐列表 =', res);
+        // 默认选中当前模式下的第一个套餐
+        selectedId.value = amountOptions.value[0]?.id ?? null;
+    } catch (e) {
+        console.error('[recharge] 获取套餐列表失败', e);
+    } finally {
+        loading.value = false;
+    }
 }
 
 function goBack() {
@@ -156,29 +171,59 @@ function openAgreement() {
     });
 }
 
-function handleRecharge() {
-    if (!canRecharge.value) return;
+async function handleRecharge() {
+    console.log('[recharge] 处理充值', selectedPackage.value, currentAmount.value);
+    // 未勾选协议时提示
+    if (!agreed.value) {
+        uni.showToast({
+            title: '请先阅读并同意充值协议',
+            icon: 'none',
+        });
+        return;
+    }
+    if (currentAmount.value <= 0) return;
 
+    // 统一下单需要套餐 id；自定义金额未选中套餐时提示选择
+    if (!selectedPackage.value) {
+        uni.showToast({
+            title: '请选择充值套餐',
+            icon: 'none',
+        });
+        return;
+    }
+
+    const pkg = selectedPackage.value;
     const amount = currentAmount.value;
 
-    uni.showLoading({ title: '支付中' });
-    setTimeout(() => {
-        uni.hideLoading();
+    uni.showLoading({ title: '支付中', mask: true });
+    try {
+        // 1. 生成微信预支付订单（仅传套餐 id）
+        const prepay = await wxUnifiedOrder({
+            packageId: pkg.id,
+        });
+        console.log('[recharge] 统一下单返回 =', prepay);
 
-        // 按次模式：1元1次
-        if (rechargeMode.value === 'perUse') {
-            appState.userProfile.matchCount += amount;
-        } else {
-            // 按月模式：给更多次数作为优惠
-            appState.userProfile.matchCount += Math.floor(amount * 1.2);
-        }
-
-        uni.showToast({
-            title: '充值成功',
-            icon: 'success',
+        // 2. 拉起微信支付
+        await new Promise<void>((resolve, reject) => {
+            uni.requestPayment({
+                provider: 'wxpay',
+                // orderInfo 为 App 支付所需，小程序支付不使用，此处占位以满足类型定义
+                orderInfo: '',
+                timeStamp: prepay.timeStamp,
+                nonceStr: prepay.nonceStr,
+                package: prepay.package,
+                signType: prepay.signType || 'RSA',
+                paySign: prepay.paySign,
+                success: () => resolve(),
+                fail: (err) => reject(err),
+            });
         });
 
-        // 记录交易
+        uni.hideLoading();
+        uni.showToast({ title: '充值成功', icon: 'success' });
+
+        // 3. 本地更新次数与交易记录
+        appState.userProfile.matchCount += pkg.times;
         appState.transactions.unshift({
             id: Date.now().toString(),
             date: new Date().toISOString().split('T')[0],
@@ -188,12 +233,21 @@ function handleRecharge() {
             desc: `充值 - ${amount}元${rechargeMode.value === 'monthly' ? '(按月优惠)' : ''}`,
             icon: '💰',
         });
-    }, 1500);
+    } catch (e: any) {
+        uni.hideLoading();
+        console.error('[recharge] 支付失败', e);
+        // 用户主动取消支付不提示错误
+        const isCancel = e?.errMsg && String(e.errMsg).includes('cancel');
+        if (!isCancel) {
+            uni.showToast({ title: '支付失败', icon: 'none' });
+        }
+    }
 }
 
 onMounted(() => {
     const systemInfo = uni.getSystemInfoSync();
     statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    loadPackages();
 });
 </script>
 

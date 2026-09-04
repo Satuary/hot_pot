@@ -316,9 +316,9 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue';
 import { hotpotTypeOptions, tasteOptions, motivationOptions, appState } from '@/utils/store';
-import { setProfileComplete } from '@/utils/auth';
+import { setProfileComplete, getUserInfo as getAuthUserInfo, setUserInfo as setAuthUserInfo } from '@/utils/auth';
 import { regionData, findRegionIndexes } from '@/utils/region-data';
-import { completeUserInfo, getUserInfo } from '@/api/api';
+import { completeUserInfo, getUserInfo, uploadImage } from '@/api/api';
 
 const defaultAvatar = 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80';
 
@@ -407,11 +407,12 @@ const genderLabel = computed(() => {
     return form.gender === 'male' ? '男' : form.gender === 'female' ? '女' : '未设置';
 });
 
-// 生日显示
+// 生日显示（兼容 YYYY-MM-DD、YYYY/MM/DD、带时间戳等格式）
 const birthdayLabel = computed(() => {
-    if (!form.birthday) return '未设置';
-    const [y, m, d] = form.birthday.split('-');
-    return `${y}年${Number(m)}月${Number(d)}日`;
+    const parts = parseBirthdayParts(form.birthday);
+    if (!parts) return '未设置';
+    const { year, month, day } = parts;
+    return `${year}年${month}月${day}日`;
 });
 
 // ========== 弹窗管理 ==========
@@ -579,9 +580,21 @@ const dayIndex = computed(() => {
     return idx >= 0 ? idx : 0;
 });
 
+// 解析生日字符串为 {year, month, day}，兼容多种分隔符与带时间的格式；无法解析返回 null
+function parseBirthdayParts(dateStr: string | undefined | null) {
+    if (!dateStr) return null;
+    // 提取前三段数字，忽略分隔符（-、/、.、中文年月日、空格、T 等）
+    const nums = String(dateStr).match(/\d+/g);
+    if (!nums || nums.length < 3) return null;
+    const year = Number(nums[0]);
+    const month = Number(nums[1]);
+    const day = Number(nums[2]);
+    if (!year || !month || !day) return null;
+    return { year, month, day };
+}
+
 function parseBirthday(dateStr: string) {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return { year: y, month: m, day: d };
+    return parseBirthdayParts(dateStr) || { year: 2006, month: 1, day: 1 };
 }
 
 function onBirthdayColChange(e: any) {
@@ -719,6 +732,12 @@ async function onSave() {
         return;
     }
 
+    // 头像仍在上传中时禁止保存，避免提交本地临时路径
+    if (avatarUploading.value) {
+        uni.showToast({ title: '头像上传中，请稍候', icon: 'none' });
+        return;
+    }
+
     // 表单数据映射为接口参数
     const genderMap: Record<string, number> = { male: 1, female: 2 };
     const locationParts = (form.location || '').split(' ').filter(Boolean);
@@ -745,20 +764,8 @@ async function onSave() {
     try {
         await completeUserInfo(params);
 
-        // 同步到全局状态
-        Object.assign(appState.userProfile, {
-            nickname: form.nickname,
-            gender: form.gender,
-            birthday: form.birthday,
-            height: form.height,
-            weight: form.weight,
-            hotpotType: form.hotpotType ? [form.hotpotType] : [],
-            taste: form.taste ? [form.taste] : [],
-            motivation: form.motivation,
-            wechat: form.wechat,
-            location: form.location,
-            avatar: form.avatar || appState.userProfile.avatar,
-        });
+        // 同步本地状态（appState + auth storage）
+        syncProfileToStorage();
         setProfileComplete(true);
 
         uni.showToast({ title: '保存成功', icon: 'success' });
@@ -767,31 +774,77 @@ async function onSave() {
         }, 800);
     } catch {
         // 接口失败时仍然更新本地状态
-        Object.assign(appState.userProfile, {
-            nickname: form.nickname,
-            gender: form.gender,
-            birthday: form.birthday,
-            height: form.height,
-            weight: form.weight,
-            hotpotType: form.hotpotType ? [form.hotpotType] : [],
-            taste: form.taste ? [form.taste] : [],
-            motivation: form.motivation,
-            wechat: form.wechat,
-            location: form.location,
-            avatar: form.avatar || appState.userProfile.avatar,
-        });
+        syncProfileToStorage();
         setProfileComplete(true);
     }
 }
 
+// 将当前表单同步到全局状态与 auth 存储（供个人页读取展示）
+function syncProfileToStorage() {
+    // 同步到全局状态
+    Object.assign(appState.userProfile, {
+        nickname: form.nickname,
+        gender: form.gender,
+        birthday: form.birthday,
+        height: form.height,
+        weight: form.weight,
+        hotpotType: form.hotpotType ? [form.hotpotType] : [],
+        taste: form.taste ? [form.taste] : [],
+        motivation: form.motivation,
+        wechat: form.wechat,
+        location: form.location,
+        avatar: form.avatar || appState.userProfile.avatar,
+        id: form.id,
+    });
+
+    // 同步到 auth 存储：合并已有 userInfo，避免覆盖其它字段
+    const prev = getAuthUserInfo() || {};
+    const genderMap: Record<string, number> = { male: 1, female: 2 };
+    setAuthUserInfo({
+        ...prev,
+        id: form.id || prev.id,
+        nickname: form.nickname,
+        avatar: form.avatar || prev.avatar || '',
+        gender: genderMap[form.gender] || prev.gender,
+        birthday: form.birthday,
+        height: parseFloat(form.height) || prev.height || 0,
+        weight: parseFloat(form.weight) || prev.weight || 0,
+        wechat: form.wechat,
+        // 所在地：既存组合文案给页面展示，也拆分保留省市区
+        address: form.location,
+        province: (form.location || '').split(' ')[0] || '',
+        city: (form.location || '').split(' ')[1] || '',
+        district: (form.location || '').split(' ')[2] || '',
+    });
+}
+
 // ========== 头像更换 ==========
+const avatarUploading = ref(false);
+
 function handleChangeAvatar() {
     uni.chooseImage({
         count: 1,
         sizeType: ['compressed'],
         sourceType: ['album', 'camera'],
-        success: (res) => {
-            form.avatar = res.tempFilePaths[0];
+        success: async (res) => {
+            const tempPath = res.tempFilePaths[0];
+            // 先本地预览，随后上传获取正式 URL
+            form.avatar = tempPath;
+            avatarUploading.value = true;
+            uni.showLoading({ title: '上传中...', mask: true });
+            try {
+                const url = await uploadImage(tempPath);
+                form.avatar = url;
+                console.log('上传成功', form.avatar);
+                uni.hideLoading();
+            } catch {
+                uni.hideLoading();
+                // 上传失败回退，避免把本地临时路径当作头像提交
+                form.avatar = form.avatar === tempPath ? '' : form.avatar;
+                uni.showToast({ title: '头像上传失败，请重试', icon: 'none' });
+            } finally {
+                avatarUploading.value = false;
+            }
         },
     });
 }

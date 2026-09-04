@@ -95,7 +95,7 @@
 import { ref, computed, onUnmounted } from 'vue';
 import { onShow, onHide } from '@dcloudio/uni-app';
 import { isLogin, isProfileComplete } from '@/utils/auth';
-import { getMatchDetail, cancelMatchRecord } from '@/api/api';
+import { getMatchDetail, cancelMatchRecord, getDemandList } from '@/api/api';
 
 const showWaitingPopup = ref(false);
 const remainingSeconds = ref(10 * 60); // 默认 10 分钟倒计时
@@ -148,6 +148,16 @@ async function handleCancelMatch() {
   closeWaitingPopup();
 }
 
+// 获取需求列表
+const fetchDemandList = async () => {
+  try {
+    const list = await getDemandList();
+    demandList.value = Array.isArray(list) ? list : [];
+  } catch {
+    // 获取失败不显示弹窗
+  }
+};
+
 onShow(() => {
   // TabBar 页面守卫：每次显示时检查登录和资料完善状态
   if (!isLogin()) {
@@ -158,6 +168,8 @@ onShow(() => {
     uni.reLaunch({ url: '/pages/profile/complete' });
     return;
   }
+
+  fetchDemandList();
 
   const shouldShow = uni.getStorageSync('showWaitingPopup');
   if (shouldShow) {
