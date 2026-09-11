@@ -80,6 +80,7 @@
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { isLogin, isProfileComplete, setToken, setUserInfo, setProfileComplete } from '@/utils/auth';
+import { startMatchSocket } from '@/common/matchSocket';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 // 已登录 -> 未完善资料则去完善页，已完善则去首页
@@ -210,6 +211,8 @@ const handleLogin = async () => {
     setUserInfo(result.userInfo);
     // 新用户需完善资料，老用户资料已完善
     setProfileComplete(!result.isNewUser);
+    // 登录成功后启动全局 WebSocket 单例
+    startMatchSocket();
 
     const msg = result.isNewUser ? '注册成功，请完善个人资料' : '登录成功';
     uni.showToast({

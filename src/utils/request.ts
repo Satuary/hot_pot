@@ -54,7 +54,7 @@ export default function request(
             resolve(result.data !== undefined && result.data !== null ? result.data : result);
           } else {
             uni.showToast({
-              title: result.message || '请求失败',
+              title: result.msg || result.message || '请求失败',
               icon: 'none',
             });
             reject(result);

@@ -122,10 +122,6 @@ const currentAmount = computed(() => {
     return selectedPackage.value ? selectedPackage.value.price : 0;
 });
 
-const canRecharge = computed(() => {
-    return agreed.value && currentAmount.value > 0;
-});
-
 function selectAmount(id: number) {
     selectedId.value = id;
     customAmount.value = '';

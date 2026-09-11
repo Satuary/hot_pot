@@ -50,6 +50,7 @@
 <script setup lang="ts">
 import { appState } from '@/utils/store';
 import { clearAuth } from '@/utils/auth';
+import { stopMatchSocket } from '@/common/matchSocket';
 
 function goBack() { uni.navigateBack(); }
 
@@ -65,6 +66,8 @@ function handleLogout() {
             if (res.confirm) {
                 appState.isLoggedIn = false;
                 clearAuth();
+                // 退出登录：断开全局 WebSocket 并清空匹配弹窗状态
+                stopMatchSocket();
                 uni.reLaunch({ url: '/pages/login/login' });
             }
         },

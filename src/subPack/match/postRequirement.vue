@@ -231,6 +231,16 @@ import { postRequirement } from '@/api/api';
 import { mockStores } from '@/utils/store';
 import type { Store } from '@/utils/store';
 import { getUserLocation, searchNearbyHotPotStore } from '@/utils/map';
+import {
+  genderOptions,
+  hotpotTypes,
+  flavorOptions,
+  motivations,
+  paymentMethods,
+  genderMap,
+  payTypeMap,
+  flavorToCodeStr,
+} from '@/config/matchOptions';
 
 // 状态栏高度
 const statusBarHeight = ref(0);
@@ -256,27 +266,8 @@ const formData = ref({
   paymentMethod: 'me',
 });
 
-// 性别选项
-const genderOptions = [
-  { value: 'male', label: '男生', imgNormal: '/static/imgs/boy_d.png', imgActive: '/static/imgs/boys.png' },
-  { value: 'female', label: '女生', imgNormal: '/static/imgs/girls_d.png', imgActive: '/static/imgs/girls.png' },
-];
-
-// 火锅类型
-const hotpotTypes = ['重庆火锅', '潮汕火锅', '海鲜火锅', '小火锅'];
-
-// 口味
-const flavors = ['麻辣', '清汤', '番茄', '菌锅'];
-
-// 动力
-const motivations = ['尝鲜打卡', '解馋吃货', '轻松社交', '治愈心情'];
-
-// 付费方式
-const paymentMethods = [
-  { value: 'me', label: '我请客' },
-  { value: 'AA', label: 'AA' },
-  { value: 'other', label: '对方请客' },
-];
+// 口味枚举数组（用于标签渲染）—— 配置文件中 flavors 是 1 起的数组，此处取有效项
+const flavors = flavorOptions;
 
 // 年龄选择器弹窗相关
 const agePickerVisible = ref(false);
@@ -401,7 +392,7 @@ const selectStore = async () => {
 
   storeLoading.value = true;
   try {
-    // 1. 获取用户当前定位
+    // 1. 使用wx api获取用户当前经纬度
     const location = await getUserLocation();
     // 2. 通过高德地图周边搜索 API 获取附近火锅店
     const stores = await searchNearbyHotPotStore(location);
@@ -497,9 +488,29 @@ const confirmDateTime = () => {
 
 // 提交需求
 const submitRequirement = async () => {
+  // 火锅店必选
+  if (!formData.value.storeName) {
+    uni.showToast({
+      title: '请选择火锅店',
+      icon: 'none',
+    });
+    return;
+  }
+
   if (!formData.value.dateTime) {
     uni.showToast({
       title: '请选择时间',
+      icon: 'none',
+    });
+    return;
+  }
+
+  // 见面时间必须晚于当前时间（dateTime 格式 "YYYY-MM-DD HH:mm"）
+  const [dateStr, timeStr] = formData.value.dateTime.split(' ');
+  const meetingTs = new Date(`${dateStr}T${timeStr}:00`).getTime();
+  if (Number.isNaN(meetingTs) || meetingTs <= Date.now()) {
+    uni.showToast({
+      title: '选择时间需大于当前时间',
       icon: 'none',
     });
     return;
@@ -509,9 +520,6 @@ const submitRequirement = async () => {
     uni.showLoading({
       title: '提交中...',
     });
-
-    const genderMap: Record<string, number> = { male: 1, female: 2 };
-    const payTypeMap: Record<string, number> = { me: 0, AA: 1, other: 2 };
 
     const shop:
       | {
@@ -536,9 +544,9 @@ const submitRequirement = async () => {
     const params = {
       gender: String(genderMap[formData.value.gender] ?? 1),
       ageRange: `${formData.value.ageMin},${formData.value.ageMax}`,
-      matchType: '1',
+      matchType: '0', // 0精准 1盲配
       hotpotType: String(hotpotTypes.indexOf(formData.value.hotpotType)),
-      taste: String(flavors.indexOf(formData.value.flavor) + 1),
+      taste: flavorToCodeStr(formData.value.flavor),
       motivation: String(motivations.indexOf(formData.value.motivation)),
       shop,
       meetingTime: formData.value.dateTime,
@@ -546,6 +554,8 @@ const submitRequirement = async () => {
     };
 
     const res = await postRequirement(params);
+    // demandId 为需求ID，仅用于拉推荐/发起匹配，通过 URL 传给匹配页；
+    // 它不是匹配记录id，匹配 recordId 由 mini/match/create 返回，切勿写入 recordId 缓存
     const demandId = res?.demandId || '';
 
     uni.hideLoading();

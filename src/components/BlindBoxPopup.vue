@@ -1,33 +1,31 @@
 <template>
-    <uni-popup ref="popup" type="center" :mask-click="false">
-        <view class="popup-container">
+    <view class="overlay" v-if="visible">
+        <view class="modal-container">
             <!-- 标题 -->
-            <text class="title">恭喜盲盒影友匹配成功，快来观影吧！</text>
+            <text class="title">恭喜盲盒锅友匹配成功，快来吃火锅吧！</text>
 
             <!-- 描述文本 -->
-            <text class="description"> 每次匹配到新的观影搭子，都像拆盲盒般惊喜！你永远猜不到，身边的TA，是沉稳可靠的地道大叔，还是阳光帅气的元气男孩；亦或是温柔细腻的邻家姐姐，还是灵动俏皮的甜酷少女。 </text>
+            <text class="description"> 每次匹配到新的火锅搭子，都像拆盲盒般惊喜！你永远猜不到，身边的TA，是沉稳可靠的地道大叔，还是阳光帅气的元气男孩；亦或是温柔细腻的邻家姐姐，还是灵动俏皮的甜酷少女。 </text>
 
             <!-- 用户信息区 -->
             <view class="users-wrapper">
-                <!-- 左侧用户 -->
+                <!-- 左侧用户：发起方本人 -->
                 <view class="user-item">
                     <view class="avatar-area">
                         <image class="flame-bg flame-left" src="/static/imgs/flame2.png" mode="widthFix"></image>
-                        <image class="avatar" src="https://picsum.photos/200" mode="aspectFill"></image>
+                        <image class="avatar" :src="myAvatar" mode="aspectFill"></image>
                     </view>
-                    <text class="username">好汉共</text>
                 </view>
 
-                <!-- 右侧用户 -->
+                <!-- 右侧用户：被选中的锅友 -->
                 <view class="user-item">
                     <view class="avatar-area">
                         <image class="flame-bg flame-right" src="/static/imgs/flame.png" mode="widthFix"></image>
                         <view class="avatar-wrapper" @click="handleViewProfile">
-                            <image class="avatar" src="https://picsum.photos/200" mode="aspectFill"></image>
+                            <image class="avatar" :src="otherAvatar" mode="aspectFill"></image>
                             <view class="view-btn">点击查看</view>
                         </view>
                     </view>
-                    <text class="username">大吉大</text>
                 </view>
             </view>
 
@@ -37,42 +35,39 @@
                 <button class="btn btn-confirm" @click="handleConfirm">确认匹配</button>
             </view>
         </view>
-    </uni-popup>
+    </view>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+// 与其他弹窗一致：visible 控制显隐，操作通过事件通知父组件
+const props = defineProps({
+    visible: {
+        type: Boolean,
+        default: false,
+    },
+    // 发起方本人头像（createMatch 返回的 matchUserAvatar）
+    myAvatar: {
+        type: String,
+        default: 'https://picsum.photos/200',
+    },
+    // 被选中方头像（createMatch 返回的 matchedUserAvatar）
+    otherAvatar: {
+        type: String,
+        default: 'https://picsum.photos/200',
+    },
+    // 匹配记录id，查看对方资料时透传给资料页
+    recordId: {
+        type: [String, Number],
+        default: '',
+    },
+});
 
-// 定义事件，用于向父组件通信
 const emit = defineEmits(['cancel', 'confirm']);
-
-// 获取 uni-popup 组件实例
-const popup = ref(null);
-
-/**
- * 打开弹框
- */
-const open = () => {
-    if (popup.value) {
-        popup.value.open();
-    }
-};
-
-/**
- * 关闭弹框
- */
-const close = () => {
-    if (popup.value) {
-        popup.value.close();
-    }
-};
 
 /**
  * 处理"不合适"按钮点击
  */
 const handleCancel = () => {
-    close();
-    // 通知父组件
     emit('cancel');
 };
 
@@ -80,14 +75,7 @@ const handleCancel = () => {
  * 处理"确认匹配"按钮点击
  */
 const handleConfirm = () => {
-    close();
-    // 通知父组件
     emit('confirm');
-    // 跳转到查看页并标记显示等待弹窗
-    uni.setStorageSync('showWaitingPopup', true);
-    uni.switchTab({
-        url: '/pages/tabBar/view',
-    });
 };
 
 /**
@@ -95,30 +83,32 @@ const handleConfirm = () => {
  */
 const handleViewProfile = () => {
     uni.navigateTo({
-        url: '/subPack/match/partnerProfile',
+        url: `/subPack/match/partnerProfile?from=view&recordId=${props.recordId || ''}`,
     });
 };
-
-// 将方法暴露给父组件调用
-defineExpose({
-    open,
-    close,
-});
 </script>
 
-<style>
-/* uni-popup type="center" 内部容器 overflow:hidden 会裁掉边框 */
-.uni-popup__wrapper-box,
-.uni-popup__wrapper {
-  overflow: visible !important;
+<style scoped>
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
 }
 
-.popup-container {
+.modal-container {
     background: rgba(0, 0, 0, 0.6);
     border: 2rpx solid rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(20rpx);
     border-radius: 32rpx;
     padding: 50rpx 40rpx;
+    width: 86%;
     max-width: 640rpx;
     box-sizing: border-box;
     display: flex;

@@ -6,11 +6,11 @@
     <view class="status-bar"></view>
 
     <!-- 顶部头像与连接区域 -->
-    <view class="header-section">
+    <view class="header-section" v-if="matchDetail">
       <!-- 左侧头像 -->
       <view class="avatar-box left-avatar">
         <image
-          src="https://picsum.photos/200"
+          :src="myAvatar"
           mode="aspectFill"
           class="avatar-img"
         ></image>
@@ -21,11 +21,11 @@
         <image class="link-icon-text" src="/static/imgs/link.png" mode="aspectFit"></image>
       </view>
 
-      <!-- 右侧头像 + 标签 -->
+      <!-- 对方 + 右侧头像 + 标签 -->
       <view class="right-wrapper">
         <view class="avatar-box right-avatar">
           <image
-            src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80"
+            :src="otherAvatar"
             mode="aspectFill"
             class="avatar-img"
           ></image>
@@ -50,12 +50,12 @@
       </view>
     </view>
 
-    <!-- 中间信息卡片 -->
-    <view class="info-card">
+    <!-- 中间信息卡片：渲染当前匹配详情 -->
+    <view class="info-card" v-if="matchDetail">
       <!-- 左侧时间区 -->
       <view class="time-section">
-        <text class="date-text">11-18</text>
-        <text class="time-text">15:00</text>
+        <text class="date-text">{{ displayDate }}</text>
+        <text class="time-text">{{ displayTime }}</text>
       </view>
 
       <!-- 分割线 -->
@@ -65,42 +65,56 @@
       <view class="detail-section">
         <view class="title-row">
           <view class="icon-pin">
-            <!-- <svg width="14" height="14" viewBox="0 0 24 24" fill="#ff7675" stroke="none">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3" fill="#fff"></circle>
-            </svg> -->
             <image class="icon-fire" src="/static/imgs/location.png" mode="aspectFit"></image>
           </view>
-          <text class="shop-name">重庆老火锅</text>
+          <text class="shop-name">{{ shopName }}</text>
         </view>
 
         <view class="info-row">
           <text class="label">火锅类型：</text>
-          <text class="value">重庆火锅</text>
+          <text class="value">{{ hotpotTypeText }}</text>
         </view>
 
         <view class="info-row">
           <text class="label">付费方式：</text>
-          <text class="value">AA</text>
+          <text class="value">{{ payTypeText }}</text>
         </view>
 
         <!-- 取消按钮 -->
-        <view class="cancel-btn">取消</view>
+        <view class="cancel-btn" @click="handleCancelMatch">取消</view>
       </view>
+    </view>
+
+    <!-- 无匹配数据时的空状态：加载完成且没有匹配记录才展示 -->
+    <view class="empty-state" v-else-if="!detailLoading">
+      <text class="empty-icon">🍲</text>
+      <text class="empty-text">还没有进行中的匹配</text>
+      <view class="empty-btn" @click="goToMatch">快去发起匹配吧</view>
     </view>
   </view>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue';
 import { onShow, onHide } from '@dcloudio/uni-app';
 import { isLogin, isProfileComplete } from '@/utils/auth';
-import { getMatchDetail, cancelMatchRecord, getDemandList } from '@/api/api';
+import { getMatchDetail, cancelMatchRecord } from '@/api/api';
+import { hotpotTypeText as hotpotTypeTextMap, payTypeCodeText } from '@/config/matchOptions';
+import type { MatchDetailItem } from '@/api/api';
+import { onWsMessage } from '@/utils/websocket';
+import { WS_EVENT } from '@/common/matchSocket';
 
 const showWaitingPopup = ref(false);
 const remainingSeconds = ref(10 * 60); // 默认 10 分钟倒计时
+// 等待倒计时持久化：本地存截止时间戳（毫秒），离开/刷新页面后按它恢复剩余时间，不重置
+const WAITING_DEADLINE_KEY = 'waitingDeadline';
+const WAITING_TOTAL_SECONDS = 10 * 60;
 const recordId = ref('');
-let countdownTimer = null;
+// const demandId = ref('');
+let countdownTimer:any = null;
+// 全局 socket 消息退订函数
+let unsubscribeWs: (() => void) | null = null;
+
 
 const countdownStr = computed(() => {
   const minutes = Math.floor(remainingSeconds.value / 60);
@@ -110,6 +124,7 @@ const countdownStr = computed(() => {
   return `${mm}${ss}`;
 });
 
+// 倒计时
 function startCountdown() {
   if (countdownTimer) {
     clearInterval(countdownTimer);
@@ -119,15 +134,52 @@ function startCountdown() {
       remainingSeconds.value -= 1;
     } else {
       clearInterval(countdownTimer);
-      showWaitingPopup.value = false;
+      countdownTimer = null;
+      handleCountdownTimeout();
     }
   }, 1000);
 }
 
-function goToPartnerProfile() {
-  uni.navigateTo({ url: `/subPack/match/partnerProfile?from=view&matchId=${recordId.value}` });
+// 倒计时结束（含恢复时发现已过期）：清理等待标记，取消匹配记录，提示后跳转到匹配页
+function handleCountdownTimeout() {
+  uni.removeStorageSync(WAITING_DEADLINE_KEY);
+  uni.removeStorageSync('showWaitingPopup');
+  showWaitingPopup.value = false;
+  handleCancelMatch();
+  uni.showToast({ title: '等待超时，已自动取消', icon: 'none', duration: 1500 });
+  setTimeout(() => {
+    uni.switchTab({ url: '/pages/tabBar/match' });
+  }, 1500);
 }
 
+// 开启等待倒计时：剩余时间以本地持久化的截止时间戳为准，离开/刷新回来不重置
+function startWaitingCountdown() {
+  const now = Date.now();
+  let deadline = Number(uni.getStorageSync(WAITING_DEADLINE_KEY)) || 0;
+  if (!deadline) {
+    // 首次展示等待弹窗：以当前时间 + 10 分钟作为截止点并持久化
+    deadline = now + WAITING_TOTAL_SECONDS * 1000;
+    uni.setStorageSync(WAITING_DEADLINE_KEY, deadline);
+  }
+  if (deadline <= now) {
+    // 持久化的截止时间已过：按超时取消处理
+    handleCountdownTimeout();
+    return;
+  }
+  remainingSeconds.value = Math.ceil((deadline - now) / 1000);
+  startCountdown();
+}
+
+// 点击查看对方主页
+function goToPartnerProfile() {
+  // 联系方式交换等操作以匹配记录 recordId 为参数，优先内存，其次详情返回
+  const id = recordId.value || matchDetail.value?.recordId || '';
+  // otherUserId 供对方资料页 mini/user/getUserInfo 使用
+  const uid = matchDetail.value?.otherUserId || '';
+  uni.navigateTo({ url: `/subPack/match/partnerProfile?from=view&recordId=${id}&otherUserId=${uid}` });
+}
+
+// 关闭等待弹窗
 function closeWaitingPopup() {
   showWaitingPopup.value = false;
   if (countdownTimer) {
@@ -141,6 +193,11 @@ async function handleCancelMatch() {
   if (recordId.value) {
     try {
       await cancelMatchRecord({ recordId: recordId.value });
+      // 取消成功进入终态，清掉缓存与内存中的 recordId、等待弹窗与倒计时标记
+      uni.removeStorageSync('recordId');
+      uni.removeStorageSync('showWaitingPopup');
+      uni.removeStorageSync(WAITING_DEADLINE_KEY);
+      recordId.value = '';
     } catch {
       // 取消失败不阻塞关闭弹窗，错误提示已由 request 统一处理
     }
@@ -148,13 +205,101 @@ async function handleCancelMatch() {
   closeWaitingPopup();
 }
 
-// 获取需求列表
-const fetchDemandList = async () => {
+// 匹配详情：一次只有一条有效匹配，进入页面用 recordId 拉取详情渲染
+const matchDetail = ref<MatchDetailItem | null>(null);
+// 详情请求中标记：请求期间不显示空状态，避免无数据时闪烁
+const detailLoading = ref(false);
+
+// 空状态：去发起匹配（跳转到匹配 tab 页）
+function goToMatch() {
+  uni.switchTab({ url: '/pages/tabBar/match' });
+}
+
+// 我的头像（缺省回退占位图）
+const myAvatar = computed(() => matchDetail.value?.myAvatar || 'https://picsum.photos/200');
+// 对方头像（缺省回退占位图）
+const otherAvatar = computed(
+  () =>
+    matchDetail.value?.otherAvatar ||
+    'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
+);
+
+// 店铺名称：详情接口直接返回 shopName
+const shopName = computed(() => matchDetail.value?.shopName || '');
+
+// meetingTime 如 "2026-09-03 15:30"，拆成左侧日期与时间展示
+const displayDate = computed(() => {
+  const t = matchDetail.value?.meetingTime || '';
+  const date = t.split(' ')[0] || '';
+  return date.length >= 10 ? date.slice(5) : date;
+});
+
+// 显示时间
+const displayTime = computed(() => {
+  const t = matchDetail.value?.meetingTime || '';
+  return t.split(' ')[1] || '';
+});
+
+// 火锅类型
+// hotpotType 返回单个索引数字（0=重庆火锅 1=潮汕火锅 2=海鲜火锅 3=小火锅），兼容逗号分隔多选
+const hotpotTypeText = computed(() => {
+  const raw = matchDetail.value?.hotpotType;
+  if (raw == null) return '';
+  return String(raw)
+    .split(',')
+    .map((idx) => hotpotTypeTextMap[Number(idx)] || '')
+    .filter(Boolean)
+    .join('、');
+});
+
+// 请客类型
+const payTypeText = computed(() => {
+  const t = matchDetail.value?.payType;
+  return t != null ? payTypeCodeText[t] || '' : '';
+});
+
+// 请求匹配详情，用返回的店铺/时间/火锅类型/付费方式/头像等渲染卡片
+const fetchMatchDetail = async () => {
+  if (!recordId.value) {
+    return;
+  }
+  detailLoading.value = true;
   try {
-    const list = await getDemandList();
-    demandList.value = Array.isArray(list) ? list : [];
+    const detail = await getMatchDetail({ recordId: recordId.value });
+    matchDetail.value = detail || null;
   } catch {
-    // 获取失败不显示弹窗
+    // 请求失败按无有效匹配处理，回落空状态
+    matchDetail.value = null;
+  } finally {
+    detailLoading.value = false;
+  }
+};
+
+// 全局 socket 推送的匹配结果事件：关闭等待弹窗并同步页面状态
+// （结果文案/结果弹窗由全局 matchSocket 统一提示，这里只处理本页 UI）
+const handleMatchWsEvent = (data: any) => {
+  const type = data?.type || data?.eventType || data?.event;
+  if (!type) return;
+  if (type === WS_EVENT.MATCH_CONFIRMED) {
+    // 对方已同意：结束等待，刷新匹配详情卡片
+    uni.removeStorageSync('showWaitingPopup');
+    uni.removeStorageSync(WAITING_DEADLINE_KEY);
+    closeWaitingPopup();
+    if (data?.recordId) {
+      recordId.value = String(data.recordId);
+    }
+    fetchMatchDetail();
+  } else if (
+    type === WS_EVENT.MATCH_REJECTED ||
+    type === WS_EVENT.MATCH_CANCELED ||
+    type === WS_EVENT.MATCH_TIMEOUT
+  ) {
+    // 对方拒绝/取消/超时：结束等待并清理本页匹配记录与弹窗标记
+    uni.removeStorageSync('showWaitingPopup');
+    uni.removeStorageSync(WAITING_DEADLINE_KEY);
+    closeWaitingPopup();
+    recordId.value = '';
+    matchDetail.value = null;
   }
 };
 
@@ -169,39 +314,31 @@ onShow(() => {
     return;
   }
 
-  fetchDemandList();
-
+  // 等待对方同意弹窗：标记持久化在本地，用户未取消且未收到对方结果前一直保留，
+  // 离开/刷新后回到本页仍展示；倒计时剩余时间也持久化，按截止时间戳恢复而非重置
   const shouldShow = uni.getStorageSync('showWaitingPopup');
   if (shouldShow) {
-    uni.removeStorageSync('showWaitingPopup');
-    remainingSeconds.value = 10 * 60;
     showWaitingPopup.value = true;
-    startCountdown();
+    startWaitingCountdown();
   }
 
-  // 读取匹配成功后传递的匹配记录ID
+  // 读取匹配记录ID：优先内存，其次缓存；不删除缓存，整个匹配周期复用，终态（取消等）才清理
   const storedRecordId = uni.getStorageSync('recordId');
+  console.log('storedRecordId', storedRecordId);
   if (storedRecordId) {
-    uni.removeStorageSync('recordId');
     recordId.value = storedRecordId;
+  }
+  if (recordId.value) {
+    // 每次进入页面用匹配详情接口校验匹配状态，仍有效则显示等待弹窗
     fetchMatchDetail();
+  }
+
+  // 订阅全局匹配推送：等待弹窗期间收到对方同意/拒绝/取消/超时事件时自动更新
+  if (!unsubscribeWs) {
+    unsubscribeWs = onWsMessage(handleMatchWsEvent);
   }
 });
 
-// 请求匹配详情，成功后显示等待对方同意弹窗
-const fetchMatchDetail = async () => {
-  if (!recordId.value) {
-    return;
-  }
-  try {
-    await getMatchDetail({ recordId: recordId.value });
-    remainingSeconds.value = 10 * 60;
-    showWaitingPopup.value = true;
-    startCountdown();
-  } catch {
-    // 请求失败不显示弹窗
-  }
-};
 
 onHide(() => {
   if (countdownTimer) {
@@ -213,6 +350,10 @@ onHide(() => {
 onUnmounted(() => {
   if (countdownTimer) {
     clearInterval(countdownTimer);
+  }
+  if (unsubscribeWs) {
+    unsubscribeWs();
+    unsubscribeWs = null;
   }
 });
 </script>
@@ -421,6 +562,50 @@ onUnmounted(() => {
   padding: 10rpx 30rpx;
   border-radius: 30rpx;
   border: 1rpx solid rgba(255, 255, 255, 0.3);
+}
+
+/* 无匹配数据空状态 */
+.empty-state {
+  margin-top: 160rpx;
+  width: 640rpx;
+  padding: 80rpx 40rpx;
+  box-sizing: border-box;
+  background: linear-gradient( 45deg, rgba(92,175,255,0.2) 0%, rgba(198,43,255,0.2) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
+}
+
+.empty-icon {
+  font-size: 90rpx;
+  line-height: 1;
+  margin-bottom: 30rpx;
+}
+
+.empty-text {
+  color: #ffffff;
+  font-size: 30rpx;
+  margin-bottom: 50rpx;
+}
+
+.empty-btn {
+  background: linear-gradient(270deg, #58b4ff 0%, #c927ff 100%);
+  color: #ffffff;
+  font-size: 28rpx;
+  padding: 18rpx 60rpx;
+  border-radius: 44rpx;
+  box-shadow: 0 8rpx 24rpx rgba(88, 180, 255, 0.4);
+
+  &:active {
+    transform: scale(0.96);
+  }
 }
 
 /* 等待对方同意弹窗 */

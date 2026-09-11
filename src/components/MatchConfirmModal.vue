@@ -17,9 +17,6 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { confirmMatchRecord, rejectMatchRecord } from '@/api/api';
-
 const props = defineProps({
     visible: {
         type: Boolean,
@@ -41,37 +38,13 @@ const props = defineProps({
 
 const emit = defineEmits(['cancel', 'confirm']);
 
-// 请求进行中，防止重复点击
-const submitting = ref(false);
-
-const handleCancel = async () => {
-    if (submitting.value) return;
-    submitting.value = true;
-    try {
-        if (props.recordId) {
-            await rejectMatchRecord({ recordId: props.recordId });
-        }
-        emit('cancel');
-    } catch {
-        // 失败提示已由 request 统一处理，不关闭弹窗，可重试
-    } finally {
-        submitting.value = false;
-    }
+// 纯 UI 组件：同意/拒绝接口由父页面（match.vue）统一调用，这里只负责抛出事件
+const handleCancel = () => {
+    emit('cancel');
 };
 
-const handleConfirm = async () => {
-    if (submitting.value) return;
-    submitting.value = true;
-    try {
-        if (props.recordId) {
-            await confirmMatchRecord({ recordId: props.recordId });
-        }
-        emit('confirm');
-    } catch {
-        // 失败提示已由 request 统一处理，不关闭弹窗，可重试
-    } finally {
-        submitting.value = false;
-    }
+const handleConfirm = () => {
+    emit('confirm');
 };
 
 const goPartnerProfile = () => {

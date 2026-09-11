@@ -73,7 +73,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { getWxPayOrderDetail, type WxPayOrderDetail } from '@/api/api';
+import { getWxPayOrderDetail, wxPayRefund, type WxPayOrderDetail } from '@/api/api';
 
 // 获取系统状态栏高度，适配刘海屏
 const statusBarHeight = ref(0);
@@ -177,12 +177,26 @@ onLoad((options: any) => {
     loadDetail();
 });
 
-// 申请退款：仅未使用且后端允许时可跳转
-function goRefund() {
-    if (!canApplyRefund.value) return;
-    uni.navigateTo({
-        url: `/subPack/me/refund?id=${encodeURIComponent(orderId.value)}`,
-    });
+// 申请退款中（防止重复提交）
+const refunding = ref(false);
+
+// 申请退款：仅未使用且后端允许时可直接请求接口
+async function goRefund() {
+    if (!canApplyRefund.value || refunding.value) return;
+    refunding.value = true;
+    uni.showLoading({ title: '提交中...' });
+    try {
+        await wxPayRefund({ orderId: orderId.value });
+        uni.hideLoading();
+        uni.showToast({ title: '退款申请已提交', icon: 'success' });
+        // 刷新详情，展示最新退款状态
+        loadDetail();
+    } catch (e) {
+        uni.hideLoading();
+        console.error('[orderDetail] 申请退款失败', e);
+    } finally {
+        refunding.value = false;
+    }
 }
 
 const goBack = () => {

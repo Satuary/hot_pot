@@ -34,6 +34,7 @@ import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import logoImg from '@/static/imgs/logo@3x.png';
 import { isLogin, isProfileComplete, setToken, setUserInfo, setProfileComplete } from '@/utils/auth';
+import { startMatchSocket } from '@/common/matchSocket';
 import { wechatLogin } from '@/api/api';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
@@ -105,6 +106,8 @@ const handleWechatLogin = async () => {
     // 后端 isNew 表示是否为新用户：新用户需完善资料，老用户资料已完善
     const isNewUser = !!result.isNew;
     setProfileComplete(!isNewUser);
+    // 登录成功后启动全局 WebSocket 单例
+    startMatchSocket();
 
     uni.showToast({
       title: '登录成功',

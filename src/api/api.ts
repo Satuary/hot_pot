@@ -121,6 +121,14 @@ export const getDemandList = (): Promise<DemandItem[]> => {
 };
 
 /**
+ * 获取需求详情
+ * @param data.id 需求 id
+ */
+export const getDemandDetail = (data: { id: number | string }) => {
+  return request('/mini/demand/detail', 'GET', data);
+};
+
+/**
  * 获取匹配列表
  */
 export const getMatchList = (data?: { page?: number; pageSize?: number }) => {
@@ -135,9 +143,39 @@ export const getMatchRecommend = (data: { demandId: string }) => {
 };
 
 /**
- * 获取匹配记录详情
+ * 匹配记录详情（/mini/match/detail 返回，业务字段平铺在响应体顶层）
  */
-export const getMatchDetail = (data: { recordId: string }) => {
+export interface MatchDetailItem {
+  /** 匹配记录 id */
+  recordId: number | string;
+  /** 我的用户 id */
+  myUserId: number | string;
+  /** 对方用户 id */
+  otherUserId: number | string;
+  /** 见面时间，如 "2026-09-03 15:30" */
+  meetingTime: string;
+  /** 匹配状态：0=待确认 1=已确认 2=已拒绝 3=已取消 */
+  matchStatus: number;
+  /** 付费方式：0=我请客 1=AA 2=对方请客 */
+  payType: number;
+  /** 店铺名称 */
+  shopName: string;
+  /** 火锅类型（索引：0=重庆火锅 1=潮汕火锅 2=海鲜火锅 3=小火锅） */
+  hotpotType: number;
+  /** 对方头像 */
+  otherAvatar: string;
+  /** 我的头像 */
+  myAvatar: string;
+  [key: string]: any;
+}
+
+/**
+ * 获取匹配记录详情
+ * @param data.recordId 匹配记录 id
+ */
+export const getMatchDetail = (data: {
+  recordId: number | string;
+}): Promise<MatchDetailItem> => {
   return request('/mini/match/detail', 'GET', data);
 };
 
@@ -163,9 +201,28 @@ export const cancelMatchRecord = (data: { recordId: string }) => {
 };
 
 /**
- * 解锁匹配用户（创建匹配关系），参数以 query 形式拼在地址栏
+ * 取消发布的需求（POST，demandId 拼在地址栏）
+ * 匹配建立前撤销需求用，demandId 为发布需求返回的需求 id
  */
-export const createMatch = (data: { demandId: string; matchUserId: number | string }) => {
+export const cancelDemand = (data: { demandId: string }) => {
+  return request(`/mini/demand/cancel?demandId=${encodeURIComponent(data.demandId)}`, 'POST');
+};
+
+/**
+ * 发起匹配（创建匹配关系），参数以 query 形式拼在地址栏
+ * 返回新建匹配记录信息：recordId 为匹配记录id（后续 mini/match/detail、cancel、
+ * 联系方式交换等接口均以此为参数），matchUserAvatar 为发起方头像，
+ * matchedUserAvatar 为被选中方头像
+ */
+export const createMatch = (data: {
+  demandId: string;
+  matchUserId: number | string;
+}): Promise<{
+  recordId?: number | string;
+  matchUserAvatar?: string;
+  matchedUserAvatar?: string;
+  [key: string]: any;
+}> => {
   return request(
     `/mini/match/create?demandId=${encodeURIComponent(data.demandId)}&matchUserId=${encodeURIComponent(String(data.matchUserId))}`,
     'POST',
@@ -177,6 +234,15 @@ export const createMatch = (data: { demandId: string; matchUserId: number | stri
  */
 export const startMatch = (data: { requirementId: string }) => {
   return request('/api/match/start', 'POST', data);
+};
+
+/**
+ * 保存自动匹配偏好（开关）
+ * @param data.userId 用户 id
+ * @param data.autoMatch 0关闭 1开启
+ */
+export const saveAutoMatch = (data: { userId: number | string; autoMatch: number }) => {
+  return request('/mini/preference/save', 'POST', data);
 };
 
 /**
@@ -268,57 +334,57 @@ export const rejectRequest = (data: { requestId: string }) => {
 /**
  * 请求交换电话（POST）
  */
-export const applyPhoneExchange = (data: { matchId: string }) => {
-  return request('/mini/match/phone/apply', 'POST', data);
+export const applyPhoneExchange = (data: { recordId: string }) => {
+  return request(`/mini/match/phone/apply?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
 };
 
 /**
  * 同意电话申请（POST）
  */
-export const approvePhoneExchange = (data: { matchId: string }) => {
-  return request('/mini/match/phone/approve', 'POST', data);
+export const approvePhoneExchange = (data: { recordId: string }) => {
+  return request(`/mini/match/phone/approve?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
 };
 
 /**
  * 拒绝电话申请（POST）
  */
-export const rejectPhoneExchange = (data: { matchId: string }) => {
-  return request('/mini/match/phone/reject', 'POST', data);
+export const rejectPhoneExchange = (data: { recordId: string }) => {
+  return request(`/mini/match/phone/reject?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
 };
 
 /**
  * 查看对方电话（GET，参数拼在地址栏）
  */
-export const viewPartnerPhone = (data: { matchId: string }) => {
-  return request(`/mini/match/phone/view?matchId=${encodeURIComponent(data.matchId)}`, 'GET');
+export const viewPartnerPhone = (data: { recordId: string }) => {
+  return request(`/mini/match/phone/view?recordId=${encodeURIComponent(data.recordId)}`, 'GET');
 };
 
 /**
  * 查看对方微信（GET，参数拼在地址栏）
  */
-export const viewPartnerWechat = (data: { matchId: string }) => {
-  return request(`/mini/match/wechat/view?matchId=${encodeURIComponent(data.matchId)}`, 'GET');
+export const viewPartnerWechat = (data: { recordId: string }) => {
+  return request(`/mini/match/wechat/view?recordId=${encodeURIComponent(data.recordId)}`, 'GET');
 };
 
 /**
  * 请求交换微信（POST）
  */
-export const applyWechatExchange = (data: { matchId: string }) => {
-  return request('/mini/match/wechat/apply', 'POST', data);
+export const applyWechatExchange = (data: { recordId: string }) => {
+  return request(`/mini/match/wechat/apply?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
 };
 
 /**
  * 同意交换微信（POST）
  */
-export const approveWechatExchange = (data: { matchId: string }) => {
-  return request('/mini/match/wechat/approve', 'POST', data);
+export const approveWechatExchange = (data: { recordId: string }) => {
+  return request(`/mini/match/wechat/approve?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
 };
 
 /**
  * 拒绝交换微信（POST）
  */
-export const rejectWechatExchange = (data: { matchId: string }) => {
-  return request('/mini/match/wechat/reject', 'POST', data);
+export const rejectWechatExchange = (data: { recordId: string }) => {
+  return request(`/mini/match/wechat/reject?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
 };
 
 // ============= 支付相关 API =============
@@ -551,6 +617,15 @@ export const getWxPayOrderDetail = (data: {
 };
 
 /**
+ * 申请退款
+ * @param data.orderId 订单ID
+ * @param data.refundReason 退款原因（非必填）
+ */
+export const wxPayRefund = (data: { orderId: string; refundReason?: string }) => {
+  return request(`/mini/wx/pay/refund?orderId=${encodeURIComponent(String(data.orderId))}`, 'POST', data);
+};
+
+/**
  * 微信支付
  */
 export const wechatPay = (data: { orderId?: string; amount?: number; type?: string }) => {
@@ -633,10 +708,11 @@ export const getAppConfig = () => {
 };
 
 /**
- * 获取用户信息（编辑资料回显）
+ * 获取用户信息（编辑资料回显 / 查看对方资料）
+ * @param data.otherUserId 对方用户 id；不传时获取本人信息
  */
-export const getUserInfo = () => {
-  return request('/mini/user/getUserInfo', 'GET');
+export const getUserInfo = (data?: { otherUserId?: number | string }) => {
+  return request('/mini/user/getUserInfo', 'GET', data);
 };
 
 /**
@@ -654,20 +730,6 @@ export const completeUserInfo = (data: {
   motivation: number;
   wechat: string;
   stageName: string;
-  province: string;
-  city: string;
-  district: string;
-  address: string;
-  lat: number;
-  lng: number;
-}) => {
-  return request('/mini/user/completeUserInfo', 'POST', data);
-};
-
-/**
- * 仅更新用户地址信息（局部更新，不影响其它资料字段）
- */
-export const updateUserLocation = (data: {
   province: string;
   city: string;
   district: string;

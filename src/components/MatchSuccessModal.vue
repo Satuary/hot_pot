@@ -1,7 +1,7 @@
 <template>
     <view class="overlay" v-if="visible">
         <view class="modal-container">
-            <text class="title">恭喜盲盒影友匹配成功，点击解锁影友吧~</text>
+            <text class="title">恭喜盲盒锅友匹配成功，点击解锁锅友吧~</text>
 
             <view class="user-list">
                 <view v-for="(user, index) in list" :key="index" class="user-item" @click="handleUserClick(user)">
@@ -19,11 +19,22 @@
 </template>
 
 <script setup>
-import { ref, watch, onUnmounted } from 'vue';
+import { ref, watch } from 'vue';
 import { getMatchRecommend, createMatch } from '@/api/api';
 
-// 解锁成功后跳转页面的定时器
-let redirectTimer = null;
+const list = ref([{
+    id: '9',
+    avatar: 'https://picsum.photos/200',
+    nickname: '用户9',
+    stageName: '用户9',
+    sex: '男',
+    age: '25',
+    height: '1.80',
+    weight: '70kg',
+    status: 'locked',
+    statusText: '点击解锁',
+    subStatusText: '等待对方同意',
+}]);
 
 const props = defineProps({
     visible: {
@@ -62,6 +73,8 @@ const fetchRecommend = async () => {
         const res = await getMatchRecommend({ demandId: props.demandId || '' });
         // request 已解包 data，返回即用户数组；仍兼容 list/users/data 等结构
         const users = Array.isArray(res) ? res : res?.list || res?.users || res?.data || [];
+        console.log("users", users);
+        
         if (Array.isArray(users) && users.length) {
             list.value = users.map((user) => ({
                 id: user.userId || user.id,
@@ -82,13 +95,14 @@ const fetchRecommend = async () => {
     }
 };
 
-// 点击解锁：调用 createMatch 创建匹配关系，成功后等待对方同意
+// 点击解锁：调用 createMatch 发起匹配，成功后把匹配 recordId 与双方头像交给父组件，
+// 由父组件弹出"确认匹配"盲盒弹窗（不再由此处直接跳转查看页）
 const handleUserClick = async (user) => {
     if (user.status !== 'locked' || user.unlocking) {
         return;
     }
     if (!props.demandId || !user.id) {
-        emit('unlock', user);
+        emit('unlock', { user });
         return;
     }
 
@@ -98,20 +112,24 @@ const handleUserClick = async (user) => {
             demandId: props.demandId,
             matchUserId: user.id,
         });
-        // 取出匹配记录ID，switchTab 无法在 URL 上传参，改用全局存储传递给查看页
+        // 发起匹配返回：recordId 匹配记录id、matchUserAvatar 发起方头像、matchedUserAvatar 被选中方头像
         const recordId = res?.recordId || res?.matchId || res?.id || '';
-        if (recordId) {
-            uni.setStorageSync('recordId', recordId);
+        if (!recordId) {
+            uni.showToast({ title: '未获取到匹配记录，请重试', icon: 'none' });
+            return;
         }
+        // view 页与后续 cancel/联系方式交换接口均以该 recordId 为参数，写入缓存供全局使用
+        uni.setStorageSync('recordId', recordId);
         user.status = 'pending';
         user.statusText = '已发送申请';
         user.subStatusText = '等待对方同意';
-        // 等待对方同意，2s 后跳转到查看页
-        redirectTimer = setTimeout(() => {
-            uni.switchTab({
-                url: '/pages/tabBar/view',
-            });
-        }, 2000);
+        // 通知父组件：关闭本弹窗并弹出确认匹配弹窗，头像优先用接口返回，缺失时回退列表头像
+        emit('unlock', {
+            user,
+            recordId,
+            matchUserAvatar: res?.matchUserAvatar || '',
+            matchedUserAvatar: res?.matchedUserAvatar || user.avatar || '',
+        });
     } catch {
         // 申请失败不改变状态，可再次点击
         uni.showToast({
@@ -122,13 +140,6 @@ const handleUserClick = async (user) => {
         user.unlocking = false;
     }
 };
-
-onUnmounted(() => {
-    if (redirectTimer) {
-        clearTimeout(redirectTimer);
-        redirectTimer = null;
-    }
-});
 </script>
 
 <style scoped>

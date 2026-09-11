@@ -74,6 +74,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
+import { wxPayRefund } from '@/api/api';
 
 const orderId = ref('');
 const selectedReason = ref('');
@@ -88,21 +89,29 @@ const reasons = [
 ];
 
 onLoad((options: any) => {
-    if (options.id) orderId.value = options.id;
+    if (options.id) orderId.value = decodeURIComponent(options.id);
 });
 
 function goBack() { uni.navigateBack(); }
 
-function submitRefund() {
+async function submitRefund() {
     if (!selectedReason.value) return;
     uni.showLoading({ title: '提交中...' });
-    setTimeout(() => {
+    try {
+        // 退款原因：选中原因 + 补充说明（选填）
+        const refundReason = remark.value
+            ? `${selectedReason.value}：${remark.value}`
+            : selectedReason.value;
+        await wxPayRefund({ orderId: orderId.value, refundReason });
         uni.hideLoading();
         uni.showToast({ title: '退款申请已提交', icon: 'success' });
         setTimeout(() => {
             uni.navigateBack({ delta: 2 });
         }, 1500);
-    }, 1500);
+    } catch (e) {
+        uni.hideLoading();
+        console.error('[refund] 申请退款失败', e);
+    }
 }
 </script>
 
