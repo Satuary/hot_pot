@@ -36,7 +36,7 @@
     </view>
 
     <!-- 等待对方同意弹窗 -->
-    <view class="waiting-mask" v-if="showWaitingPopup" @click="closeWaitingPopup">
+    <view class="waiting-mask" v-if="showWaitingPopup">
       <view class="waiting-popup" @click.stop>
         <text class="waiting-title">等待对方同意</text>
         <view class="countdown">
