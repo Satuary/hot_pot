@@ -27,7 +27,7 @@
                 <!-- 左侧精准匹配 -->
                 <view class="circle-item">
                     <view class="circle-image-wrapper">
-                        <image class="circle-image neon-blue" src="https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&h=400&fit=crop" mode="aspectFill"></image>
+                        <image class="circle-image neon-blue" src="@/static/imgs/pot2.png" mode="aspectFill"></image>
                     </view>
                     <view class="match-btn precise" @click="goToPreciseMatch">
                         <text>精准匹配</text>
@@ -37,7 +37,7 @@
                 <!-- 右侧盲配 -->
                 <view class="circle-item">
                     <view class="circle-image-wrapper">
-                        <image class="circle-image neon-pink" src="https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&h=400&fit=crop" mode="aspectFill"></image>
+                        <image class="circle-image neon-pink" src="@/static/imgs/pot1.png" mode="aspectFill"></image>
                     </view>
                     <view class="match-btn blind" @click="goToBlindMatch">
                         <text>盲配</text>

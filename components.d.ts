@@ -16,7 +16,6 @@ declare module '@vue/runtime-core' {
     MatchIntroModal: typeof import('./src/components/MatchIntroModal.vue')['default']
     MatchSuccessModal: typeof import('./src/components/MatchSuccessModal.vue')['default']
     NavBar: typeof import('./src/components/NavBar.vue')['default']
-    StoreSelectPopup: typeof import('./src/components/StoreSelectPopup.vue')['default']
     TagSelector: typeof import('./src/components/TagSelector.vue')['default']
   }
 }

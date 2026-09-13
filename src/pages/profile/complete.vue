@@ -3,7 +3,7 @@
         <!-- Header -->
         <view class="header" :style="headerStyle">
             <view class="back" @click="goBack">
-                <text class="iconfont icon-fanhui"></text>
+                <text class="icon-back"></text>
             </view>
             <text class="title">完善资料</text>
             <view class="placeholder"></view>
@@ -563,9 +563,14 @@ async function onSubmit() {
         align-items: center;
         justify-content: center;
 
-        .iconfont {
-            font-size: 40rpx;
-            color: #fff;
+        .icon-back {
+            display: inline-block;
+            width: 20rpx;
+            height: 20rpx;
+            border-left: 4rpx solid #fff;
+            border-bottom: 4rpx solid #fff;
+            transform: rotate(45deg);
+            margin-top: 6rpx;
         }
     }
 

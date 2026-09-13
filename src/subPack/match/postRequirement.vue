@@ -241,6 +241,7 @@ import {
   payTypeMap,
   flavorToCodeStr,
 } from '@/config/matchOptions';
+import StoreSelectPopup from './components/StoreSelectPopup.vue';
 
 // 状态栏高度
 const statusBarHeight = ref(0);

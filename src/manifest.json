@@ -56,7 +56,7 @@
         "setting" : {
             "urlCheck" : false
         },
-        "optimizatiom" : {
+        "optimization" : {
             "subPackages" : true
         },
         "usingComponents" : true,

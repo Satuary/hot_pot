@@ -317,7 +317,7 @@
 import { ref, computed, reactive, onMounted } from 'vue';
 import { hotpotTypeOptions, tasteOptions, motivationOptions, appState } from '@/utils/store';
 import { setProfileComplete, getUserInfo as getAuthUserInfo, setUserInfo as setAuthUserInfo } from '@/utils/auth';
-import { regionData, findRegionIndexes } from '@/utils/region-data';
+import { regionData, findRegionIndexes } from './utils/region-data';
 import { completeUserInfo, getUserInfo, uploadImage } from '@/api/api';
 
 const defaultAvatar = 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80';

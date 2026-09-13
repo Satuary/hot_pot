@@ -96,13 +96,13 @@ export const appState = reactive({
 });
 
 // Hot pot type options
-export const hotpotTypeOptions = ['重庆火锅', '成都火锅', '潮汕牛肉', '老北京涮肉', '云南菌汤', '贵州酸汤', '海鲜火锅', '串串香', '椰子鸡', '其他'];
+export const hotpotTypeOptions = ['重庆火锅', '成都火锅', '潮汕牛肉', '老北京涮肉', '云南菌汤', '贵州酸汤', '海鲜火锅', '串串香', '椰子鸡'];
 
 // Taste options
 export const tasteOptions = ['麻辣', '微辣', '清汤', '番茄', '酸辣', '藤椒', '菌汤', '骨汤'];
 
 // Motivation options
-export const motivationOptions = ['想找人一起吃', '体验新店', '吃货交友', '庆祝', '解馋', '随便逛逛'];
+export const motivationOptions = ['想找人一起吃', '体验新店', '吃货交友', '庆祝', '解馋'];
 
 // Payment options
 export const paymentOptions = ['AA', '我请客', '对方请客'];

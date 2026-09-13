@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import logoImg from '@/static/imgs/logo@3x.png';
+import logoImg from '@/static/imgs/logo.png';
 import { isLogin, isProfileComplete, setToken, setUserInfo, setProfileComplete } from '@/utils/auth';
 import { startMatchSocket } from '@/common/matchSocket';
 import { wechatLogin } from '@/api/api';
