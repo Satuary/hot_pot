@@ -159,6 +159,14 @@
                         "navigationBarTitleText": "关于我们",
                         "navigationStyle": "custom"
                     }
+                },
+                {
+                    "path": "agreement",
+                    "style": {
+                        "navigationBarTitleText": "用户协议",
+                        "navigationBarBackgroundColor": "#FFFFFF",
+                        "navigationBarTextStyle": "black"
+                    }
                 }
             ]
         },

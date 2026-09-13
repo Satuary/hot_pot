@@ -71,7 +71,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { isLogin, isProfileComplete, getUserInfo } from '@/utils/auth';
+import { isLogin, isProfileComplete, getUserInfo, setUserInfo } from '@/utils/auth';
+import { getUserInfo as fetchUserInfo } from '@/api/api';
 
 const statusBarHeight = ref(0);
 const userInfo = ref<any>({});
@@ -103,18 +104,34 @@ const ageText = computed(() => {
     return age >= 0 ? age : (userInfo.value.age || '25');
 });
 
-// 读取用户信息（onMounted 与 onShow 复用，保证返回时刷新）
-const loadUserInfo = () => {
+// 读取用户信息：先展示本地缓存，再请求接口刷新（onMounted 与 onShow 复用）
+const loadUserInfo = async () => {
     const info = getUserInfo();
     if (info) {
         userInfo.value = info;
+    }
+    try {
+        const res: any = await fetchUserInfo();
+        // 兼容两种返回结构：直接平铺 或 包在 miniUserInfo 内
+        const d = res?.miniUserInfo || res || {};
+        const merged = { ...userInfo.value, ...d };
+        merged.id = merged.id || merged.userId || '';
+        // 无详细地址时用省市区拼接兜底
+        if (!merged.address && (merged.province || merged.city || merged.district)) {
+            merged.address = [merged.province, merged.city, merged.district].filter(Boolean).join('');
+        }
+        userInfo.value = merged;
+        // 同步回本地缓存，保证其他页面（如匹配页读取 userId）拿到最新数据
+        setUserInfo(merged);
+    } catch {
+        // 接口失败时保留本地缓存数据
     }
 };
 
 onMounted(() => {
     const systemInfo = uni.getSystemInfoSync();
     statusBarHeight.value = systemInfo.statusBarHeight || 0;
-    loadUserInfo();
+    // 用户信息由 onShow 统一加载（首次显示与每次返回都会触发）
 });
 
 // TabBar 页面守卫：每次显示时检查登录和资料完善状态，并刷新资料

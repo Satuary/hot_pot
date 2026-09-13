@@ -190,6 +190,7 @@ function closeWaitingPopup() {
 
 // 取消匹配：调用取消接口后关闭等待弹窗
 async function handleCancelMatch() {
+  console.log('handleCancelMatch', recordId.value);
   if (recordId.value) {
     try {
       await cancelMatchRecord({ recordId: recordId.value });
@@ -198,6 +199,9 @@ async function handleCancelMatch() {
       uni.removeStorageSync('showWaitingPopup');
       uni.removeStorageSync(WAITING_DEADLINE_KEY);
       recordId.value = '';
+      // 刷新页面数据：清空旧匹配详情，页面回落到空状态
+      matchDetail.value = null;
+      uni.showToast({ title: '已取消匹配', icon: 'none', duration: 1500 });
     } catch {
       // 取消失败不阻塞关闭弹窗，错误提示已由 request 统一处理
     }

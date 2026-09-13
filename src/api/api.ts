@@ -441,7 +441,10 @@ export interface WxPrepayResult {
  * @param data.packageId 支付套餐 id
  */
 export const wxUnifiedOrder = (data: {
-  packageId: number;
+  /** 套餐 id（选择套餐充值时传） */
+  packageId?: number;
+  /** 自定义充值金额，单位元（自定义金额充值时传，与 packageId 二选一） */
+  amount?: number;
 }): Promise<WxPrepayResult> => {
   return request('/mini/wx/pay/unifiedOrder', 'POST', data);
 };

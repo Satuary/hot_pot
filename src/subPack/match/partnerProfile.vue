@@ -50,7 +50,7 @@
                 <view class="pref-tag white" v-if="motivationText">{{ motivationText }}</view>
             </view>
 
-            <!-- 交换联系方式 -->
+            <!-- 当前为匹配方即当前userId = myUserId 并且 匹配状态是匹配上即 matchStatus 为 1 时 显示交换联系方式 -->
             <view class="contact-bar" v-if="showContactBar">
                 <view class="contact-item" @click="handlePhoneClick">
                     <image class="contact-icon" src="/static/imgs/dh.png" mode="aspectFit"></image>
@@ -62,6 +62,38 @@
                     <text class="contact-text">{{ wechatText }}</text>
                 </view>
             </view>
+
+            <!-- 当前为被匹配方 即当前userId = otherUserId 并且 匹配状态是待确认即 matchStatus 为 0 时 显示匹配信息 -->
+            <view class="info-card" v-if="showMatchInfoCard">
+                <!-- 左侧时间区 -->
+                <view class="time-section">
+                    <text class="date-text">{{ displayDate || '2023-01-01' }}</text>
+                    <text class="time-text">{{ displayTime || '12:00' }}</text>
+                </view>
+
+                <!-- 分割线 -->
+                <view class="divider"></view>
+
+                <!-- 右侧详情区 -->
+                <view class="detail-section">
+                    <view class="title-row">
+                        <view class="icon-pin">
+                            <image class="icon-fire" src="/static/imgs/location.png" mode="aspectFit"></image>
+                        </view>
+                        <text class="shop-name">{{ shopName || '火锅店' }}</text>
+                    </view>
+
+                    <view class="info-row">
+                        <text class="label">火锅类型：</text>
+                        <text class="value">{{ matchHotpotTypeText || '火锅类型' }}</text>
+                    </view>
+
+                    <view class="info-row">
+                        <text class="label">付费方式：</text>
+                        <text class="value">{{ payTypeText || '付费方式' }}</text>
+                    </view>
+                </view>
+                </view>
         </view>
     </view>
 </template>
@@ -81,15 +113,19 @@ import {
     getUserInfo,
     getMatchDetail,
 } from '@/api/api';
+import type { MatchDetailItem } from '@/api/api';
 import { hotpotTypeOptions, tasteOptions, motivationOptions } from '@/utils/store';
+import { hotpotTypeText as hotpotTypeTextMap, payTypeCodeText } from '@/config/matchOptions';
+import { getUserInfo as getLocalUserInfo } from '@/utils/auth';
 import { onWsMessage } from '@/utils/websocket';
 import { WS_EVENT, setPartnerPageVisible, partnerPageVisible } from '@/common/matchSocket';
 
 const statusBarHeight = ref(0);
-const showContactBar = ref(false);
 const recordId = ref('');
 // 对方用户 id：地址栏透传优先，缺省时用 recordId 拉匹配详情兜底
 const otherUserId = ref<number | string>('');
+// 匹配记录详情：用于判断当前用户角色（匹配方/被匹配方）、matchStatus 及渲染匹配信息卡
+const matchDetail = ref<MatchDetailItem | null>(null);
 
 // 对方资料（mini/user/getUserInfo 返回）
 const profile = reactive({
@@ -135,6 +171,53 @@ const addressText = computed(
     () => profile.address || [profile.province, profile.city, profile.district].filter(Boolean).join(''),
 );
 
+// 当前登录用户 id（本地缓存，字段兼容 id/userId）
+const currentUserId = computed(() => {
+    const u: any = getLocalUserInfo();
+    return u?.id ?? u?.userId ?? '';
+});
+
+// 角色判断：匹配记录中 myUserId 为发起匹配方，otherUserId 为被匹配方
+const isMatcher = computed(
+    () => !!matchDetail.value && String(currentUserId.value) === String(matchDetail.value.myUserId),
+);
+const isMatchedParty = computed(
+    () => !!matchDetail.value && String(currentUserId.value) === String(matchDetail.value.otherUserId),
+);
+
+// 当前为匹配方（userId = myUserId）且 matchStatus 为 1（已匹配）时，显示交换联系方式
+const showContactBar = computed(
+    () => isMatcher.value && Number(matchDetail.value?.matchStatus) === 1,
+);
+// 当前为被匹配方（userId = otherUserId）且 matchStatus 为 0（待确认）时，显示匹配信息卡
+const showMatchInfoCard = computed(
+    () => isMatchedParty.value && Number(matchDetail.value?.matchStatus) === 0,
+);
+
+// 匹配信息卡展示字段（数据源为匹配记录详情，区别于上方对方资料标签）
+const shopName = computed(() => matchDetail.value?.shopName || '');
+// meetingTime 如 "2026-09-03 15:30"，拆成左侧日期（MM-DD）与时间展示
+const displayDate = computed(() => {
+    const date = (matchDetail.value?.meetingTime || '').split(' ')[0] || '';
+    return date.length >= 10 ? date.slice(5) : date;
+});
+const displayTime = computed(() => (matchDetail.value?.meetingTime || '').split(' ')[1] || '');
+// 匹配记录 hotpotType 为 0 起始索引，兼容逗号分隔多选
+const matchHotpotTypeText = computed(() => {
+    const raw = matchDetail.value?.hotpotType;
+    if (raw == null) return '';
+    return String(raw)
+        .split(',')
+        .map((idx) => hotpotTypeTextMap[Number(idx)] || '')
+        .filter(Boolean)
+        .join('、');
+});
+// 付费方式：0=我请客 1=AA 2=对方请客
+const payTypeText = computed(() => {
+    const t = matchDetail.value?.payType;
+    return t != null ? payTypeCodeText[Number(t)] || '' : '';
+});
+
 // 状态文本映射
 const phoneText = computed(() => {
     switch (phoneStatus.value) {
@@ -165,13 +248,12 @@ statusBarHeight.value = systemInfo.statusBarHeight || 30;
 // 全局 socket 消息退订函数
 let unsubscribeWs: (() => void) | null = null;
 
-onLoad((options: any) => {
-    if (options?.from === 'view') {
-        showContactBar.value = true;
-    }
+onLoad(async (options: any) => {
     // 联系方式交换接口均以 recordId 为参数，优先取地址栏，其次兜底本地存储的匹配记录ID
     recordId.value = options?.recordId || options?.id || uni.getStorageSync('recordId') || '';
     otherUserId.value = options?.otherUserId || options?.userId || '';
+    // 先拉匹配详情：角色判断、联系方式栏/匹配信息卡显隐都依赖它，同时兜底解析对方 userId
+    await fetchMatchDetail();
     loadPartnerProfile();
     // 订阅全局 socket：微信/电话交换申请、同意、拒绝事件实时弹窗并更新交换状态
     unsubscribeWs = onWsMessage(handleExchangeWsEvent);
@@ -201,16 +283,45 @@ function mapApplyStatus(status: number): 'idle' | 'applied' | 'viewed' {
     return 'idle';
 }
 
+// 拉取匹配记录详情：角色判断、联系方式栏/匹配信息卡的渲染均依赖该数据
+async function fetchMatchDetail() {
+    if (!recordId.value) return;
+    try {
+        const detail = await getMatchDetail({ recordId: recordId.value });
+        matchDetail.value = detail || null;
+        // 详情返回的 recordId 作为后续联系方式交换接口参数兜底
+        if (!recordId.value && detail?.recordId) {
+            recordId.value = String(detail.recordId);
+        }
+    } catch {
+        matchDetail.value = null;
+    }
+}
+
+// 按当前登录用户角色取匹配记录中"对方"的 userId：
+// 我是被匹配方（otherUserId）时对方是 myUserId，否则对方是 otherUserId
+function getCounterpartUserId(detail: MatchDetailItem): number | string {
+    const cur = String(currentUserId.value);
+    if (cur && String(detail.otherUserId) === cur) return detail.myUserId;
+    return detail.otherUserId || (detail as any).userId || '';
+}
+
 // 拉取对方资料：查看对方时传 otherUserId
 async function loadPartnerProfile() {
     try {
         let uid = otherUserId.value;
-        // 地址栏没带 otherUserId 时，用 recordId 拉匹配详情兜底取对方 userId
+        // 地址栏没带 otherUserId 时，用匹配详情按当前登录角色兜底取对方 userId
         if (!uid && recordId.value) {
+            let detail: MatchDetailItem | null = matchDetail.value;
             try {
-                const detail: any = await getMatchDetail({ recordId: recordId.value });
-                uid = detail?.otherUserId || detail?.userId || '';
-                if (uid) otherUserId.value = uid;
+                if (!detail) {
+                    detail = await getMatchDetail({ recordId: recordId.value });
+                    matchDetail.value = detail || null;
+                }
+                if (detail) {
+                    uid = getCounterpartUserId(detail);
+                    if (uid) otherUserId.value = uid;
+                }
             } catch {
                 // 匹配详情失败不阻断资料拉取
             }
@@ -342,6 +453,11 @@ function handleExchangeWsEvent(data: any) {
         case WS_EVENT.PHONE_REJECTED: {
             phoneStatus.value = 'idle';
             uni.showToast({ title: '对方拒绝交换电话', icon: 'none' });
+            break;
+        }
+        // 对方已确认匹配（matchStatus 0→1）：刷新详情，自动切换信息卡/联系方式栏显隐
+        case WS_EVENT.MATCH_CONFIRMED: {
+            fetchMatchDetail();
             break;
         }
         default:
@@ -634,5 +750,97 @@ function goBack() {
 .contact-icon {
     width: 40rpx;
     height: 40rpx;
+}
+
+/* 中间信息卡片 - 精确尺寸、毛玻璃与阴影 */
+.info-card {
+  margin-top: 80rpx;
+  width: 100%;
+  height: 240rpx;
+  background: linear-gradient( 45deg, rgba(92,175,255,0.2) 0%, rgba(198,43,255,0.2) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  padding: 30rpx;
+  box-sizing: border-box;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
+}
+
+/* 左侧时间区 - 精确间距与字体 */
+.time-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 140rpx;
+  border-right: 1rpx solid rgba(255, 255, 255, 0.2);
+  margin-right: 30rpx;
+}
+
+.date-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 24rpx;
+  margin-bottom: 10rpx;
+}
+
+.time-text {
+  color: #ffffff;
+  font-size: 44rpx;
+  font-weight: bold;
+}
+
+.divider {
+  display: none;
+}
+
+/* 右侧详情区 - 精确布局与字体 */
+.detail-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative; 
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10rpx;
+}
+
+.icon-pin {
+  margin-right: 10rpx;
+  display: flex;
+  align-items: center;
+  .icon-fire{
+    width: 32rpx;
+    height: 32rpx;
+  }
+}
+
+.shop-name {
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 500;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 24rpx;
+}
+
+.value {
+  color: #ffffff;
+  font-size: 24rpx;
 }
 </style>

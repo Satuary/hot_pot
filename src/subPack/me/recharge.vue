@@ -62,10 +62,10 @@
                             <text v-if="agreed" class="radio-check">✓</text>
                         </view>
                     </view>
-                    <text class="agreement-text">
+                    <view class="agreement-text">
                         提醒：未成年人或非完全民事行为能力用户未经监护人同意禁止充值消费，充值代表已阅读并同意
-                        <text class="agreement-link" @click="openAgreement">《月最近充值协议》</text>
-                    </text>
+                        <text class="agreement-link" @click="openAgreement">《月越新小程序充值协议》</text>
+                    </view>
                 </view>
 
                 <!-- 充值按钮 -->
@@ -160,10 +160,8 @@ function goHistory() {
 }
 
 function openAgreement() {
-    uni.showModal({
-        title: '月最近充值协议',
-        content: '1. 充值金额将转换为对应的使用次数或月度会员时长。\n2. 充值后不支持退款，请确认后充值。\n3. 未成年人请在监护人同意后进行充值。',
-        showCancel: false,
+    uni.navigateTo({
+        url: '/subPack/me/agreement?type=recharge',
     });
 }
 
@@ -179,24 +177,24 @@ async function handleRecharge() {
     }
     if (currentAmount.value <= 0) return;
 
-    // 统一下单需要套餐 id；自定义金额未选中套餐时提示选择
-    if (!selectedPackage.value) {
+    // 自定义金额优先走 amount 下单；否则需选择套餐走 packageId 下单
+    const customAmountNum = Number(customAmount.value) > 0 ? Number(customAmount.value) : 0;
+    const pkg = customAmountNum > 0 ? null : selectedPackage.value;
+    if (!pkg && customAmountNum <= 0) {
         uni.showToast({
-            title: '请选择充值套餐',
+            title: '请选择充值套餐或输入金额',
             icon: 'none',
         });
         return;
     }
-
-    const pkg = selectedPackage.value;
-    const amount = currentAmount.value;
+    const amount = pkg ? pkg.price : customAmountNum;
 
     uni.showLoading({ title: '支付中', mask: true });
     try {
-        // 1. 生成微信预支付订单（仅传套餐 id）
-        const prepay = await wxUnifiedOrder({
-            packageId: pkg.id,
-        });
+        // 1. 生成微信预支付订单：套餐充值传 packageId，自定义金额充值传 amount（元）
+        const prepay = await wxUnifiedOrder(
+            pkg ? { packageId: pkg.id } : { amount: customAmountNum },
+        );
         console.log('[recharge] 统一下单返回 =', prepay);
 
         // 2. 拉起微信支付
@@ -218,15 +216,15 @@ async function handleRecharge() {
         uni.hideLoading();
         uni.showToast({ title: '充值成功', icon: 'success' });
 
-        // 3. 本地更新次数与交易记录
-        appState.userProfile.matchCount += pkg.times;
+        // 3. 本地更新次数与交易记录（自定义金额按 1元1次 计）
+        appState.userProfile.matchCount += pkg ? pkg.times : customAmountNum;
         appState.transactions.unshift({
             id: Date.now().toString(),
             date: new Date().toISOString().split('T')[0],
             time: new Date().toTimeString().slice(0, 5),
             type: 'income',
             amount,
-            desc: `充值 - ${amount}元${rechargeMode.value === 'monthly' ? '(按月优惠)' : ''}`,
+            desc: `充值 - ${amount}元${pkg ? (rechargeMode.value === 'monthly' ? '(按月优惠)' : '') : '(自定义)'}`,
             icon: '💰',
         });
     } catch (e: any) {

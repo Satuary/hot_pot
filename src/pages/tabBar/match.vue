@@ -8,14 +8,14 @@
                     <image class="location-icon" src="/static/imgs/map-pin-2-line.png" mode="aspectFit" />
                     <text class="location-text">{{ location }}</text>
                 </view>
+            </view>
 
-                <!-- 右侧匹配开关（胶囊：状态点 + 文字 + 开关） -->
-                <view class="match-toggle" :class="{ active: isToggleOn }" :style="{ marginRight: capsuleRightMargin + 'px' }" @click="toggleSwitch">
-                    <view class="status-dot"></view>
-                    <text class="status-text">{{ isToggleOn ? '匹配中' : '已关闭' }}</text>
-                    <view class="toggle-switch">
-                        <view class="toggle-circle"></view>
-                    </view>
+            <!-- 右侧匹配开关（胶囊：状态点 + 文字 + 开关） -->
+            <view class="match-toggle" :class="{ active: isToggleOn }" @click="toggleSwitch">
+                <view class="status-dot"></view>
+                <text class="status-text">{{ isToggleOn ? '匹配中' : '已关闭' }}</text>
+                <view class="toggle-switch">
+                    <view class="toggle-circle"></view>
                 </view>
             </view>
         </view>
@@ -290,6 +290,7 @@ const autoLocate = async () => {
   try {
     const loc = await getUserLocation();
     const addr = await reverseGeocode(loc);
+    console.log("loc,",loc, "addr",addr);
     const desc = addr.shortDescription || addr.formattedAddress;
     location.value = desc;
     uni.setStorageSync('user_location_name', desc);
@@ -397,6 +398,8 @@ const goToBlindMatch = async () => {
 
     // 右侧匹配开关胶囊
     .match-toggle {
+        width: fit-content;
+        margin-left: 40rpx;
         display: flex;
         align-items: center;
         gap: 12rpx;

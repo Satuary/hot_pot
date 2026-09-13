@@ -25,7 +25,7 @@
 
             <!-- 中心火锅图片 -->
             <view class="center-hub">
-                <image src="https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&h=400&fit=crop" mode="aspectFill" class="hotpot-img"></image>
+                <image src="@/static/imgs/pot1.png" mode="aspectFill" class="hotpot-img"></image>
             </view>
 
             <!-- 动态旋转层：包含头像和装饰球 -->

@@ -28,11 +28,11 @@
             </view>
 
             <view class="dark-card setting-menu">
-                <view class="menu-item">
+                <view class="menu-item" @click="goAgreement('user')">
                     <text class="menu-text">用户协议</text>
                     <text class="arrow">›</text>
                 </view>
-                <view class="menu-item">
+                <view class="menu-item" @click="goAgreement('privacy')">
                     <text class="menu-text">隐私政策</text>
                     <text class="arrow">›</text>
                 </view>
@@ -56,6 +56,11 @@ function goBack() { uni.navigateBack(); }
 
 function goAbout() {
     uni.navigateTo({ url: '/subPack/me/about' });
+}
+
+// 查看协议：type=user 用户协议 / type=privacy 隐私政策
+function goAgreement(type: 'user' | 'privacy') {
+    uni.navigateTo({ url: `/subPack/me/agreement?type=${type}` });
 }
 
 function handleLogout() {

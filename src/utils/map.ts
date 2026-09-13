@@ -79,6 +79,14 @@ interface AmapRegeoResponse {
       building: { name: string };
       neighborhood: { name: string };
     };
+    /** AOI 区域（坐标点所在的地块/园区/楼宇等，如"恒润实验学校"、"中融科技大厦"） */
+    aois: {
+      id: string;
+      name: string;
+      adcode: string;
+      location: string;
+      area: string;
+    }[];
     pois: {
       id: string;
       name: string;
@@ -276,8 +284,10 @@ export function reverseGeocode(location: UserLocation): Promise<AddressInfo> {
           const rg = data.regeocode;
           const ac = rg.addressComponent;
 
-          // 生成简短描述：如"xx广场附近"
-          const shortDescription = generateShortDescription(ac, rg.pois);
+          console.log("rg", rg, "ac", ac)
+
+          // 生成简短描述：优先显示坐标所在的具体地标，如"恒润实验学校"
+          const shortDescription = generateShortDescription(ac, rg.pois, rg.aois);
 
           // 转换附近 POI
           const landmarks: NearbyPoi[] = (rg.pois || []).map((p) => ({
@@ -378,13 +388,19 @@ export function searchNearbyLandmarks(
 }
 
 /**
- * 生成位置的简短描述（类似美团"xx路"、"xx广场附近"）
+ * 生成位置的简短描述（优先显示坐标点所在的具体地标，如"恒润实验学校"、"中融科技大厦"）
  */
 function generateShortDescription(
   ac: AmapRegeoResponse['regeocode']['addressComponent'],
   pois: AmapRegeoResponse['regeocode']['pois'],
+  aois: AmapRegeoResponse['regeocode']['aois'],
 ): string {
-  // 优先级：街道 > 知名POI > 区
+  // 优先级：AOI 地标（坐标所在区域）> 街道 > 知名POI > 区
+  const aoiName = aois?.[0]?.name;
+  if (aoiName) {
+    return aoiName;
+  }
+
   const street = ac.streetNumber?.street;
   if (street) {
     return street;

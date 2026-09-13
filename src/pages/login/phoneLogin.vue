@@ -247,22 +247,14 @@ const goBack = () => {
   uni.navigateBack();
 };
 
-// 显示隐私政策
+// 查看隐私政策
 const showPrivacy = () => {
-  uni.showModal({
-    title: '隐私政策',
-    content: '这里是隐私政策内容...',
-    showCancel: false,
-  });
+  uni.navigateTo({ url: '/subPack/me/agreement?type=privacy' });
 };
 
-// 显示用户协议
+// 查看用户协议
 const showUserAgreement = () => {
-  uni.showModal({
-    title: '用户协议',
-    content: '这里是用户协议内容...',
-    showCancel: false,
-  });
+  uni.navigateTo({ url: '/subPack/me/agreement?type=user' });
 };
 </script>
 
