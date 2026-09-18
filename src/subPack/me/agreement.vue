@@ -1,5 +1,14 @@
 <template>
   <view class="agreement-page">
+    <!-- 导航栏 -->
+    <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <view class="nav-content">
+        <view class="nav-back" @click="goBack">
+          <uni-icons type="left" size="22" color="#333"></uni-icons>
+        </view>
+        <view class="nav-title">{{ navTitle }}</view>
+      </view>
+    </view>
     <rich-text :nodes="content"></rich-text>
   </view>
 </template>
@@ -7,6 +16,14 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
+
+// 状态栏高度
+const statusBarHeight = ref(0);
+const navTitle = ref('用户协议');
+
+function goBack() {
+  uni.navigateBack();
+}
 
 // 协议类型：user=用户协议 privacy=隐私政策 recharge=充值协议
 type AgreementType = 'user' | 'privacy' | 'recharge';
@@ -261,13 +278,16 @@ const rechargeAgreement = `
 `;
 
 onLoad((options) => {
+  const systemInfo = uni.getSystemInfoSync();
+  statusBarHeight.value = systemInfo.statusBarHeight || 0;
+
   const type = (options?.type as AgreementType) || 'user';
   const meta: Record<AgreementType, { title: string; html: string }> = {
     user: { title: '用户协议', html: userAgreement },
     privacy: { title: '隐私政策', html: privacyAgreement },
     recharge: { title: '充值协议', html: rechargeAgreement },
   };
-  uni.setNavigationBarTitle({ title: meta[type].title });
+  navTitle.value = meta[type].title;
   content.value = meta[type].html;
 });
 </script>
@@ -276,7 +296,47 @@ onLoad((options) => {
 .agreement-page {
   min-height: 100vh;
   background: #ffffff;
-  padding: 30rpx 40rpx 80rpx;
   box-sizing: border-box;
+}
+
+/* 导航栏 */
+.nav-bar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  z-index: 100;
+
+  .nav-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 88rpx;
+    padding: 0 30rpx;
+    position: relative;
+    border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+  }
+
+  .nav-back {
+    position: absolute;
+    left: 20rpx;
+    width: 60rpx;
+    height: 60rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-title {
+    font-size: 34rpx;
+    color: #333;
+    font-weight: 500;
+  }
+}
+
+rich-text {
+  display: block;
+  padding: 30rpx 40rpx 80rpx;
 }
 </style>

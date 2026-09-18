@@ -138,7 +138,7 @@ function handleWsMessage(data: any) {
             const req = {
                 // 同意/拒绝接口均以 recordId 为参数
                 id: recordId !== '' ? String(recordId) : 'req_' + Date.now(),
-                avatar: otherAvatar || 'https://picsum.photos/200',
+                avatar: otherAvatar || '/static/imgs/default-avatar.jpeg',
                 nickname: otherNickname || '神秘火锅搭子',
                 description: body.description || msg.description || `${otherNickname || '对方'} 想与你一起恰火锅~`,
             };

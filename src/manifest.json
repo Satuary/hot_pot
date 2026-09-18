@@ -1,5 +1,5 @@
 {
-    "name" : "月最新",
+    "name" : "月最新火锅",
     "appid" : "__UNI__HOTPOT__",
     "description" : "",
     "versionName" : "1.0.0",
@@ -60,9 +60,9 @@
             "subPackages" : true
         },
         "usingComponents" : true,
-        "requiredPrivateInfos" : [ "getFuzzyLocation" ],
+        "requiredPrivateInfos" : [ "getLocation", "chooseLocation" ],
         "permission" : {
-            "scope.userFuzzyLocation" : {
+            "scope.userLocation" : {
                 "desc" : "用于获取您的位置，搜索附近火锅店"
             }
         }

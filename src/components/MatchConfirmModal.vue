@@ -24,7 +24,7 @@ const props = defineProps({
     },
     avatar: {
         type: String,
-        default: 'https://picsum.photos/200',
+        default: '/static/imgs/default-avatar.jpeg',
     },
     description: {
         type: String,

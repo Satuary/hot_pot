@@ -118,7 +118,7 @@ async function loadUsage() {
     try {
         const res = await getMatchUsageList({ pageNum: 1, pageSize: 100 });
         // 兼容分页结构（records）与直接返回数组两种形式
-        usageRaw.value = Array.isArray(res) ? res : res?.records ?? [];
+        usageRaw.value = Array.isArray(res) ? res : res?.rows ?? [];
         console.log('[transactionHistory] 使用明细列表 =', res);
     } catch (e) {
         console.error('[transactionHistory] 获取使用明细失败', e);

@@ -220,7 +220,10 @@
       v-model:visible="storePopupVisible"
       :stores="storeList"
       :loading="storeLoading"
+      :loading-more="storeLoadingMore"
+      :has-more="storeHasMore"
       @select="onStoreSelect"
+      @load-more="loadMoreStores"
     />
   </view>
 </template>
@@ -231,6 +234,7 @@ import { postRequirement } from '@/api/api';
 import { mockStores } from '@/utils/store';
 import type { Store } from '@/utils/store';
 import { getUserLocation, searchNearbyHotPotStore } from '@/utils/map';
+import type { UserLocation } from '@/utils/map';
 import {
   genderOptions,
   hotpotTypes,
@@ -250,6 +254,14 @@ const statusBarHeight = ref(0);
 const storePopupVisible = ref(false);
 const storeList = ref<Store[]>([]);
 const storeLoading = ref(false);
+const storeLoadingMore = ref(false);
+// 当前页码与总条数（高德 count 字段）
+const storePage = ref(1);
+const storeTotal = ref(0);
+// 缓存定位，供翻页复用
+const storeLocation = ref<UserLocation | null>(null);
+// 是否还有下一页
+const storeHasMore = computed(() => storeList.value.length < storeTotal.value);
 // 当前选中的店铺（用于提交 shop 字段）
 const selectedStore = ref<Store | null>(null);
 
@@ -386,37 +398,80 @@ const selectPaymentMethod = (method: string) => {
   formData.value.paymentMethod = method;
 };
 
+// 请求指定页的附近火锅店（page=1 为首屏/刷新，page>1 为加载更多，数据自动拼接）
+const fetchStorePage = async (page: number) => {
+  if (!storeLocation.value) return;
+
+  if (page === 1) {
+    storeLoading.value = true;
+  } else {
+    storeLoadingMore.value = true;
+  }
+
+  try {
+    const { list, total } = await searchNearbyHotPotStore(storeLocation.value, page);
+    storeTotal.value = total;
+
+    if (page === 1) {
+      storeList.value = list;
+      if (list.length === 0) {
+        uni.showToast({ title: '附近暂无火锅店', icon: 'none' });
+      }
+      console.log('通过高德地图周边搜索 API 获取附近火锅店(第1页)===', list);
+    } else {
+      // 按 id 去重后拼接，避免分页边界数据重复
+      const existIds = new Set(storeList.value.map((s) => s.id));
+      const merged = [...storeList.value, ...list.filter((s) => !existIds.has(s.id))];
+      storeList.value = merged;
+      console.log(`加载更多火锅店(第${page}页)===`, list, '累计:', merged.length);
+    }
+    storePage.value = page;
+  } catch (err: any) {
+    console.error('获取附近火锅店失败:', err);
+    if (page === 1) {
+      uni.showToast({ title: err.message || '获取附近火锅店失败，使用默认数据', icon: 'none' });
+      // 高德 API 不可用时降级使用 mock 数据
+      storeList.value = mockStores;
+      storeTotal.value = mockStores.length;
+      storePage.value = 1;
+    } else {
+      uni.showToast({ title: '加载更多失败', icon: 'none' });
+    }
+  } finally {
+    storeLoading.value = false;
+    storeLoadingMore.value = false;
+  }
+};
+
 // 选择火锅店（通过高德地图 API 获取附近火锅店）
 const selectStore = async () => {
   storePopupVisible.value = true;
   if (storeList.value.length) return;
 
-  storeLoading.value = true;
   try {
     // 1. 使用wx api获取用户当前经纬度
     const location = await getUserLocation();
-    // 2. 通过高德地图周边搜索 API 获取附近火锅店
-    const stores = await searchNearbyHotPotStore(location);
-    if (stores.length === 0) {
-      uni.showToast({ title: '附近暂无火锅店', icon: 'none' });
-    }
-    storeList.value = stores;
-    console.log('通过高德地图周边搜索 API 获取附近火锅店===',stores);
-    //存shop字段
-      // [{ "address": "位中心84197号",
-  //       "distance": "sit Ut in irure in",
-  //       "id": "B0L0BHTZCM",
-  //       "name": "建一全",
-  //       "image": "https://loremflickr.com/400/400?lock=5206352026233355",
-  //       "rating": "3.2"}]
+    // 测试用，固定位置在位中心84197号
+    location.longitude = 113.24;
+    location.latitude = 23.11;
+    // 缓存定位，供后续翻页复用
+    storeLocation.value = location;
+    // 2. 拉取第 1 页
+    await fetchStorePage(1);
   } catch (err: any) {
-    console.error('获取附近火锅店失败:', err);
-    uni.showToast({ title: err.message || '获取附近火锅店失败，使用默认数据', icon: 'none' });
-    // 高德 API 不可用时降级使用 mock 数据
+    console.error('定位失败:', err);
+    uni.showToast({ title: err.message || '定位失败，使用默认数据', icon: 'none' });
+    // 定位失败时降级使用 mock 数据
     storeList.value = mockStores;
-  } finally {
-    storeLoading.value = false;
+    storeTotal.value = mockStores.length;
+    storePage.value = 1;
   }
+};
+
+// 滚动到底部，加载下一页并拼接
+const loadMoreStores = () => {
+  if (storeLoadingMore.value || !storeHasMore.value || !storeLocation.value) return;
+  fetchStorePage(storePage.value + 1);
 };
 
 // 选中店铺
@@ -545,7 +600,7 @@ const submitRequirement = async () => {
     const params = {
       gender: String(genderMap[formData.value.gender] ?? 1),
       ageRange: `${formData.value.ageMin},${formData.value.ageMax}`,
-      matchType: '0', // 0精准 1盲配
+      matchType: '0', // 0精准 1快速匹配
       hotpotType: String(hotpotTypes.indexOf(formData.value.hotpotType)),
       taste: flavorToCodeStr(formData.value.flavor),
       motivation: String(motivations.indexOf(formData.value.motivation)),

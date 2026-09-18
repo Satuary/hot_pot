@@ -48,12 +48,12 @@ const props = defineProps({
     // 发起方本人头像（createMatch 返回的 matchUserAvatar）
     myAvatar: {
         type: String,
-        default: 'https://picsum.photos/200',
+        default: '/static/imgs/default-avatar.jpeg',
     },
     // 被选中方头像（createMatch 返回的 matchedUserAvatar）
     otherAvatar: {
         type: String,
-        default: 'https://picsum.photos/200',
+        default: '/static/imgs/default-avatar.jpeg',
     },
     // 匹配记录id，查看对方资料时透传给资料页
     recordId: {

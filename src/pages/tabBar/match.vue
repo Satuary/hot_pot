@@ -34,13 +34,13 @@
                     </view>
                 </view>
 
-                <!-- 右侧盲配 -->
+                <!-- 右侧快速匹配 -->
                 <view class="circle-item">
                     <view class="circle-image-wrapper">
                         <image class="circle-image neon-pink" src="@/static/imgs/pot1.png" mode="aspectFill"></image>
                     </view>
                     <view class="match-btn blind" @click="goToBlindMatch">
-                        <text>盲配</text>
+                        <text>快速匹配</text>
                     </view>
                 </view>
             </view>
@@ -85,7 +85,7 @@ import { ref, onMounted } from 'vue';
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app';
 // 登录和完善资料检查
 import { isLogin, isProfileComplete } from '@/utils/auth';
-// 匹配到的三个用户，适配盲配和精准匹配
+// 匹配到的三个用户，适配快速匹配和精准匹配
 import MatchSuccessModal from '@/components/MatchSuccessModal.vue';
 // 盲盒弹窗vs两个
 import BlindBoxPopup from '@/components/BlindBoxPopup.vue';
@@ -114,8 +114,8 @@ const matchedDemandId = ref('');
 const showIntroModal = ref(false);
 const showBlindBox = ref(false);
 // 盲盒确认弹窗展示数据（来自发起匹配 createMatch 的返回）
-const blindMyAvatar = ref('https://picsum.photos/200');
-const blindOtherAvatar = ref('https://picsum.photos/200');
+const blindMyAvatar = ref('/static/imgs/default-avatar.jpeg');
+const blindOtherAvatar = ref('/static/imgs/default-avatar.jpeg');
 const blindRecordId = ref('');
 
 const statusBarHeight = ref(0);
@@ -131,9 +131,9 @@ const isToggleOn = ref(true);
 // 发起匹配成功：关闭匹配成功弹窗，带出 recordId 与双方头像，延迟弹出确认匹配弹窗
 const handleUnlock = (payload: any) => {
     const recordId = payload?.recordId || uni.getStorageSync('recordId') || '';
-    const myAvatar = payload?.matchUserAvatar || 'https://picsum.photos/200';
+    const myAvatar = payload?.matchUserAvatar || '/static/imgs/default-avatar.jpeg';
     const otherAvatar =
-        payload?.matchedUserAvatar || payload?.user?.avatar || 'https://picsum.photos/200';
+        payload?.matchedUserAvatar || payload?.user?.avatar || '/static/imgs/default-avatar.jpeg';
     blindRecordId.value = recordId;
     blindMyAvatar.value = myAvatar;
     blindOtherAvatar.value = otherAvatar;
@@ -237,8 +237,8 @@ onShow(() => {
         try {
             const info = JSON.parse(pendingBlind);
             blindRecordId.value = info.recordId || uni.getStorageSync('recordId') || '';
-            blindMyAvatar.value = info.myAvatar || 'https://picsum.photos/200';
-            blindOtherAvatar.value = info.otherAvatar || 'https://picsum.photos/200';
+            blindMyAvatar.value = info.myAvatar || '/static/imgs/default-avatar.jpeg';
+            blindOtherAvatar.value = info.otherAvatar || '/static/imgs/default-avatar.jpeg';
             showBlindBox.value = true;
         } catch {
             uni.removeStorageSync('pendingBlindBox');
@@ -334,7 +334,7 @@ const goToPreciseMatch = () => {
     });
 };
 
-// 盲配：直接发布需求（matchType=1，其他参数不传），成功后进入匹配页
+// 快速匹配：直接发布需求（matchType=1，其他参数不传），成功后进入匹配页
 const goToBlindMatch = async () => {
     uni.showLoading({ title: '匹配中...', mask: true });
     try {
@@ -556,6 +556,7 @@ const goToBlindMatch = async () => {
         background: linear-gradient(270deg, #58b4ff 0%, #c927ff 100%);
         border-radius: 420rpx;
         box-shadow: 0 8rpx 24rpx rgba(88, 180, 255, 0.4);
+        animation: breathe-precise 2.4s ease-in-out infinite;
 
         text {
             color: #ffffff;
@@ -566,10 +567,12 @@ const goToBlindMatch = async () => {
         }
     }
 
-    // 盲配按钮 - 白色
+    // 快速匹配按钮 - 白色
     &.blind {
         background: #ffffff;
         box-shadow: 0 4rpx 16rpx rgba(255, 255, 255, 0.2);
+        animation: breathe-blind 2.4s ease-in-out infinite;
+        animation-delay: 1.2s;
 
         text {
             color: #333333;
@@ -577,6 +580,30 @@ const goToBlindMatch = async () => {
 
         &:active {
             transform: scale(0.95);
+        }
+    }
+
+    // 呼吸动画 - 精准匹配（紫色渐变）
+    @keyframes breathe-precise {
+        0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 8rpx 24rpx rgba(88, 180, 255, 0.4);
+        }
+        50% {
+            transform: scale(1.06);
+            box-shadow: 0 12rpx 36rpx rgba(88, 180, 255, 0.7);
+        }
+    }
+
+    // 呼吸动画 - 快速匹配（白色）
+    @keyframes breathe-blind {
+        0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 4rpx 16rpx rgba(255, 255, 255, 0.2);
+        }
+        50% {
+            transform: scale(1.06);
+            box-shadow: 0 8rpx 28rpx rgba(255, 255, 255, 0.5);
         }
     }
 }

@@ -4,7 +4,7 @@
       <view class="popup-header">
         <view class="title-wrap">
           <text class="title">{{ title }}</text>
-          <text class="subtitle">选择影院组队吃火锅吧~</text>
+          <text class="subtitle">选择火锅店吧~</text>
         </view>
         <view class="close-btn" @click="close">
           <uni-icons type="closeempty" size="24" color="#ffffff"></uni-icons>
@@ -34,9 +34,9 @@
           </view>
         </view>
       </view>
-
-      <scroll-view class="store-list" scroll-y>
-        <view v-if="loading" class="loading-wrap">
+      
+      <scroll-view class="store-list" scroll-y @scrolltolower="loadMore" lower-threshold="80">
+        <view v-if="loading && sortedStores.length === 0" class="loading-wrap">
           <view class="spinner"></view>
           <text class="loading-text">加载中...</text>
         </view>
@@ -65,17 +65,27 @@
                   ></uni-icons>
                 </view>
                 <text class="rating-score">{{ store.rating || '0.0' }}</text>
-                <text class="rating-count">0条评价</text>
+                <!-- <text class="rating-count">0条评价</text> -->
               </view>
-              <view class="tags" v-if="store.tags && store.tags.length">
-                <text v-for="tag in store.tags" :key="tag" class="tag">{{ tag }}</text>
+              <view class="tags">
+                <text class="tag">{{ store.tags }}</text>
               </view>
               <view class="distance-row">
                 <uni-icons type="location-filled" size="12" color="#999999"></uni-icons>
                 <text class="distance-text">直线距离{{ store.distance }}</text>
               </view>
-              <text class="status">暂未入住</text>
+              <!-- <text class="status">暂未入住</text> -->
             </view>
+          </view>
+          <view v-if="loadingMore" class="load-more-tip">
+            <view class="spinner small"></view>
+            <text class="loading-text inline">加载更多...</text>
+          </view>
+          <view v-else-if="hasMore" class="load-more-tip">
+            <text class="no-more-text">上拉加载更多</text>
+          </view>
+          <view v-else-if="sortedStores.length > 0" class="load-more-tip">
+            <text class="no-more-text">没有更多了</text>
           </view>
         </block>
       </scroll-view>
@@ -95,19 +105,28 @@ interface SortOption {
 interface Props {
   visible: boolean;
   stores?: Store[];
+  /** 首屏加载中 */
   loading?: boolean;
+  /** 加载更多中（底部） */
+  loadingMore?: boolean;
+  /** 是否还有下一页 */
+  hasMore?: boolean;
   title?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   stores: () => [],
   loading: false,
+  loadingMore: false,
+  hasMore: false,
   title: '选择想要去的火锅店',
 });
 
 const emit = defineEmits<{
   'update:visible': [value: boolean];
   select: [store: Store];
+  /** 滚动到底部，请求父组件加载下一页 */
+  'load-more': [];
 }>();
 
 const defaultImage = '/static/imgs/logo.png';
@@ -129,6 +148,12 @@ const sortedStores = computed(() => {
   }
   return list;
 });
+
+function loadMore() {
+  if (props.hasMore && !props.loadingMore) {
+    emit('load-more');
+  }
+}
 
 function parseDistance(distance?: string): number {
   if (!distance) return Infinity;
@@ -283,6 +308,7 @@ function handleSelect(store: Store) {
 
 .store-list {
   flex: 1;
+  min-height: 200px;
 }
 
 .loading-wrap {
@@ -300,6 +326,12 @@ function handleSelect(store: Store) {
   border-top-color: #58B4FF;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+
+  &.small {
+    width: 32rpx;
+    height: 32rpx;
+    border-width: 3rpx;
+  }
 }
 
 @keyframes spin {
@@ -312,6 +344,12 @@ function handleSelect(store: Store) {
   margin-top: 16rpx;
   font-size: 26rpx;
   color: #999999;
+
+  &.inline {
+    margin-top: 0;
+    margin-left: 12rpx;
+    font-size: 24rpx;
+  }
 }
 
 .store-card {
@@ -373,7 +411,6 @@ function handleSelect(store: Store) {
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
-  margin-top: 14rpx;
 }
 
 .tag {
@@ -388,7 +425,7 @@ function handleSelect(store: Store) {
 .distance-row {
   display: flex;
   align-items: center;
-  margin-top: 14rpx;
+  // margin-top: 14rpx;
 }
 
 .distance-text {
@@ -401,5 +438,17 @@ function handleSelect(store: Store) {
   margin-top: 12rpx;
   font-size: 24rpx;
   color: #929292;
+}
+
+.load-more-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx 0 48rpx;
+}
+
+.no-more-text {
+  font-size: 24rpx;
+  color: #666666;
 }
 </style>

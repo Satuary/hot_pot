@@ -97,7 +97,7 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue';
 import { onShow, onHide } from '@dcloudio/uni-app';
-import { isLogin, isProfileComplete } from '@/utils/auth';
+import { isLogin, isProfileComplete, getUserInfo } from '@/utils/auth';
 import { getMatchDetail, cancelMatchRecord } from '@/api/api';
 import { hotpotTypeText as hotpotTypeTextMap, payTypeCodeText } from '@/config/matchOptions';
 import type { MatchDetailItem } from '@/api/api';
@@ -219,13 +219,13 @@ function goToMatch() {
   uni.switchTab({ url: '/pages/tabBar/match' });
 }
 
-// 我的头像（缺省回退占位图）
-const myAvatar = computed(() => matchDetail.value?.myAvatar || 'https://picsum.photos/200');
-// 对方头像（缺省回退占位图）
+// 我的头像：从本地缓存的用户信息中获取，缺省回退默认头像
+const myAvatar = computed(() => {
+  return getUserInfo()?.avatar || '/static/imgs/default-avatar.jpeg';
+});
+// 对方头像（缺省回退默认头像）
 const otherAvatar = computed(
-  () =>
-    matchDetail.value?.otherAvatar ||
-    'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
+  () => matchDetail.value?.otherAvatar || '/static/imgs/default-avatar.jpeg',
 );
 
 // 店铺名称：详情接口直接返回 shopName

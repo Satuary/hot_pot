@@ -16,7 +16,7 @@
         <view class="profile-card">
             <view class="profile-main">
                 <view class="avatar-wrap">
-                    <image class="avatar" :src="profile.avatar || 'https://picsum.photos/200'" mode="aspectFill"></image>
+                    <image class="avatar" :src="profile.avatar || '/static/imgs/default-avatar.jpeg'" mode="aspectFill"></image>
                 </view>
                 <view class="profile-info">
                     <view class="name-row">

@@ -422,6 +422,13 @@ export const getPackageList = (): Promise<PackageListResult> => {
 };
 
 /**
+ * 充值页剩余次数
+ */
+export const getRemainingTimes = (): Promise<{ remainingTimes: number }> => {
+  return request('/mini/wx/pay/times/stat', 'GET');
+};
+
+/**
  * 微信支付统一下单返回参数（小程序 requestPayment 所需）
  */
 export interface WxPrepayResult {
@@ -443,8 +450,8 @@ export interface WxPrepayResult {
 export const wxUnifiedOrder = (data: {
   /** 套餐 id（选择套餐充值时传） */
   packageId?: number;
-  /** 自定义充值金额，单位元（自定义金额充值时传，与 packageId 二选一） */
-  amount?: number;
+  /** 自定义充值金额，单位元，必须为整数（自定义金额充值时传，与 packageId 二选一） */
+  customAmount?: number;
 }): Promise<WxPrepayResult> => {
   return request('/mini/wx/pay/unifiedOrder', 'POST', data);
 };

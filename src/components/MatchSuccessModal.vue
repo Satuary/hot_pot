@@ -24,7 +24,7 @@ import { getMatchRecommend, createMatch } from '@/api/api';
 
 const list = ref([{
     id: '9',
-    avatar: 'https://picsum.photos/200',
+    avatar: '/static/imgs/default-avatar.jpeg',
     nickname: '用户9',
     stageName: '用户9',
     sex: '男',
@@ -78,7 +78,7 @@ const fetchRecommend = async () => {
         if (Array.isArray(users) && users.length) {
             list.value = users.map((user) => ({
                 id: user.userId || user.id,
-                avatar: user.avatar || 'https://picsum.photos/200',
+                avatar: user.avatar || '/static/imgs/default-avatar.jpeg',
                 nickname: user.nickname || user.stageName || '',
                 stageName: user.stageName || '',
                 sex: user.sex,

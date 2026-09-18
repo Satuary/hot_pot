@@ -8,26 +8,26 @@
         <!-- 顶部个人区域 -->
         <view class="profile-section" :style="{ paddingTop: statusBarHeight + 20 + 'px' }">
             <view class="profile-row">
-                <view class="avatar-wrap">
+                <view class="avatar-wrap" @click="goEditProfile">
                     <image :src="userInfo.avatar || defaultAvatar" class="profile-avatar" mode="aspectFill"></image>
-                    <view class="edit-badge" @click="goEditProfile">
+                    <view class="edit-badge">
                         <uni-icons type="compose" size="14" color="#333333"></uni-icons>
                     </view>
                 </view>
 
                 <view class="profile-info">
                     <view class="name-row">
-                        <text class="profile-name">{{ userInfo.nickname || '火锅友212' }}</text>
+                        <text class="profile-name">{{ userInfo.nickname}}</text>
                         <view class="tag-spicy">
                             <text class="tag-spicy-txt">麻辣</text>
                         </view>
                     </view>
                     <view class="desc-row">
-                        <text class="desc-text">ID:{{ userInfo.id || '30145' }}</text>
+                        <text class="desc-text">ID:{{ userInfo.id}}</text>
                         <view class="copy-btn" @click="copyId">
                             <image class="copy-icon" src="/static/imgs/file-copy-line.png" mode="aspectFit"></image>
                         </view>
-                        <text class="desc-text desc-address">地址：{{ userInfo.address || '美景大厦' }}</text>
+                        <text class="desc-text desc-address">地址：{{ userInfo.address}}</text>
                     </view>
                 </view>
             </view>
@@ -65,6 +65,15 @@
             </view>
             <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
         </view>
+        <view class="recharge-card" @click="clearCache">
+            <view class="recharge-left">
+                <view class="recharge-icon-wrap">
+                    <uni-icons type="wallet" size="20" color="#FFFFFF"></uni-icons>
+                </view>
+                <text class="recharge-label">清除缓存</text>
+            </view>
+            <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
+        </view>
     </view>
 </template>
 
@@ -76,7 +85,7 @@ import { getUserInfo as fetchUserInfo } from '@/api/api';
 
 const statusBarHeight = ref(0);
 const userInfo = ref<any>({});
-const defaultAvatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&fit=crop';
+const defaultAvatar = '/static/imgs/default-avatar.jpeg';
 
 // 顶部"重庆火锅"、"尝鲜打卡"等标签
 const tasteTags = ref<string[]>(['重庆火锅', '尝鲜打卡']);
@@ -150,11 +159,16 @@ onShow(() => {
 
 // 复制 ID
 const copyId = () => {
-    const id = userInfo.value.id || '30145';
+    const id = userInfo.value.id + '';
     uni.setClipboardData({
         data: id,
         success: () => {
+            console.log(id);
             uni.showToast({ title: 'ID 已复制', icon: 'success', duration: 1500 });
+        },
+        fail: (err) => {
+            console.error('复制 ID 失败:', err);
+            uni.showToast({ title: '复制 ID 失败', icon: 'error', duration: 1500 });
         },
     });
 };
@@ -171,6 +185,18 @@ const goEditProfile = () => {
     uni.navigateTo({
         url: '/subPack/me/editProfile',
     });
+};
+
+// 清除缓存
+const clearCache = () => {
+    uni.removeStorageSync('recordId');
+    uni.removeStorageSync('userInfo');
+    uni.removeStorageSync('showWaitingPopup');
+    uni.removeStorageSync('pendingMatchSuccess');
+    uni.removeStorageSync('pendingBlindBox');
+    uni.removeStorageSync('hasSeenMatchIntro');
+    uni.removeStorageSync('user_location_name');
+    uni.showToast({ title: '缓存已清除', icon: 'success', duration: 1500 });
 };
 </script>
 

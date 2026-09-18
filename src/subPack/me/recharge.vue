@@ -16,7 +16,7 @@
         <!-- 剩余次数卡片 -->
         <view class="count-card">
             <view style="display: flex;flex-direction: column;justify-content: center;align-items: center;">
-                <view class="count-number">{{ appState.userProfile.matchCount }}</view>
+                <view class="count-number">{{ remainingTimes }}</view>
                 <view class="count-label">剩余次数</view>
             </view> 
             <view class="nav-right-btn">
@@ -50,7 +50,7 @@
 
             <!-- 自定义金额输入 -->
             <view v-if="rechargeMode === 'perUse'" class="custom-input-wrap">
-                <input class="custom-input" type="digit" placeholder="请输入其他金额"
+                <input class="custom-input" type="number" placeholder="请输入其他金额"
                     placeholder-class="custom-input-placeholder" v-model="customAmount" @focus="selectedId = null" />
             </view>
 
@@ -84,7 +84,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { appState } from '@/utils/store';
-import { getPackageList, wxUnifiedOrder, type PackageItem } from '@/api/api';
+import { getPackageList, getRemainingTimes, wxUnifiedOrder, type PackageItem } from '@/api/api';
 
 // 状态栏高度
 const statusBarHeight = ref(0);
@@ -93,6 +93,7 @@ const rechargeMode = ref<'perUse' | 'monthly'>('perUse');
 const selectedId = ref<number | null>(null);
 const customAmount = ref('');
 const agreed = ref(false);
+const remainingTimes = ref(0);
 
 // 套餐列表（接口返回，按次 / 按月分组）
 const perUseOptions = ref<PackageItem[]>([]);
@@ -127,6 +128,17 @@ function selectAmount(id: number) {
     customAmount.value = '';
     // 打印当前选中的套餐数据（调试用）
     console.log('[recharge] 当前选中套餐 =', selectedPackage.value);
+}
+
+// 加载剩余次数
+async function loadRemainingTimes() {
+    try {
+        const res = await getRemainingTimes();
+        console.log('[recharge] 加载剩余次数 =', res);
+        remainingTimes.value = res?.remainingTimes ?? 0;
+    } catch (e) {
+        console.error('[recharge] 获取剩余次数失败', e);
+    }
 }
 
 // 加载套餐列表
@@ -177,8 +189,8 @@ async function handleRecharge() {
     }
     if (currentAmount.value <= 0) return;
 
-    // 自定义金额优先走 amount 下单；否则需选择套餐走 packageId 下单
-    const customAmountNum = Number(customAmount.value) > 0 ? Number(customAmount.value) : 0;
+    // 自定义金额优先走 customAmount 下单（必须为整数）；否则需选择套餐走 packageId 下单
+    const customAmountNum = customAmount.value ? parseInt(customAmount.value, 10) : 0;
     const pkg = customAmountNum > 0 ? null : selectedPackage.value;
     if (!pkg && customAmountNum <= 0) {
         uni.showToast({
@@ -191,9 +203,9 @@ async function handleRecharge() {
 
     uni.showLoading({ title: '支付中', mask: true });
     try {
-        // 1. 生成微信预支付订单：套餐充值传 packageId，自定义金额充值传 amount（元）
+        // 1. 生成微信预支付订单：套餐充值传 packageId，自定义金额充值传 customAmount（元，整数）
         const prepay = await wxUnifiedOrder(
-            pkg ? { packageId: pkg.id } : { amount: customAmountNum },
+            pkg ? { packageId: pkg.id } : { customAmount: customAmountNum },
         );
         console.log('[recharge] 统一下单返回 =', prepay);
 
@@ -241,6 +253,7 @@ async function handleRecharge() {
 onMounted(() => {
     const systemInfo = uni.getSystemInfoSync();
     statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    loadRemainingTimes();
     loadPackages();
 });
 </script>

@@ -63,6 +63,7 @@ interface AmapPoi {
     cost?: string;
   };
   photos?: { url: string }[];
+  keytag?: string;
 }
 
 /** 高德逆地理编码响应 */
@@ -133,7 +134,7 @@ export function getUserLocation(): Promise<UserLocation> {
         }
 
         // 发起模糊定位请求
-        uni.getFuzzyLocation({
+        uni.getLocation({
           type: 'gcj02',
           success(res) {
             resolve({
@@ -142,6 +143,7 @@ export function getUserLocation(): Promise<UserLocation> {
             });
           },
           fail(err) {
+            console.error('定位失败:', err);
             const msg = err.errMsg || '';
             // 系统定位未开启（iOS/Android 系统级关闭了定位）
             if (
@@ -177,7 +179,7 @@ export function getUserLocation(): Promise<UserLocation> {
       },
       fail() {
         // getSetting 失败，直接尝试定位
-        uni.getFuzzyLocation({
+        uni.getLocation({
           type: 'gcj02',
           success(res) {
             resolve({
@@ -194,7 +196,7 @@ export function getUserLocation(): Promise<UserLocation> {
     // #endif
 
     // #ifndef MP-WEIXIN
-    uni.getFuzzyLocation({
+    uni.getLocation({
       type: 'gcj02',
       success(res) {
         resolve({
@@ -203,6 +205,7 @@ export function getUserLocation(): Promise<UserLocation> {
         });
       },
       fail(err) {
+        console.error('定位失败:', err);
         const msg = err.errMsg || '';
         if (msg.includes('auth deny') || msg.includes('deny')) {
           reject(new Error('位置权限未开启'));
@@ -215,6 +218,14 @@ export function getUserLocation(): Promise<UserLocation> {
   });
 }
 
+/** 周边火锅店分页搜索结果 */
+export interface NearbyStoreResult {
+  /** 当前页店铺列表 */
+  list: Store[];
+  /** 命中的总条数（由高德 count 字段返回） */
+  total: number;
+}
+
 /**
  * 搜索附近火锅店
  * @param location 用户当前经纬度
@@ -223,7 +234,7 @@ export function getUserLocation(): Promise<UserLocation> {
 export function searchNearbyHotPotStore(
   location: UserLocation,
   page: number = 1,
-): Promise<Store[]> {
+): Promise<NearbyStoreResult> {
   return new Promise((resolve, reject) => {
     const lngLat = `${location.longitude},${location.latitude}`;
 
@@ -233,10 +244,11 @@ export function searchNearbyHotPotStore(
         key: AMAP_KEY,
         location: lngLat,
         keywords: '火锅',
-        types: '050000',        // 餐饮美食
+        types: '050117',        // 火锅店
         radius: SEARCH_RADIUS,
         offset: PAGE_SIZE,
         page,
+        sortrule: 'distance',
         extensions: 'all',
       },
       success(res) {
@@ -249,11 +261,12 @@ export function searchNearbyHotPotStore(
             distance: formatDistance(parseInt(poi.distance) || 0),
             rating: parseFloat(poi.biz_ext?.rating || '0'),
             image: poi.photos?.[0]?.url || '',
-            tags: extractTags(poi.type),
+            // tags: extractTags(poi.type),
+            tags: poi.keytag || '',
           }));
-          resolve(stores);
+          resolve({ list: stores, total: parseInt(data.count) || 0 });
         } else {
-          resolve([]);
+          resolve({ list: [], total: 0 });
         }
       },
       fail(err) {
