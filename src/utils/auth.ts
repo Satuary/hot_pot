@@ -82,6 +82,11 @@ export function checkLogin(): boolean {
  * 获取资料是否已完善
  */
 export function isProfileComplete(): boolean {
+  // if (!uni.getStorageSync(PROFILE_COMPLETE_KEY)) {
+  //   return false;
+  // }
+  // const userInfo = getUserInfo();
+  // return !!userInfo && !!userInfo.gender && userInfo.gender > 0;
   return !!uni.getStorageSync(PROFILE_COMPLETE_KEY);
 }
 

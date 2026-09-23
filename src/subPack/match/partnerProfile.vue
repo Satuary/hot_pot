@@ -20,7 +20,7 @@
                 </view>
                 <view class="profile-info">
                     <view class="name-row">
-                        <text class="nickname">{{ profile.nickname || '火锅友' }}</text>
+                        <text class="nickname">{{ profile.nickname}}</text>
                         <view class="taste-tag" v-if="tasteText">{{ tasteText }}</view>
                     </view>
                     <view class="id-address-row">
@@ -67,8 +67,8 @@
             <view class="info-card" v-if="showMatchInfoCard">
                 <!-- 左侧时间区 -->
                 <view class="time-section">
-                    <text class="date-text">{{ displayDate || '2023-01-01' }}</text>
-                    <text class="time-text">{{ displayTime || '12:00' }}</text>
+                    <text class="date-text">{{ displayDate}}</text>
+                    <text class="time-text">{{ displayTime}}</text>
                 </view>
 
                 <!-- 分割线 -->
@@ -93,7 +93,7 @@
                         <text class="value">{{ payTypeText || '付费方式' }}</text>
                     </view>
                 </view>
-                </view>
+            </view>
         </view>
     </view>
 </template>
@@ -126,6 +126,8 @@ const recordId = ref('');
 const otherUserId = ref<number | string>('');
 // 匹配记录详情：用于判断当前用户角色（匹配方/被匹配方）、matchStatus 及渲染匹配信息卡
 const matchDetail = ref<MatchDetailItem | null>(null);
+// 页面来源：用于判断是否显示交换联系方式
+const pageFrom = ref('');
 
 // 对方资料（mini/user/getUserInfo 返回）
 const profile = reactive({
@@ -181,17 +183,14 @@ const currentUserId = computed(() => {
 const isMatcher = computed(
     () => !!matchDetail.value && String(currentUserId.value) === String(matchDetail.value.myUserId),
 );
-const isMatchedParty = computed(
-    () => !!matchDetail.value && String(currentUserId.value) === String(matchDetail.value.otherUserId),
-);
 
 // 当前为匹配方（userId = myUserId）且 matchStatus 为 1（已匹配）时，显示交换联系方式
 const showContactBar = computed(
-    () => isMatcher.value && Number(matchDetail.value?.matchStatus) === 1,
+    () => pageFrom.value == 'view' && isMatcher.value && Number(matchDetail.value?.matchStatus) === 1,
 );
-// 当前为被匹配方（userId = otherUserId）且 matchStatus 为 0（待确认）时，显示匹配信息卡
+// 有匹配详情信息就显示匹配信息卡（不再限制角色/状态）
 const showMatchInfoCard = computed(
-    () => isMatchedParty.value && Number(matchDetail.value?.matchStatus) === 0,
+    () => pageFrom.value == 'MatchConfirmModal' && !!matchDetail.value && Object.keys(matchDetail.value).length > 0,
 );
 
 // 匹配信息卡展示字段（数据源为匹配记录详情，区别于上方对方资料标签）
@@ -250,8 +249,9 @@ let unsubscribeWs: (() => void) | null = null;
 
 onLoad(async (options: any) => {
     // 联系方式交换接口均以 recordId 为参数，优先取地址栏，其次兜底本地存储的匹配记录ID
-    recordId.value = options?.recordId || options?.id || uni.getStorageSync('recordId') || '';
-    otherUserId.value = options?.otherUserId || options?.userId || '';
+    recordId.value = options?.recordId || uni.getStorageSync('recordId') || '';
+    otherUserId.value = options?.userId || '';
+    pageFrom.value = options?.from || '';
     // 先拉匹配详情：角色判断、联系方式栏/匹配信息卡显隐都依赖它，同时兜底解析对方 userId
     await fetchMatchDetail();
     loadPartnerProfile();

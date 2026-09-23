@@ -346,36 +346,36 @@ onMounted(async () => {
         if (form.province || form.city || form.district) {
             form.location = [form.province, form.city, form.district].filter(Boolean).join(' ');
         }
-        // 同步到 appState
+        // 同步到 appState（接口数字格式）
         Object.assign(appState.userProfile, {
             nickname: form.nickname,
-            gender: form.gender,
+            gender: genderMap[form.gender] || 1,
             birthday: form.birthday,
-            height: form.height,
-            weight: form.weight,
-            hotpotType: form.hotpotType ? [form.hotpotType] : [],
-            taste: form.taste ? [form.taste] : [],
-            motivation: form.motivation,
+            height: parseFloat(form.height) || 0,
+            weight: parseFloat(form.weight) || 0,
+            hotpotType: form.hotpotType ? hotpotTypeOptions.indexOf(form.hotpotType) + 1 : 0,
+            taste: form.taste ? tasteOptions.indexOf(form.taste) + 1 : 0,
+            motivation: form.motivation ? motivationOptions.indexOf(form.motivation) + 1 : 0,
             wechat: form.wechat,
             location: form.location,
             avatar: form.avatar,
             id: form.id,
         });
     } catch {
-        // 接口失败则读取本地 appState 缓存
+        // 接口失败则读取本地 appState 缓存（数字格式转回表单格式）
         const profile = appState.userProfile;
         if (profile.nickname) form.nickname = profile.nickname;
-        if (profile.gender) form.gender = profile.gender;
+        if (profile.gender) form.gender = profile.gender === 2 ? 'female' : 'male';
         if (profile.birthday) form.birthday = profile.birthday;
-        if (profile.height) form.height = profile.height;
-        if (profile.weight) form.weight = profile.weight;
+        if (profile.height) form.height = String(profile.height);
+        if (profile.weight) form.weight = String(profile.weight);
         if (profile.wechat) form.wechat = profile.wechat;
         if (profile.avatar) form.avatar = profile.avatar;
         if (profile.id) form.id = profile.id;
         if (profile.location) form.location = profile.location;
-        if (profile.hotpotType && profile.hotpotType.length > 0) form.hotpotType = profile.hotpotType[0];
-        if (profile.taste && profile.taste.length > 0) form.taste = profile.taste[0];
-        if (profile.motivation) form.motivation = profile.motivation;
+        if (profile.hotpotType) form.hotpotType = hotpotTypeOptions[profile.hotpotType - 1] || '';
+        if (profile.taste) form.taste = tasteOptions[profile.taste - 1] || '';
+        if (profile.motivation) form.motivation = motivationOptions[profile.motivation - 1] || '';
     }
 });
 
@@ -384,6 +384,9 @@ const genderOptions = [
     { value: 'male', label: '男生', imgNormal: '/static/imgs/boy_d.png', imgActive: '/static/imgs/boys.png' },
     { value: 'female', label: '女生', imgNormal: '/static/imgs/girls_d.png', imgActive: '/static/imgs/girls.png' },
 ];
+
+// 性别表单值 -> 接口数字
+const genderMap: Record<string, number> = { male: 1, female: 2 };
 
 const genderLabel = computed(() => {
     return form.gender === 'male' ? '男' : form.gender === 'female' ? '女' : '未设置';
@@ -685,7 +688,6 @@ async function onSave() {
     }
 
     // 表单数据映射为接口参数
-    const genderMap: Record<string, number> = { male: 1, female: 2 };
     const params = {
         nickname: form.nickname,
         avatar: form.avatar || '',
@@ -711,6 +713,13 @@ async function onSave() {
 
         // 同步本地状态（appState + auth storage）
         syncProfileToStorage();
+        // 用 params 直接更新缓存（接口格式，数字索引）
+        const prev = getAuthUserInfo() || {};
+        setAuthUserInfo({
+            ...prev,
+            ...params,
+            avatar: form.avatar || prev.avatar || '',
+        });
         setProfileComplete(true);
 
         uni.showToast({ title: '保存成功', icon: 'success' });
@@ -720,48 +729,32 @@ async function onSave() {
     } catch {
         // 接口失败时仍然更新本地状态
         syncProfileToStorage();
+        // 用 params 直接更新缓存（接口格式，数字索引）
+        const prev = getAuthUserInfo() || {};
+        setAuthUserInfo({
+            ...prev,
+            ...params,
+            avatar: form.avatar || prev.avatar || '',
+        });
         setProfileComplete(true);
     }
 }
 
-// 将当前表单同步到全局状态与 auth 存储（供个人页读取展示）
+// 将当前表单同步到全局状态（接口数字格式，供个人页读取展示）
 function syncProfileToStorage() {
-    // 同步到全局状态
     Object.assign(appState.userProfile, {
         nickname: form.nickname,
-        gender: form.gender,
+        gender: genderMap[form.gender] || 1,
         birthday: form.birthday,
-        height: form.height,
-        weight: form.weight,
-        hotpotType: form.hotpotType ? [form.hotpotType] : [],
-        taste: form.taste ? [form.taste] : [],
-        motivation: form.motivation,
+        height: parseFloat(form.height) || 0,
+        weight: parseFloat(form.weight) || 0,
+        hotpotType: form.hotpotType ? hotpotTypeOptions.indexOf(form.hotpotType) + 1 : 0,
+        taste: form.taste ? tasteOptions.indexOf(form.taste) + 1 : 0,
+        motivation: form.motivation ? motivationOptions.indexOf(form.motivation) + 1 : 0,
         wechat: form.wechat,
         location: form.location,
         avatar: form.avatar || appState.userProfile.avatar,
         id: form.id,
-    });
-
-    // 同步到 auth 存储：合并已有 userInfo，避免覆盖其它字段
-    const prev = getAuthUserInfo() || {};
-    const genderMap: Record<string, number> = { male: 1, female: 2 };
-    setAuthUserInfo({
-        ...prev,
-        id: form.id || prev.id,
-        nickname: form.nickname,
-        avatar: form.avatar || prev.avatar || '',
-        gender: genderMap[form.gender] || prev.gender,
-        birthday: form.birthday,
-        height: parseFloat(form.height) || prev.height || 0,
-        weight: parseFloat(form.weight) || prev.weight || 0,
-        wechat: form.wechat,
-        // 所在地：组合文案给页面展示，省市区/经纬度由 chooseLocation 结构化写入
-        address: form.location,
-        province: form.province,
-        city: form.city,
-        district: form.district,
-        lat: form.lat,
-        lng: form.lng,
     });
 }
 
@@ -958,6 +951,7 @@ function handleBack() {
     right: 0;
     bottom: 0;
     padding: 24rpx 40rpx;
+    z-index: 5;
     padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
     background: rgba(13, 13, 13, 0.95);
     backdrop-filter: blur(10rpx);

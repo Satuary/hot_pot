@@ -22,7 +22,7 @@
       </view>
 
       <!-- 对方 + 右侧头像 + 标签 -->
-      <view class="right-wrapper">
+      <view class="right-wrapper" @click="goToPartnerProfile">
         <view class="avatar-box right-avatar">
           <image
             :src="otherAvatar"
@@ -31,7 +31,7 @@
           ></image>
         </view>
         <!-- 点击查看标签 -->
-        <view class="click-tag" @click="goToPartnerProfile">点击查看</view>
+        <view class="click-tag">点击查看</view>
       </view>
     </view>
 
@@ -172,11 +172,9 @@ function startWaitingCountdown() {
 
 // 点击查看对方主页
 function goToPartnerProfile() {
-  // 联系方式交换等操作以匹配记录 recordId 为参数，优先内存，其次详情返回
-  const id = recordId.value || matchDetail.value?.recordId || '';
   // otherUserId 供对方资料页 mini/user/getUserInfo 使用
   const uid = matchDetail.value?.otherUserId || '';
-  uni.navigateTo({ url: `/subPack/match/partnerProfile?from=view&recordId=${id}&otherUserId=${uid}` });
+  uni.navigateTo({ url: `/subPack/match/partnerProfile?from=view&userId=${uid}` });
 }
 
 // 关闭等待弹窗

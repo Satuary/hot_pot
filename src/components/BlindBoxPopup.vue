@@ -55,8 +55,8 @@ const props = defineProps({
         type: String,
         default: '/static/imgs/default-avatar.jpeg',
     },
-    // 匹配记录id，查看对方资料时透传给资料页
-    recordId: {
+    // 被选中方用户id，查看对方资料时透传给资料页
+    otherUserId: {
         type: [String, Number],
         default: '',
     },
@@ -83,7 +83,7 @@ const handleConfirm = () => {
  */
 const handleViewProfile = () => {
     uni.navigateTo({
-        url: `/subPack/match/partnerProfile?from=view&recordId=${props.recordId || ''}`,
+        url: `/subPack/match/partnerProfile?from=BlindBoxPopup&userId=${props.otherUserId}`,
     });
 };
 </script>

@@ -5,14 +5,14 @@ export interface UserProfile {
     id: string;
     phone: string;
     nickname: string;
-    gender: string;
+    gender: number;
     birthday: string;
     location: string;
-    height: string;
-    weight: string;
-    hotpotType: string[];
-    taste: string[];
-    motivation: string;
+    height: number;
+    weight: number;
+    hotpotType: number;
+    taste: number;
+    motivation: number;
     wechat: string;
     avatar: string;
     balance: number;
@@ -64,14 +64,14 @@ export const appState = reactive({
         id: '',
         phone: '',
         nickname: '',
-        gender: '',
+        gender: 0,
         birthday: '',
         location: '',
-        height: '170',
-        weight: '60',
-        hotpotType: [] as string[],
-        taste: [] as string[],
-        motivation: '',
+        height: 170,
+        weight: 60,
+        hotpotType: 0,
+        taste: 0,
+        motivation: 0,
         wechat: '',
         avatar: '',
         balance: 0,

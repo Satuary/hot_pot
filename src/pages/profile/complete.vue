@@ -207,7 +207,7 @@
 import { ref, computed, reactive, onMounted } from 'vue';
 import { hotpotTypeOptions, tasteOptions, motivationOptions, appState } from '@/utils/store';
 import { completeUserInfo } from '@/api/api';
-import { setProfileComplete, isProfileComplete } from '@/utils/auth';
+import { setProfileComplete, isProfileComplete, setUserInfo, getUserInfo } from '@/utils/auth';
 
 const today = new Date();
 const defaultBirthday = `${today.getFullYear() - 20}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -511,22 +511,24 @@ async function onSubmit() {
         lat: 0,
         lng: 0,
     };
+    console.log("params", params);
 
     try {
         const res = await completeUserInfo(params);
+        console.log("res", res);
 
-        // 更新本地状态
+        // 更新本地状态（与接口格式一致，直接用 params）
         Object.assign(appState.userProfile, {
-            gender: form.gender,
-            birthday: form.birthday,
-            height: form.height,
-            weight: form.weight,
-            hotpotType: [form.hotpotType],
-            taste: [form.taste],
-            motivation: form.motivation,
-            wechat: form.wechat,
-            nickname: form.nickname,
-            avatar: res.avatar || appState.userProfile.avatar,
+            ...params,
+            avatar: res.avatar || params.avatar,
+        });
+
+        // 更新本地缓存 userInfo（接口格式，直接用 params）
+        const cachedUserInfo = getUserInfo() || {};
+        setUserInfo({
+            ...cachedUserInfo,
+            ...params,
+            avatar: res.avatar || params.avatar,
         });
 
         setProfileComplete(true);
@@ -715,6 +717,7 @@ async function onSubmit() {
     right: 0;
     bottom: 0;
     padding: 24rpx 40rpx;
+    z-index: 5;
     padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
     background: rgba(13, 13, 13, 0.95);
     backdrop-filter: blur(10rpx);

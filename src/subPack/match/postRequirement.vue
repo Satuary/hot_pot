@@ -141,7 +141,7 @@
     </view>
 
     <!-- 年龄选择器弹窗 -->
-    <view v-if="agePickerVisible" class="mask age-mask" @click="closeAgePicker">
+    <view v-if="agePickerVisible" class="mask age-mask" @click="closeAgePicker" @touchmove.stop.prevent="preventTouch">
       <view class="picker-modal age-picker-modal" @click.stop>
         <view class="picker-modal-title">选择年龄范围</view>
         <view class="picker-body age-picker-body">
@@ -168,7 +168,7 @@
     </view>
 
     <!-- 日期时间选择器弹窗 -->
-    <view v-if="dateTimePickerVisible" class="mask date-mask" @click="closeDateTimePicker">
+    <view v-if="dateTimePickerVisible" class="mask date-mask" @click="closeDateTimePicker" @touchmove.stop.prevent="preventTouch">
       <view class="picker-modal date-picker-modal" @click.stop>
         <view class="picker-modal-title">选择时间</view>
         <view class="date-picker-body">
@@ -343,6 +343,9 @@ const goBack = () => {
   uni.navigateBack();
 };
 
+// 空操作：配合 @touchmove.stop.prevent 阻止弹窗滚动穿透页面
+const preventTouch = () => {};
+
 // 选择性别
 const selectGender = (gender: string) => {
   formData.value.gender = gender;
@@ -452,8 +455,8 @@ const selectStore = async () => {
     // 1. 使用wx api获取用户当前经纬度
     const location = await getUserLocation();
     // 测试用，固定位置在位中心84197号
-    location.longitude = 113.24;
-    location.latitude = 23.11;
+    // location.longitude = 113.24;
+    // location.latitude = 23.11;
     // 缓存定位，供后续翻页复用
     storeLocation.value = location;
     // 2. 拉取第 1 页
@@ -563,6 +566,7 @@ const submitRequirement = async () => {
 
   // 见面时间必须晚于当前时间（dateTime 格式 "YYYY-MM-DD HH:mm"）
   const [dateStr, timeStr] = formData.value.dateTime.split(' ');
+  // 测试关闭时间校验
   const meetingTs = new Date(`${dateStr}T${timeStr}:00`).getTime();
   if (Number.isNaN(meetingTs) || meetingTs <= Date.now()) {
     uni.showToast({
@@ -606,6 +610,7 @@ const submitRequirement = async () => {
       motivation: String(motivations.indexOf(formData.value.motivation)),
       shop,
       meetingTime: formData.value.dateTime,
+      // meetingTime: '2026-09-30 15:30',
       payType: String(payTypeMap[formData.value.paymentMethod] ?? ''),
     };
 

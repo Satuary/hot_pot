@@ -1,5 +1,5 @@
 <template>
-  <view class="store-popup" v-if="visible" @click="handleMaskClick">
+  <view class="store-popup" v-if="visible" @click="handleMaskClick" @touchmove.stop.prevent="preventTouch">
     <view class="popup-panel" @click.stop>
       <view class="popup-header">
         <view class="title-wrap">
@@ -174,6 +174,9 @@ function close() {
   sortOpen.value = false;
   emit('update:visible', false);
 }
+
+// 空操作：配合 @touchmove.stop.prevent 阻止弹窗滚动穿透页面
+const preventTouch = () => {};
 
 function handleMaskClick() {
   close();

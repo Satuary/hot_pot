@@ -1,5 +1,11 @@
 <template>
     <view class="match-page">
+        <!-- 缓慢浮动的主题色炫光背景 -->
+        <view class="aurora-bg">
+            <view class="aurora-blob blob-1"></view>
+            <view class="aurora-blob blob-2"></view>
+            <view class="aurora-blob blob-3"></view>
+        </view>
         <!-- 自定义导航栏 -->
         <view class="navbar" :style="{ height: navbarHeight + 'px', paddingTop: navbarPaddingTop + 'px' }">
             <view class="navbar-inner" :style="{ height: capsuleHeight + 'px' }">
@@ -52,12 +58,12 @@
     :demand-id="matchedDemandId" 
     @close="handleCloseModal" 
     @unlock="handleUnlock" />
-    <!-- 盲盒弹窗：发起匹配成功后确认，头像与 recordId 来自 createMatch 返回 -->
+    <!-- 盲盒弹窗：点击头像解锁后展示，点"确认匹配"才发起 createMatch -->
     <BlindBoxPopup
         :visible="showBlindBox"
         :my-avatar="blindMyAvatar"
         :other-avatar="blindOtherAvatar"
-        :record-id="blindRecordId"
+        :other-user-id="blindMatchUserId"
         @cancel="handleBlindBoxCancel"
         @confirm="handleBlindBoxConfirm"
     />
@@ -81,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app';
 // 登录和完善资料检查
 import { isLogin, isProfileComplete } from '@/utils/auth';
@@ -97,7 +103,7 @@ import MatchConfirmModal from '@/components/MatchConfirmModal.vue';
 import LocationPickerPopup from '@/components/LocationPickerPopup.vue';
 // 定位选择弹窗
 import type { LocationItem } from '@/components/LocationPickerPopup.vue';
-import { postRequirement, saveAutoMatch, cancelMatchRecord } from '@/api/api';
+import { postRequirement, saveAutoMatch, createMatch, cancelDemand } from '@/api/api';
 import { getUserInfo } from '@/utils/auth';
 import { getUserLocation, reverseGeocode } from '@/utils/map';
 // 全局匹配 socket：单例连接 + 消息分发，页面只消费共享状态
@@ -107,16 +113,55 @@ import {
     acceptCurrentRequest,
     rejectCurrentRequest,
     setMatchPageVisible,
+    WS_EVENT,
+    matchRequestHandled,
 } from '@/common/matchSocket';
+// 页面级订阅匹配终态推送，用于关闭本页本地弹窗（全局模块管理不到的 ref）
+import { onWsMessage } from '@/utils/websocket';
 
 const showMatchModal = ref(false);
 const matchedDemandId = ref('');
 const showIntroModal = ref(false);
 const showBlindBox = ref(false);
-// 盲盒确认弹窗展示数据（来自发起匹配 createMatch 的返回）
+
+// 收到新的匹配请求弹窗时，关闭本页旧的匹配成功选人弹窗，避免两个弹窗叠加
+watch(showFriendRequest, (visible) => {
+    if (visible) {
+        showMatchModal.value = false;
+        showBlindBox.value = false;
+
+    }
+});
+
+// 同意/拒绝匹配请求成功后，关闭本页 MatchSuccessModal 选人弹窗（无论同意还是拒绝都要关）
+watch(matchRequestHandled, () => {
+    showMatchModal.value = false;
+    showBlindBox.value = false;
+});
+
+// 匹配终态推送（被对方拒绝/取消/超时）：全局模块已清缓存标记并弹提示，
+// 但盲盒确认弹窗、匹配成功选人弹窗是本页本地状态，这里负责关掉
+const handleMatchTermEvent = (data: any) => {
+    const type = data?.type || data?.eventType || data?.event;
+    if (
+        type === WS_EVENT.MATCH_REJECTED ||
+        type === WS_EVENT.MATCH_CANCELED ||
+        type === WS_EVENT.MATCH_TIMEOUT
+    ) {
+        showBlindBox.value = false;
+        showMatchModal.value = false;
+    }
+};
+// 盲盒确认弹窗展示数据：myAvatar 为发起方本人头像，otherAvatar 为被选中锅友头像
+// recordId 在点击"确认匹配"调用 createMatch 成功后才写入
 const blindMyAvatar = ref('/static/imgs/default-avatar.jpeg');
 const blindOtherAvatar = ref('/static/imgs/default-avatar.jpeg');
 const blindRecordId = ref('');
+// 盲盒确认阶段需要的 createMatch 参数（点击头像时带出，点确认匹配时使用）
+const blindDemandId = ref('');
+const blindMatchUserId = ref('');
+// 盲盒弹窗按钮请求中标记（确认匹配/不合适共用），防止重复点击重复调接口
+const blindSubmitting = ref(false);
 
 const statusBarHeight = ref(0);
 const navbarPaddingTop = ref(0);
@@ -128,53 +173,103 @@ const location = ref('正在定位...');
 const showLocationPicker = ref(false);
 const isToggleOn = ref(true);
 
-// 发起匹配成功：关闭匹配成功弹窗，带出 recordId 与双方头像，延迟弹出确认匹配弹窗
+// 点击头像解锁：关闭匹配成功弹窗，带出 createMatch 参数与双方头像，延迟弹出确认匹配弹窗
+// 此时不发起请求，真正的 createMatch 在盲盒弹窗点击"确认匹配"时才调用
 const handleUnlock = (payload: any) => {
-    const recordId = payload?.recordId || uni.getStorageSync('recordId') || '';
-    const myAvatar = payload?.matchUserAvatar || '/static/imgs/default-avatar.jpeg';
+    const demandId = matchedDemandId.value || '';
+    const matchUserId = payload?.matchUserId || payload?.user?.id || '';
+    // 发起方本人头像：优先用 payload，回退当前登录用户头像，最后兜底默认头像
+    const myAvatar =
+        payload?.matchUserAvatar ||
+        getUserInfo()?.avatar ||
+        '/static/imgs/default-avatar.jpeg';
     const otherAvatar =
         payload?.matchedUserAvatar || payload?.user?.avatar || '/static/imgs/default-avatar.jpeg';
-    blindRecordId.value = recordId;
+    blindDemandId.value = demandId;
+    blindMatchUserId.value = matchUserId;
     blindMyAvatar.value = myAvatar;
     blindOtherAvatar.value = otherAvatar;
     // 流程进入"待确认"阶段：清除选人弹窗标记，持久化确认弹窗标记（用户点确认/不合适前一直保留）
     uni.removeStorageSync('pendingMatchSuccess');
     uni.setStorageSync(
         'pendingBlindBox',
-        JSON.stringify({ recordId, myAvatar, otherAvatar }),
+        JSON.stringify({ demandId, matchUserId, myAvatar, otherAvatar }),
     );
     showMatchModal.value = false;
     setTimeout(() => {
         showBlindBox.value = true;
+        console.log('showBlindBox handleUnlock', showBlindBox.value);
     }, 300);
 };
 
-// 盲盒弹窗：不合适 → 发起方取消刚创建的匹配记录（mini/match/cancel），成功后清理标记并关闭；失败不关闭可重试
+// 盲盒弹窗：不合适 → 取消发布的需求（mini/demand/cancel），成功后清理标记并关闭；失败不关闭可重试
 const handleBlindBoxCancel = async () => {
-    const recordId = blindRecordId.value || uni.getStorageSync('recordId');
-    if (recordId) {
-        try {
-            await cancelMatchRecord({ recordId: String(recordId) });
-            // 取消成功进入终态，清掉本地弹窗标记与 recordId，避免离开/刷新后弹窗再次恢复
-            uni.removeStorageSync('pendingBlindBox');
-            uni.removeStorageSync('recordId');
-            blindRecordId.value = '';
-            uni.showToast({
-                title: '已取消匹配',
-                icon: 'none',
-            });
-        } catch {
-            // 失败提示已由 request 统一处理，不关闭弹窗
-            return;
-        }
-    } else {
+    if (blindSubmitting.value) return;
+    const demandId = blindDemandId.value || matchedDemandId.value;
+    if (!demandId) {
+        // 无需求 id（异常兜底）：仅清本地标记关闭
         uni.removeStorageSync('pendingBlindBox');
+        showBlindBox.value = false;
+        showMatchModal.value = false;
+        showFriendRequest.value = false;
+        return;
     }
+    blindSubmitting.value = true;
+    try {
+        await cancelDemand({ demandId: String(demandId) });
+        uni.showToast({
+            title: '已取消匹配',
+            icon: 'none',
+        });
+    } catch {
+        // 失败提示已由 request 统一处理，弹窗保留可重试
+        blindSubmitting.value = false;
+        return;
+    }
+    blindSubmitting.value = false;
+    // 取消成功进入终态，清掉本地弹窗标记，避免离开/刷新后弹窗再次恢复
+    uni.removeStorageSync('pendingBlindBox');
     showBlindBox.value = false;
+    showMatchModal.value = false;
+    showFriendRequest.value = false;
+
+    console.log('showBlindBox', showBlindBox.value);
+    console.log('showMatchModal', showMatchModal.value);
+    console.log('showFriendRequest', showFriendRequest.value);
 };
 
-// 盲盒弹窗：确认匹配 → 清除本弹窗标记、写入等待态标记，跳转查看页等待对方同意
-const handleBlindBoxConfirm = () => {
+// 盲盒弹窗：确认匹配 → 发起 createMatch 请求，成功后写入 recordId、清除本弹窗标记、写入等待态标记并跳转查看页
+const handleBlindBoxConfirm = async () => {
+    if (blindSubmitting.value) return;
+    const demandId = blindDemandId.value;
+    const matchUserId = blindMatchUserId.value;
+    if (!demandId || !matchUserId) {
+        uni.showToast({ title: '匹配参数缺失，请重试', icon: 'none' });
+        return;
+    }
+    blindSubmitting.value = true;
+    let res: any;
+    try {
+        res = await createMatch({ demandId, matchUserId });
+    } catch {
+        // 失败提示已由 request 统一处理，弹窗保留可重试
+        blindSubmitting.value = false;
+        return;
+    }
+    blindSubmitting.value = false;
+    // 发起匹配返回：recordId 匹配记录id、matchUserAvatar 发起方头像、matchedUserAvatar 被选中方头像
+    const recordId = res?.recordId || res?.matchId || res?.id || '';
+    if (!recordId) {
+        uni.showToast({ title: '未获取到匹配记录，请重试', icon: 'none' });
+        return;
+    }
+    // view 页与后续 cancel/联系方式交换接口均以该 recordId 为参数，写入缓存供全局使用
+    uni.setStorageSync('recordId', String(recordId));
+    blindRecordId.value = String(recordId);
+    // 接口返回头像时更新展示
+    if (res?.matchUserAvatar) blindMyAvatar.value = res.matchUserAvatar;
+    if (res?.matchedUserAvatar) blindOtherAvatar.value = res.matchedUserAvatar;
+
     uni.removeStorageSync('pendingBlindBox');
     // view 页据此展示"等待对方同意"倒计时弹窗；用户取消或收到对方结果前一直保留
     uni.setStorageSync('showWaitingPopup', true);
@@ -214,6 +309,9 @@ onMounted(() => {
     // #endif
 
     topOffset.value = navbarHeight.value;
+
+    // 订阅匹配终态推送：被匹配方拒绝/取消或超时时，关闭本页仍在展示的盲盒确认等弹窗
+    onWsMessage(handleMatchTermEvent);
 });
 
 onShow(() => {
@@ -236,10 +334,14 @@ onShow(() => {
     if (pendingBlind) {
         try {
             const info = JSON.parse(pendingBlind);
+            // 恢复 createMatch 参数与双方头像，recordId 此时一般不存在（未点确认匹配）
+            blindDemandId.value = info.demandId || '';
+            blindMatchUserId.value = info.matchUserId || '';
             blindRecordId.value = info.recordId || uni.getStorageSync('recordId') || '';
             blindMyAvatar.value = info.myAvatar || '/static/imgs/default-avatar.jpeg';
             blindOtherAvatar.value = info.otherAvatar || '/static/imgs/default-avatar.jpeg';
             showBlindBox.value = true;
+            console.log('showBlindBox onshow', showBlindBox.value);
         } catch {
             uni.removeStorageSync('pendingBlindBox');
         }
@@ -359,6 +461,85 @@ const goToBlindMatch = async () => {
 .match-page {
     min-height: 100vh;
     background: #000000;
+    overflow: hidden;
+}
+
+// 主题色炫光背景：低透明度 + 大模糊 + 超慢浮动，仅作氛围底色
+.aurora-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.aurora-blob {
+    position: absolute;
+    width: 560rpx;
+    height: 560rpx;
+    border-radius: 50%;
+    filter: blur(80rpx);
+    will-change: transform, opacity;
+}
+
+.blob-1 {
+    top: -140rpx;
+    left: -160rpx;
+    background: radial-gradient(circle at center, rgba(88, 180, 255, 0.5) 0%, rgba(88, 180, 255, 0) 68%);
+    animation: aurora-float-1 24s ease-in-out infinite alternate;
+}
+
+.blob-2 {
+    right: -180rpx;
+    bottom: -120rpx;
+    background: radial-gradient(circle at center, rgba(201, 39, 255, 0.42) 0%, rgba(201, 39, 255, 0) 68%);
+    animation: aurora-float-2 30s ease-in-out infinite alternate;
+}
+
+.blob-3 {
+    top: 38%;
+    left: 42%;
+    width: 480rpx;
+    height: 480rpx;
+    background: radial-gradient(circle at center, rgba(223, 135, 214, 0.3) 0%, rgba(102, 126, 234, 0) 70%);
+    animation: aurora-float-3 36s ease-in-out infinite alternate;
+}
+
+// 超慢速漂移：位移幅度小、周期长，肉眼只感知到光晕在缓慢呼吸流动
+@keyframes aurora-float-1 {
+    0% {
+        transform: translate(-8%, -4%) scale(1);
+        opacity: 0.55;
+    }
+    100% {
+        transform: translate(20%, 16%) scale(1.22);
+        opacity: 0.85;
+    }
+}
+
+@keyframes aurora-float-2 {
+    0% {
+        transform: translate(10%, 6%) scale(1.12);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translate(-18%, -12%) scale(0.95);
+        opacity: 0.5;
+    }
+}
+
+@keyframes aurora-float-3 {
+    0% {
+        transform: translate(-14%, 10%) scale(0.95);
+        opacity: 0.45;
+    }
+    100% {
+        transform: translate(12%, -14%) scale(1.18);
+        opacity: 0.75;
+    }
 }
 
 // 导航栏
@@ -485,6 +666,7 @@ const goToBlindMatch = async () => {
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: center;

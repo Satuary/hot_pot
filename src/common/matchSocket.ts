@@ -37,6 +37,8 @@ export const WS_EVENT = {
 export const pendingRequests = ref<any[]>([]);
 // 自定义匹配请求弹窗是否展示（仅匹配页渲染）
 export const showFriendRequest = ref(false);
+// 匹配请求处理完成计数器：每次同意/拒绝成功后 +1，供 match.vue 监听以关闭本地的 MatchSuccessModal 选人弹窗
+export const matchRequestHandled = ref(0);
 // 当前展示的请求
 export const currentRequest = ref({
     avatar: '',
@@ -90,12 +92,28 @@ function resetMatchState() {
 }
 
 /**
+ * 关闭全部匹配相关弹窗并清理持久化标记
+ * 在匹配终态（被对方拒绝 MATCH_REJECTED、对方取消 MATCH_CANCELED）时调用：
+ * - 清空内存中的匹配请求队列与自定义请求弹窗
+ * - 移除等待弹窗/选人弹窗/盲盒弹窗的本地标记，避免 onShow 时弹窗被恢复
+ */
+export function closeAllMatchPopups() {
+    resetMatchState();
+    uni.removeStorageSync('showWaitingPopup');
+    uni.removeStorageSync('pendingMatchSuccess');
+    uni.removeStorageSync('pendingBlindBox');
+}
+
+/**
  * 匹配页 onShow/onHide 调用：标记匹配页是否在前台
  * 回到前台时若队列中还有未处理请求，继续弹出自定义弹窗
  */
 export function setMatchPageVisible(visible: boolean) {
     matchPageVisible.value = visible;
     if (visible && !showFriendRequest.value) {
+        console.log("setMatchPageVisible -----")
+        console.log('matchPageVisible', matchPageVisible.value);
+        console.log("setMatchPageVisible -----")
         showNextRequest();
     }
 }
@@ -117,6 +135,8 @@ function handleWsMessage(data: any) {
     // 消息约定：recordId/demandId/message/senderUserId 在消息顶层，双方用户信息在 data.otherUser/selfUser
     const msg = data.payload || data;
     const body = msg.data || {};
+    console.log('[matchSocket] 收到消息:', type, body);
+    
     const otherUser = body.otherUser || msg.otherUser || msg.user || {};
     const otherNickname = otherUser.nickName || otherUser.nickname || msg.nickname || '';
     const otherAvatar = otherUser.avatarUrl || otherUser.avatar || msg.avatar || '';
@@ -149,6 +169,9 @@ function handleWsMessage(data: any) {
             if (matchPageVisible.value) {
                 // 匹配页在前台：展示自定义请求弹窗
                 if (!showFriendRequest.value) {
+                    console.log("handleWsMessage -----")
+                    console.log('MATCH_CREATED', pendingRequests.value);
+                    console.log("handleWsMessage -----")
                     showNextRequest();
                 }
             } else {
@@ -163,7 +186,7 @@ function handleWsMessage(data: any) {
             if (recordId !== '') {
                 uni.setStorageSync('recordId', String(recordId));
             }
-            uni.removeStorageSync('showWaitingPopup');
+            closeAllMatchPopups();
             uni.showModal({
                 title: '匹配成功',
                 content: `${otherNickname || '对方'} 已同意匹配，快去看看吧~`,
@@ -177,9 +200,9 @@ function handleWsMessage(data: any) {
             });
             break;
         }
-        // 对方已拒绝匹配：发起方收到，弹出结果提示并清理等待态
+        // 对方已拒绝匹配：发起方收到，关闭全部弹窗并清理等待态
         case WS_EVENT.MATCH_REJECTED: {
-            uni.removeStorageSync('showWaitingPopup');
+            closeAllMatchPopups();
             uni.removeStorageSync('recordId');
             uni.showModal({
                 title: '匹配未成功',
@@ -189,16 +212,16 @@ function handleWsMessage(data: any) {
             });
             break;
         }
-        // 对方已取消匹配：接收方收到，关闭对应的匹配请求弹窗
+        // 对方已取消匹配：接收方收到，关闭全部弹窗
         case WS_EVENT.MATCH_CANCELED: {
-            removePendingRequest(String(recordId));
+            closeAllMatchPopups();
+            uni.removeStorageSync('recordId');
             uni.showToast({ title: msg.message || '对方已取消匹配', icon: 'none' });
             break;
         }
         // 匹配已超时：关闭所有匹配相关弹窗并清理等待态
         case WS_EVENT.MATCH_TIMEOUT: {
-            resetMatchState();
-            uni.removeStorageSync('showWaitingPopup');
+            closeAllMatchPopups();
             uni.removeStorageSync('recordId');
             uni.showToast({ title: msg.message || '匹配已超时', icon: 'none' });
             break;
@@ -329,6 +352,7 @@ function showNextRequest() {
         description: req.description,
         requestId: req.id,
     };
+    console.log('showNextRequest', req);
     showFriendRequest.value = true;
 
     // 震动提醒
@@ -344,6 +368,10 @@ function removePendingRequest(id: string) {
     if (showFriendRequest.value && String(currentRequest.value.requestId) === id) {
         showFriendRequest.value = false;
         setTimeout(() => {
+            console.log("removePendingRequest -----")
+            console.log('removePendingRequest', id);
+            console.log('pendingRequests', pendingRequests.value);
+            console.log("removePendingRequest -----")
             showNextRequest();
         }, 300);
     }
@@ -351,7 +379,7 @@ function removePendingRequest(id: string) {
 
 /**
  * 同意当前匹配请求（匹配页自定义弹窗"同意"按钮）
- * 成功后关闭弹窗并展示下一个；失败弹窗保留可重试
+ * 成功后写入 recordId、清理选人弹窗标记并跳转查看页；失败弹窗保留可重试
  */
 export async function acceptCurrentRequest() {
     const reqId = currentRequest.value.requestId;
@@ -365,18 +393,29 @@ export async function acceptCurrentRequest() {
     } finally {
         requestSubmitting.value = false;
     }
+    // 同意成功：同步匹配记录 recordId（MATCH_CONFIRMED 仅推送给发起方，接收方需自行写入），供查看页拉取匹配详情
+    if (reqId) {
+        uni.setStorageSync('recordId', String(reqId));
+    }
+    // 从队列移除已同意的请求并关闭弹窗；不自动弹下一条，稍后跳转查看页，剩余请求回到匹配页时再处理
+    pendingRequests.value = pendingRequests.value.filter((r: any) => String(r.id) !== String(reqId));
     showFriendRequest.value = false;
+    // 已匹配成功，旧的匹配成功选人弹窗不再恢复
+    uni.removeStorageSync('pendingMatchSuccess');
+    closeAllMatchPopups();
+    // 通知 match.vue 关闭本地 MatchSuccessModal 选人弹窗
+    matchRequestHandled.value++;
 
     uni.showToast({
         title: '已同意，快去聊聊吧',
         icon: 'success',
-        duration: 2000,
+        duration: 1500,
     });
 
-    // 继续展示下一个请求
+    // 与发起方一致：跳转查看页查看匹配详情
     setTimeout(() => {
-        showNextRequest();
-    }, 500);
+        uni.switchTab({ url: '/pages/tabBar/view' });
+    }, 1500);
 }
 
 /**
@@ -395,16 +434,18 @@ export async function rejectCurrentRequest() {
     } finally {
         requestSubmitting.value = false;
     }
-    showFriendRequest.value = false;
+    // 从队列移除已拒绝的请求（同时关闭弹窗），否则 showNextRequest 会再次取到同一条导致弹窗重现；队列还有请求时自动展示下一条
+    removePendingRequest(reqId);
+    // 拒绝后清除匹配成功选人弹窗的恢复标记，避免回到匹配页 onShow 时旧弹窗再次出现
+    uni.removeStorageSync('pendingMatchSuccess');
+    uni.removeStorageSync('recordId');
+    closeAllMatchPopups();
+    // 通知 match.vue 关闭本地 MatchSuccessModal 选人弹窗
+    matchRequestHandled.value++;
 
     uni.showToast({
         title: '已拒绝',
         icon: 'none',
         duration: 1500,
     });
-
-    // 继续展示下一个请求
-    setTimeout(() => {
-        showNextRequest();
-    }, 500);
 }

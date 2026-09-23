@@ -20,7 +20,7 @@
 
 <script setup>
 import { ref, watch } from 'vue';
-import { getMatchRecommend, createMatch } from '@/api/api';
+import { getMatchRecommend } from '@/api/api';
 
 const list = ref([{
     id: '9',
@@ -95,50 +95,18 @@ const fetchRecommend = async () => {
     }
 };
 
-// 点击解锁：调用 createMatch 发起匹配，成功后把匹配 recordId 与双方头像交给父组件，
-// 由父组件弹出"确认匹配"盲盒弹窗（不再由此处直接跳转查看页）
-const handleUserClick = async (user) => {
+// 点击解锁：不再直接发起匹配，仅通知父组件弹出"确认匹配"盲盒弹窗；
+// 真正的 createMatch 请求在盲盒弹窗点击"确认匹配"时才发起
+const handleUserClick = (user) => {
     if (user.status !== 'locked' || user.unlocking) {
         return;
     }
-    if (!props.demandId || !user.id) {
-        emit('unlock', { user });
-        return;
-    }
-
-    user.unlocking = true;
-    try {
-        const res = await createMatch({
-            demandId: props.demandId,
-            matchUserId: user.id,
-        });
-        // 发起匹配返回：recordId 匹配记录id、matchUserAvatar 发起方头像、matchedUserAvatar 被选中方头像
-        const recordId = res?.recordId || res?.matchId || res?.id || '';
-        if (!recordId) {
-            uni.showToast({ title: '未获取到匹配记录，请重试', icon: 'none' });
-            return;
-        }
-        // view 页与后续 cancel/联系方式交换接口均以该 recordId 为参数，写入缓存供全局使用
-        uni.setStorageSync('recordId', recordId);
-        user.status = 'pending';
-        user.statusText = '已发送申请';
-        user.subStatusText = '等待对方同意';
-        // 通知父组件：关闭本弹窗并弹出确认匹配弹窗，头像优先用接口返回，缺失时回退列表头像
-        emit('unlock', {
-            user,
-            recordId,
-            matchUserAvatar: res?.matchUserAvatar || '',
-            matchedUserAvatar: res?.matchedUserAvatar || user.avatar || '',
-        });
-    } catch {
-        // 申请失败不改变状态，可再次点击
-        uni.showToast({
-            title: '解锁失败，请重试',
-            icon: 'none',
-        });
-    } finally {
-        user.unlocking = false;
-    }
+    // 交给父组件：关闭本弹窗并弹出盲盒确认弹窗，头像用列表中已展示的
+    emit('unlock', {
+        user,
+        matchUserId: user.id,
+        matchedUserAvatar: user.avatar || '',
+    });
 };
 </script>
 

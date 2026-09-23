@@ -1,9 +1,9 @@
 <template>
     <view class="overlay" v-if="visible">
         <view class="modal-container">
-            <view class="avatar-wrapper">
+            <view class="avatar-wrapper" @click.stop="goPartnerProfile">
                 <image :src="avatar" mode="aspectFill" class="avatar"></image>
-                <view class="view-btn" @click.stop="goPartnerProfile">点击查看</view>
+                <view class="view-btn">点击查看</view>
             </view>
 
             <text class="description">{{ description }}</text>
@@ -49,7 +49,7 @@ const handleConfirm = () => {
 
 const goPartnerProfile = () => {
     uni.navigateTo({
-        url: `/subPack/match/partnerProfile?id=${props.recordId}`,
+        url: `/subPack/match/partnerProfile?from=MatchConfirmModal&recordId=${props.recordId}`,
     });
 };
 </script>

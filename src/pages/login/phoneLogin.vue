@@ -1,8 +1,10 @@
 <template>
   <view class="phone-login-page">
     <!-- 返回按钮 -->
-    <view class="back-btn" @click="goBack">
-      <uni-icons type="left" size="22" color="#000000"></uni-icons>
+    <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <view class="nav-back" @click="goBack">
+        <uni-icons type="left" size="22" color="#000000"></uni-icons>
+      </view>
     </view>
     
     <!-- 标题 -->
@@ -83,8 +85,19 @@ import { isLogin, isProfileComplete, setToken, setUserInfo, setProfileComplete }
 import { startMatchSocket } from '@/common/matchSocket';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
+const phone = ref('');
+const code = ref('');
+const countdown = ref(0);
+const loading = ref(false);
+const sending = ref(false);
+const agreed = ref(false);
+// 状态栏高度
+const statusBarHeight = ref(0);
+
 // 已登录 -> 未完善资料则去完善页，已完善则去首页
 onLoad(() => {
+  const systemInfo = uni.getSystemInfoSync();
+  statusBarHeight.value = (systemInfo.statusBarHeight / 2) || 0;
   if (isLogin()) {
     if (!isProfileComplete()) {
       uni.redirectTo({ url: '/pages/profile/complete' });
@@ -94,50 +107,6 @@ onLoad(() => {
   }
 });
 
-const phone = ref('');
-const code = ref('');
-const countdown = ref(0);
-const loading = ref(false);
-const sending = ref(false);
-const agreed = ref(false);
-
-// 模拟后端：发送短信验证码
-const mockSendSms = async (_phoneNumber: string) => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  // 模拟：所有手机号均可发送，返回成功
-  return { code: 0, message: '验证码已发送' };
-};
-
-// 模拟后端：手机号登录/注册
-const mockPhoneLogin = async (phoneNumber: string, smsCode: string) => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  // 模拟：验证码固定为 123456
-  if (smsCode !== '123456') {
-    throw new Error('验证码错误');
-  }
-
-  // 根据手机号模拟是新用户还是老用户
-  const isNewUser = phoneNumber.startsWith('139');
-
-  return {
-    token: 'mock_token_' + Date.now(),
-    isNewUser,
-    userInfo: {
-      id: 'user_' + phoneNumber.slice(-4),
-      nickname: isNewUser ? '新朋友' : '手机用户' + phoneNumber.slice(-4),
-      avatar: 'https://picsum.photos/201',
-      phone: phoneNumber,
-      gender: 'male' as const,
-      age: 0,
-      tags: [] as string[],
-      intro: '',
-      balance: isNewUser ? 0 : 50,
-      matchCount: 0,
-      isProfileComplete: !isNewUser,
-    },
-  };
-};
 
 // 切换协议勾选
 const toggleAgreement = () => {
@@ -164,7 +133,7 @@ const sendCode = async () => {
   sending.value = true;
   try {
     // 正式环境替换为: await sendSmsCode({ phone: phone.value });
-    await mockSendSms(phone.value);
+    await SendSms(phone.value);
     
     uni.showToast({
       title: '验证码已发送 (测试码: 123456)',
@@ -265,19 +234,36 @@ const showUserAgreement = () => {
   padding: 60rpx 50rpx;
 }
 
-// 返回按钮
-.back-btn {
-  width: 72rpx;
-  height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 60rpx;
+// 导航栏
+.nav-bar {
+  // position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+
+  .nav-back {
+    // position: absolute;
+    // left: 20rpx;
+    width: 60rpx;
+    height: 60rpx;
+    margin-left: -10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-title {
+    font-size: 34rpx;
+    color: #fff;
+    font-weight: 500;
+  }
 }
 
 // 标题区域
 .title-area {
-  margin-bottom: 80rpx;
+  margin-bottom: 60rpx;
+  margin-top: 80rpx;
   
   .title {
     font-size: 48rpx;

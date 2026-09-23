@@ -19,7 +19,7 @@
                     <view class="name-row">
                         <text class="profile-name">{{ userInfo.nickname}}</text>
                         <view class="tag-spicy">
-                            <text class="tag-spicy-txt">麻辣</text>
+                            <text class="tag-spicy-txt">{{ tasteText }}</text>
                         </view>
                     </view>
                     <view class="desc-row">
@@ -27,31 +27,30 @@
                         <view class="copy-btn" @click="copyId">
                             <image class="copy-icon" src="/static/imgs/file-copy-line.png" mode="aspectFit"></image>
                         </view>
-                        <text class="desc-text desc-address">地址：{{ userInfo.address}}</text>
+                        <text class="desc-text desc-address">地址：{{ addressText}}</text>
                     </view>
                 </view>
             </view>
 
             <!-- 信息标签组：身高/年龄/性别 -->
             <view class="tags-row">
-                <view class="tag-item">
+                <view class="tag-item" v-if="bodyText">
                     <image class="tag-icon" src="/static/imgs/ruler-line.png" mode="aspectFit"></image>
-                    <text class="tag-txt">{{ userInfo.height || '170' }}cm {{ userInfo.weight || '60' }}kg</text>
+                    <text class="tag-txt">{{ bodyText }}</text>
                 </view>
-                <view class="tag-item">
+                <view class="tag-item" v-if="ageText">
                     <image class="tag-icon" src="/static/imgs/lz.png" mode="aspectFit"></image>
-                    <text class="tag-txt">{{ ageText }}岁</text>
+                    <text class="tag-txt">{{ ageText }}</text>
                 </view>
-                <view class="tag-item">
+                <view class="tag-item" v-if="genderText">
                     <text class="tag-txt">{{ genderText }}</text>
                 </view>
             </view>
 
             <!-- 火锅类型/偏好标签 -->
-            <view class="tags-row">
-                <view class="pill-tag" v-for="(t, i) in tasteTags" :key="'t' + i">
-                    <text class="pill-txt">{{ t }}</text>
-                </view>
+            <view class="pref-tags">
+                <view class="pref-tag white" v-if="hotpotTypeText">{{ hotpotTypeText }}</view>
+                <view class="pref-tag white" v-if="motivationText">{{ motivationText }}</view>
             </view>
         </view>
 
@@ -80,6 +79,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
+import { hotpotTypeOptions, tasteOptions, motivationOptions } from '@/utils/store';
 import { isLogin, isProfileComplete, getUserInfo, setUserInfo } from '@/utils/auth';
 import { getUserInfo as fetchUserInfo } from '@/api/api';
 
@@ -88,30 +88,27 @@ const userInfo = ref<any>({});
 const defaultAvatar = '/static/imgs/default-avatar.jpeg';
 
 // 顶部"重庆火锅"、"尝鲜打卡"等标签
-const tasteTags = ref<string[]>(['重庆火锅', '尝鲜打卡']);
+// const tasteTags = ref<string[]>(['重庆火锅', '尝鲜打卡']);
+const tasteText = computed(() => tasteOptions[Number(userInfo.value.taste) - 1] || '');
+const hotpotTypeText = computed(() => hotpotTypeOptions[Number(userInfo.value.hotpotType) - 1] || '');
+const motivationText = computed(() => motivationOptions[Number(userInfo.value.motivation) - 1] || '');
 
-// 性别数字/英文 -> 中文
-const genderText = computed(() => {
-    const g = userInfo.value.gender;
-    if (g === 1 || g === 'male' || g === '男') return '男';
-    if (g === 2 || g === 'female' || g === '女') return '女';
-    return '男';
+// gender：1=男 2=女
+const genderText = computed(() => (userInfo.value.gender === 1 ? '男' : userInfo.value.gender === 2 ? '女' : ''));
+console.log(userInfo.value.gender);
+// 身高体重文本
+const bodyText = computed(() => {
+    const parts: string[] = [];
+    if (userInfo.value.height) parts.push(`${userInfo.value.height}cm`);
+    if (userInfo.value.weight) parts.push(`${userInfo.value.weight}kg`);
+    return parts.join(' ');
 });
-
-// 由生日推算年龄（兼容多种日期格式）
-const ageText = computed(() => {
-    const raw = userInfo.value.birthday;
-    if (!raw) return userInfo.value.age || '25';
-    const nums = String(raw).match(/\d+/g);
-    if (!nums || nums.length < 3) return userInfo.value.age || '25';
-    const birth = new Date(Number(nums[0]), Number(nums[1]) - 1, Number(nums[2]));
-    if (isNaN(birth.getTime())) return userInfo.value.age || '25';
-    const now = new Date();
-    let age = now.getFullYear() - birth.getFullYear();
-    const m = now.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-    return age >= 0 ? age : (userInfo.value.age || '25');
-});
+// 年龄文本
+const ageText = computed(() => (userInfo.value.age ? `${userInfo.value.age}岁` : ''));
+// 地址文本
+const addressText = computed(
+    () => userInfo.value.address || [userInfo.value.province, userInfo.value.city, userInfo.value.district].filter(Boolean).join(''),
+);
 
 // 读取用户信息：先展示本地缓存，再请求接口刷新（onMounted 与 onShow 复用）
 const loadUserInfo = async () => {
@@ -406,6 +403,26 @@ const clearCache = () => {
         font-weight: 600;
         line-height: 1;
     }
+}
+
+/* 半透明深色标签（170cm、25岁、男） */
+.pref-tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16rpx;
+    margin-top: 28rpx;
+}
+
+.pref-tag {
+    padding: 12rpx 30rpx;
+    border-radius: 32rpx;
+    font-size: 26rpx;
+}
+
+.pref-tag.white {
+    background: #ffffff;
+    color: #333333;
 }
 
 /* ======== 充值卡 ======== */
