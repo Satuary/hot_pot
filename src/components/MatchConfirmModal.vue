@@ -94,6 +94,7 @@ const goPartnerProfile = () => {
     height: 180rpx;
     border-radius: 50%;
     border: 4rpx solid rgba(255, 255, 255, 0.2);
+    background: #fafafa;
 }
 
 .view-btn {

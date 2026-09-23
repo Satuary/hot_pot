@@ -177,6 +177,7 @@ const handleUserClick = (user) => {
 
 .avatar-wrapper.locked .avatar {
     filter: blur(8px);
+    background: #fafafa;
 }
 
 .avatar {

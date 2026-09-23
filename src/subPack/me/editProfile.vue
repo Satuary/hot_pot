@@ -876,6 +876,7 @@ function handleBack() {
     height: 100%;
     border-radius: 50%;
     border: 2rpx solid rgba(255, 255, 255, 0.1);
+    background: #fafafa;
 }
 
 .camera-btn {

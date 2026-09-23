@@ -180,6 +180,7 @@ const handleViewProfile = () => {
     border: 3rpx solid rgba(255, 255, 255, 0.15);
     position: relative;
     z-index: 1;
+    background: #fafafa;
 }
 
 .username {

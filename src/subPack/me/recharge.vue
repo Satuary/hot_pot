@@ -228,8 +228,13 @@ async function handleRecharge() {
         uni.hideLoading();
         uni.showToast({ title: '充值成功', icon: 'success' });
 
-        // 3. 本地更新次数与交易记录（自定义金额按 1元1次 计）
-        appState.userProfile.matchCount += pkg ? pkg.times : customAmountNum;
+        // 支付成功后重新拉取剩余次数（以后端 times/stat 为准，本地累加可能因到账延迟不准）
+        // 延迟 1s：等待后端微信支付异步回调入账，避免立即拉取拿到旧值
+        setTimeout(() => {
+            loadRemainingTimes();
+        }, 1000);
+
+        // 3. 本地更新交易记录（自定义金额按 1元1次 计）
         appState.transactions.unshift({
             id: Date.now().toString(),
             date: new Date().toISOString().split('T')[0],

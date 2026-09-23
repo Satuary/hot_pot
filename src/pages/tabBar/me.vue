@@ -254,7 +254,7 @@ const clearCache = () => {
         height: 100%;
         border-radius: 50%;
         border: 4rpx solid #ffffff;
-        background: #2a2a2a;
+        background: #fafafa;
     }
 
     .edit-badge {

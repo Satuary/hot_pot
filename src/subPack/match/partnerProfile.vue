@@ -616,6 +616,7 @@ function goBack() {
     height: 140rpx;
     border-radius: 50%;
     border: 3rpx solid rgba(255, 255, 255, 0.3);
+    background: #fafafa;
 }
 
 .profile-info {
