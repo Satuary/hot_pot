@@ -87,10 +87,17 @@
             </view>
 
             <!-- 预留微信 -->
-            <view class="form-group">
+            <!-- <view class="form-group">
                 <view class="form-label">预留微信</view>
                 <input v-model="form.wechat" class="form-input" placeholder="方便联系" placeholder-class="placeholder" />
+            </view> -->
+
+            <!-- 预留手机号 -->
+            <view class="form-group">
+                <view class="form-label">预留手机号</view>
+                <input v-model="form.phone" type="number" class="form-input" placeholder="方便联系" placeholder-class="placeholder" />
             </view>
+
 
             <!-- 艺名 -->
             <view class="form-group">
@@ -235,12 +242,9 @@ const form = reactive({
     hotpotType: hotpotTypeOptions[0],
     taste: tasteOptions[0],
     motivation: motivationOptions[0],
-    wechat: '',
+    phone: '',
     nickname: randomNickname(),
 });
-
-const heightRange = Array.from({ length: 81 }, (_, i) => String(140 + i));
-const weightRange = Array.from({ length: 121 }, (_, i) => String(30 + i));
 
 const hwVisible = ref(false);
 const tempHeight = ref(form.height);
@@ -295,9 +299,6 @@ const dayRange = computed(() => {
     const daysInMonth = new Date(tempYear.value, tempMonth.value, 0).getDate();
     return Array.from({ length: daysInMonth }, (_, i) => i + 1);
 });
-
-const heightIndex = computed(() => heightRange.findIndex((v) => v === tempHeight.value));
-const weightIndex = computed(() => weightRange.findIndex((v) => v === tempWeight.value));
 
 const selectGender = (gender: string) => {
     form.gender = gender;
@@ -490,11 +491,17 @@ async function onSubmit() {
         return;
     }
 
+    // 手机号校验：中国大陆 11 位、以 1 开头
+    const phone = String(form.phone || '').trim();
+    if (!/^1\d{10}$/.test(phone)) {
+        uni.showToast({ title: '请输入正确的手机号', icon: 'none' });
+        return;
+    }
+
     // 表单数据映射为接口参数
     const genderMap: Record<string, number> = { male: 1, female: 2 };
     const params = {
         nickname: form.nickname,
-        avatar: appState.userProfile.avatar || '',
         gender: genderMap[form.gender] || 1,
         birthday: form.birthday,
         height: parseFloat(form.height),
@@ -502,25 +509,18 @@ async function onSubmit() {
         hotpotType: hotpotTypeOptions.indexOf(form.hotpotType) + 1,
         taste: tasteOptions.indexOf(form.taste) + 1,
         motivation: motivationOptions.indexOf(form.motivation) + 1,
-        wechat: form.wechat,
+        phone: form.phone,
         stageName: form.nickname,
-        province: '',
-        city: '',
-        district: '',
-        address: '',
-        lat: 0,
-        lng: 0,
     };
     console.log("params", params);
 
     try {
-        const res = await completeUserInfo(params);
+        const res = await completeUserInfo(params as any);
         console.log("res", res);
 
         // 更新本地状态（与接口格式一致，直接用 params）
         Object.assign(appState.userProfile, {
             ...params,
-            avatar: res.avatar || params.avatar,
         });
 
         // 更新本地缓存 userInfo（接口格式，直接用 params）
@@ -528,7 +528,6 @@ async function onSubmit() {
         setUserInfo({
             ...cachedUserInfo,
             ...params,
-            avatar: res.avatar || params.avatar,
         });
 
         setProfileComplete(true);

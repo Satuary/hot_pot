@@ -11,7 +11,7 @@
       <view class="login-btn" @click="handleWechatLogin">
         <text class="btn-text">快捷登录</text>
       </view>
-      <text class="register-hint" @click="goToPhoneLogin">使用验证码登录</text>
+      <!-- <text class="register-hint" @click="goToPhoneLogin">使用验证码登录</text> -->
 
       <!-- 用户协议 -->
       <view class="agreement-box" @click="toggleAgreement">

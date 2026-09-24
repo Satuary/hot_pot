@@ -57,10 +57,10 @@
                     <text class="contact-text">{{ phoneText }}</text>
                 </view>
                 <view class="contact-divider"></view>
-                <view class="contact-item" @click="handleWechatClick">
+                <!-- <view class="contact-item" @click="handleWechatClick">
                     <image class="contact-icon" src="/static/imgs/wx.png" mode="aspectFit"></image>
                     <text class="contact-text">{{ wechatText }}</text>
-                </view>
+                </view> -->
             </view>
 
             <!-- 当前为被匹配方 即当前userId = otherUserId 并且 匹配状态是待确认即 matchStatus 为 0 时 显示匹配信息 -->

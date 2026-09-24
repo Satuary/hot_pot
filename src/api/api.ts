@@ -730,7 +730,7 @@ export const getUserInfo = (data?: { otherUserId?: number | string }) => {
  */
 export const completeUserInfo = (data: {
   nickname: string;
-  avatar: string;
+  avatar: string | '';
   gender: number;
   birthday: string;
   height: number;
@@ -738,14 +738,15 @@ export const completeUserInfo = (data: {
   hotpotType: number;
   taste: number;
   motivation: number;
-  wechat: string;
-  stageName: string;
-  province: string;
-  city: string;
-  district: string;
-  address: string;
-  lat: number;
-  lng: number;
+  wechat: string | '';
+  phone: string | '';
+  stageName: string | '';
+  province: string | '';
+  city: string | '';
+  district: string | '';
+  address: string | '';
+  lat: number | 0;
+  lng: number | 0;
 }) => {
   return request('/mini/user/completeUserInfo', 'POST', data);
 };
