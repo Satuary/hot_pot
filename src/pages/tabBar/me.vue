@@ -4,6 +4,12 @@
         <image class="bg-image" src="/static/imgs/index_bg.png" mode="aspectFill"></image>
         <!-- 顶部到底部的暗色蒙层，让文字更清晰 -->
         <view class="bg-mask"></view>
+        <!-- 缓慢浮动的主题色炫光背景 -->
+        <view class="aurora-bg">
+            <view class="aurora-blob blob-1"></view>
+            <view class="aurora-blob blob-2"></view>
+            <view class="aurora-blob blob-3"></view>
+        </view>
 
         <!-- 顶部个人区域 -->
         <view class="profile-section" :style="{ paddingTop: statusBarHeight + 20 + 'px' }">
@@ -64,7 +70,7 @@
             </view>
             <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
         </view>
-        <view class="recharge-card" @click="clearCache">
+        <!-- <view class="recharge-card" @click="clearCache">
             <view class="recharge-left">
                 <view class="recharge-icon-wrap">
                     <uni-icons type="wallet" size="20" color="#FFFFFF"></uni-icons>
@@ -72,7 +78,7 @@
                 <text class="recharge-label">清除缓存</text>
             </view>
             <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
-        </view>
+        </view> -->
     </view>
 </template>
 
@@ -229,10 +235,88 @@ const clearCache = () => {
     // background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(13, 13, 13, 0.6) 100%);
 }
 
+// 主题色炫光背景：低透明度 + 大模糊 + 超慢浮动，仅作氛围底色
+.aurora-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.aurora-blob {
+    position: absolute;
+    width: 560rpx;
+    height: 560rpx;
+    border-radius: 50%;
+    filter: blur(80rpx);
+    will-change: transform, opacity;
+}
+
+.blob-1 {
+    top: -140rpx;
+    left: -160rpx;
+    background: radial-gradient(circle at center, rgba(88, 180, 255, 0.5) 0%, rgba(88, 180, 255, 0) 68%);
+    animation: aurora-float-1 24s ease-in-out infinite alternate;
+}
+
+.blob-2 {
+    right: -180rpx;
+    bottom: -120rpx;
+    background: radial-gradient(circle at center, rgba(201, 39, 255, 0.42) 0%, rgba(201, 39, 255, 0) 68%);
+    animation: aurora-float-2 30s ease-in-out infinite alternate;
+}
+
+.blob-3 {
+    top: 38%;
+    left: 42%;
+    width: 480rpx;
+    height: 480rpx;
+    background: radial-gradient(circle at center, rgba(223, 135, 214, 0.3) 0%, rgba(102, 126, 234, 0) 70%);
+    animation: aurora-float-3 36s ease-in-out infinite alternate;
+}
+
+// 超慢速漂移：位移幅度小、周期长，肉眼只感知到光晕在缓慢呼吸流动
+@keyframes aurora-float-1 {
+    0% {
+        transform: translate(-8%, -4%) scale(1);
+        opacity: 0.55;
+    }
+    100% {
+        transform: translate(20%, 16%) scale(1.22);
+        opacity: 0.85;
+    }
+}
+
+@keyframes aurora-float-2 {
+    0% {
+        transform: translate(10%, 6%) scale(1.12);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translate(-18%, -12%) scale(0.95);
+        opacity: 0.5;
+    }
+}
+
+@keyframes aurora-float-3 {
+    0% {
+        transform: translate(-14%, 10%) scale(0.95);
+        opacity: 0.45;
+    }
+    100% {
+        transform: translate(12%, -14%) scale(1.18);
+        opacity: 0.75;
+    }
+}
+
 /* ======== 个人信息 ======== */
 .profile-section {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     padding-bottom: 30rpx;
 }
 
@@ -429,7 +513,7 @@ const clearCache = () => {
 .recharge-card {
     background: rgba(0, 0, 0, 0.6);
     position: relative;
-    z-index: 1;
+    z-index: 2;
     margin-top: 40rpx;
     padding: 30rpx 36rpx;
     background: #1a1a1a;

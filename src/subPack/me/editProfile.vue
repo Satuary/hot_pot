@@ -101,11 +101,11 @@
                     </view>
                 </view>
 
-                <!-- 微信 -->
-                <view class="list-item" @click="openModal('wechat')">
-                    <text class="label">微信</text>
+                <!-- 手机号 -->
+                <view class="list-item" @click="openModal('phone')">
+                    <text class="label">手机号</text>
                     <view class="value-row">
-                        <text class="value-text">{{ form.wechat || '未设置' }}</text>
+                        <text class="value-text">{{ form.phone || '未设置' }}</text>
                         <uni-icons type="right" size="16" color="#666666" class="arrow-icon"></uni-icons>
                     </view>
                 </view>
@@ -271,6 +271,7 @@
                 <input
                     v-model="tempTextValue"
                     class="text-input"
+                    :type="modalType === 'phone' ? 'number' : 'text'"
                     :placeholder="textModalPlaceholder"
                     placeholder-class="placeholder"
                 />
@@ -304,6 +305,7 @@ const form = reactive({
     taste: '',
     motivation: '',
     wechat: '',
+    phone: '',
     id: '',
     // 所在地结构化字段（由 chooseLocation 写入）
     province: '',
@@ -327,6 +329,7 @@ onMounted(async () => {
         form.height = d.height != null ? String(d.height) : '178';
         form.weight = d.weight != null ? String(d.weight) : '70';
         form.wechat = d.wechat || '';
+        form.phone = d.phone || '';
         form.avatar = d.avatar || '';
         form.id = d.id || d.userId || '';
         // 标签：接口返回数字，通过索引映射回字符串
@@ -357,6 +360,7 @@ onMounted(async () => {
             taste: form.taste ? tasteOptions.indexOf(form.taste) + 1 : 0,
             motivation: form.motivation ? motivationOptions.indexOf(form.motivation) + 1 : 0,
             wechat: form.wechat,
+            phone: form.phone,
             location: form.location,
             avatar: form.avatar,
             id: form.id,
@@ -370,6 +374,7 @@ onMounted(async () => {
         if (profile.height) form.height = String(profile.height);
         if (profile.weight) form.weight = String(profile.weight);
         if (profile.wechat) form.wechat = profile.wechat;
+        if (profile.phone) form.phone = profile.phone;
         if (profile.avatar) form.avatar = profile.avatar;
         if (profile.id) form.id = profile.id;
         if (profile.location) form.location = profile.location;
@@ -401,11 +406,11 @@ const birthdayLabel = computed(() => {
 });
 
 // ========== 弹窗管理 ==========
-type ModalType = 'nickname' | 'gender' | 'birthday' | 'hw' | 'hotpotType' | 'taste' | 'motivation' | 'wechat' | null;
+type ModalType = 'nickname' | 'gender' | 'birthday' | 'hw' | 'hotpotType' | 'taste' | 'motivation' | 'wechat' | 'phone' | null;
 
 const modalType = ref<ModalType>(null);
 const tagModalTypes: ModalType[] = ['hotpotType', 'taste', 'motivation'];
-const textModalTypes: ModalType[] = ['nickname', 'wechat'];
+const textModalTypes: ModalType[] = ['nickname', 'wechat', 'phone'];
 
 const tagModalTitle = computed(() => {
     const map: Record<string, string> = { hotpotType: '选择火锅类型', taste: '选择口味', motivation: '选择动力' };
@@ -413,12 +418,12 @@ const tagModalTitle = computed(() => {
 });
 
 const textModalTitle = computed(() => {
-    const map: Record<string, string> = { nickname: '修改昵称', wechat: '修改微信' };
+    const map: Record<string, string> = { nickname: '修改昵称', wechat: '修改微信', phone: '修改手机号' };
     return map[modalType.value || ''] || '';
 });
 
 const textModalPlaceholder = computed(() => {
-    const map: Record<string, string> = { nickname: '取一个好听的名字', wechat: '方便联系' };
+    const map: Record<string, string> = { nickname: '取一个好听的名字', wechat: '方便联系', phone: '请输入手机号' };
     return map[modalType.value || ''] || '';
 });
 
@@ -442,6 +447,7 @@ const tempForm = reactive({
     taste: '',
     motivation: '',
     wechat: '',
+    phone: '',
 });
 
 // 辅助函数：安全读写 tempForm（模板中使用，避免 null index type 报错）
@@ -478,6 +484,7 @@ function openModal(type: ModalType) {
     if (type === 'taste') tempForm.taste = form.taste;
     if (type === 'motivation') tempForm.motivation = form.motivation;
     if (type === 'wechat') tempForm.wechat = form.wechat;
+    if (type === 'phone') tempForm.phone = form.phone;
 }
 
 function closeModal() {
@@ -498,6 +505,7 @@ function confirmModal(type: ModalType) {
     if (type === 'taste') form.taste = tempForm.taste;
     if (type === 'motivation') form.motivation = tempForm.motivation;
     if (type === 'wechat') form.wechat = tempForm.wechat;
+    if (type === 'phone') form.phone = tempForm.phone;
     closeModal();
 }
 
@@ -681,6 +689,13 @@ async function onSave() {
         return;
     }
 
+    // 手机号校验：填写了才校验格式，中国大陆 11 位、以 1 开头
+    const phone = String(form.phone || '').trim();
+    if (phone && !/^1\d{10}$/.test(phone)) {
+        uni.showToast({ title: '请输入正确的手机号', icon: 'none' });
+        return;
+    }
+
     // 头像仍在上传中时禁止保存，避免提交本地临时路径
     if (avatarUploading.value) {
         uni.showToast({ title: '头像上传中，请稍候', icon: 'none' });
@@ -698,18 +713,17 @@ async function onSave() {
         hotpotType: hotpotTypeOptions.indexOf(form.hotpotType) + 1,
         taste: tasteOptions.indexOf(form.taste) + 1,
         motivation: motivationOptions.indexOf(form.motivation) + 1,
-        wechat: form.wechat || '',
+        // wechat: form.wechat || '',
+        phone: form.phone || '',
         stageName: form.nickname,
         province: form.province,
         city: form.city,
         district: form.district,
         address: form.address,
-        lat: form.lat,
-        lng: form.lng,
     };
 
     try {
-        await completeUserInfo(params);
+        await completeUserInfo(params as any);
 
         // 同步本地状态（appState + auth storage）
         syncProfileToStorage();
@@ -752,6 +766,7 @@ function syncProfileToStorage() {
         taste: form.taste ? tasteOptions.indexOf(form.taste) + 1 : 0,
         motivation: form.motivation ? motivationOptions.indexOf(form.motivation) + 1 : 0,
         wechat: form.wechat,
+        phone: form.phone,
         location: form.location,
         avatar: form.avatar || appState.userProfile.avatar,
         id: form.id,
@@ -827,6 +842,7 @@ function handleBack() {
 <style lang="scss" scoped>
 .container {
     min-height: 100vh;
+    padding-bottom: 60rpx;
     background-color: #0d0d0d;
     color: #ffffff;
     display: flex;
