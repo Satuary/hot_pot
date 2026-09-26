@@ -218,6 +218,23 @@ export function getUserLocation(): Promise<UserLocation> {
   });
 }
 
+/** 用户定位缓存（内存级，小程序生命周期内全局共享） */
+let cachedLocation: UserLocation | null = null;
+
+/**
+ * 获取带缓存的定位：优先读取内存缓存，避免频繁调用 getLocation 耗电；
+ * 缓存缺失时再调用 getUserLocation 并写入缓存。
+ * 页面进入时已获取过一次位置，发布需求时直接复用缓存即可。
+ */
+export async function getCachedLocation(forceRefresh = false): Promise<UserLocation> {
+  if (!forceRefresh && cachedLocation) {
+    return cachedLocation;
+  }
+  const loc = await getUserLocation();
+  cachedLocation = loc;
+  return loc;
+}
+
 /** 周边火锅店分页搜索结果 */
 export interface NearbyStoreResult {
   /** 当前页店铺列表 */
@@ -248,22 +265,35 @@ export function searchNearbyHotPotStore(
         radius: SEARCH_RADIUS,
         offset: PAGE_SIZE,
         page,
-        sortrule: 'distance',
+        sortrule: 'weight',
         extensions: 'all',
       },
       success(res) {
         const data = res.data as AmapAroundResponse;
         if (data.status === '1' && data.pois && data.pois.length > 0) {
-          const stores: Store[] = data.pois.map((poi) => ({
-            id: poi.id,
-            name: poi.name,
-            address: poi.address || '',
-            distance: formatDistance(parseInt(poi.distance) || 0),
-            rating: parseFloat(poi.biz_ext?.rating || '0'),
-            image: poi.photos?.[0]?.url || '',
-            // tags: extractTags(poi.type),
-            tags: poi.keytag || '',
-          }));
+          const stores: Store[] = data.pois
+            .filter((poi) => {
+              // 1. 高德 typecode=050117（火锅店）会混入烤肉、猪肚鸡、牛杂煲等非火锅商家，
+              //    仅保留店名或 keytag 中包含"火锅"的结果，过滤掉明显非火锅店的数据
+              const name = poi.name || '';
+              const keytag = poi.keytag || '';
+              const isHotpot = name.includes('火锅') || keytag.includes('火锅');
+              // 2. 过滤评分低于 4 分的小店，大部分不符合规格的都属于低评分小店
+              const rating = parseFloat(poi.biz_ext?.rating || '0');
+              return isHotpot && rating >= 4;
+            })
+            .map((poi) => ({
+              id: poi.id,
+              name: poi.name,
+              address: poi.address || '',
+              distance: formatDistance(parseInt(poi.distance) || 0),
+              rating: parseFloat(poi.biz_ext?.rating || '0'),
+              image: poi.photos?.[0]?.url || '',
+              // tags: extractTags(poi.type),
+              tags: poi.keytag || [],
+            }))
+            .sort((a, b) => b.rating - a.rating);
+
           resolve({ list: stores, total: parseInt(data.count) || 0 });
         } else {
           resolve({ list: [], total: 0 });

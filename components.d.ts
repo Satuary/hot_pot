@@ -10,6 +10,7 @@ export {}
 declare module '@vue/runtime-core' {
   export interface GlobalComponents {
     BlindBoxPopup: typeof import('./src/components/BlindBoxPopup.vue')['default']
+    ContactCopyModal: typeof import('./src/components/ContactCopyModal.vue')['default']
     LoadingOverlay: typeof import('./src/components/LoadingOverlay.vue')['default']
     LocationPickerPopup: typeof import('./src/components/LocationPickerPopup.vue')['default']
     MatchConfirmModal: typeof import('./src/components/MatchConfirmModal.vue')['default']

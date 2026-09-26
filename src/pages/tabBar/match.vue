@@ -105,7 +105,7 @@ import LocationPickerPopup from '@/components/LocationPickerPopup.vue';
 import type { LocationItem } from '@/components/LocationPickerPopup.vue';
 import { postRequirement, saveAutoMatch, createMatch, cancelDemand } from '@/api/api';
 import { getUserInfo } from '@/utils/auth';
-import { getUserLocation, reverseGeocode } from '@/utils/map';
+import { getUserLocation, reverseGeocode, getCachedLocation } from '@/utils/map';
 // 全局匹配 socket：单例连接 + 消息分发，页面只消费共享状态
 import {
     showFriendRequest,
@@ -390,7 +390,8 @@ const autoLocate = async () => {
   }
 
   try {
-    const loc = await getUserLocation();
+    // 使用带缓存的定位：首次获取后写入缓存，发布需求时直接复用，避免频繁调用 getLocation 耗电
+    const loc = await getCachedLocation();
     const addr = await reverseGeocode(loc);
     console.log("loc,",loc, "addr",addr);
     const desc = addr.shortDescription || addr.formattedAddress;
@@ -440,7 +441,19 @@ const goToPreciseMatch = () => {
 const goToBlindMatch = async () => {
     uni.showLoading({ title: '匹配中...', mask: true });
     try {
-        const res: any = await postRequirement({ matchType: '1' } as any);
+        // 经纬度为必传项：优先复用页面进入时缓存的定位，缺失时再获取
+        let lat: number;
+        let lng: number;
+        try {
+            const loc = await getCachedLocation();
+            lat = loc.latitude;
+            lng = loc.longitude;
+        } catch {
+            uni.hideLoading();
+            uni.showToast({ title: '定位失败，请开启位置权限后重试', icon: 'none' });
+            return;
+        }
+        const res: any = await postRequirement({ matchType: '1', lat, lng });
         // demandId 为需求ID，通过 URL 传给匹配页拉推荐/发起匹配；匹配 recordId 由 mini/match/create 返回后再写入缓存
         const demandId = res?.demandId || '';
         uni.hideLoading();

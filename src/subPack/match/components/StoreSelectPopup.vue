@@ -131,10 +131,10 @@ const emit = defineEmits<{
 
 const defaultImage = '/static/imgs/logo.png';
 const sortOpen = ref(false);
-const currentSort = ref<SortOption>({ label: '综合排序', value: 'default' });
+const currentSort = ref<SortOption>({ label: '综合排序', value: 'weight' });
 
 const sortOptions: SortOption[] = [
-  { label: '综合排序', value: 'default' },
+  { label: '综合排序', value: 'weight' },
   { label: '距离最近', value: 'distance' },
   { label: '评分最高', value: 'rating' },
 ];

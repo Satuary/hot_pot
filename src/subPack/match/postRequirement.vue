@@ -233,7 +233,7 @@ import { ref, computed, onMounted } from 'vue';
 import { postRequirement } from '@/api/api';
 import { mockStores } from '@/utils/store';
 import type { Store } from '@/utils/store';
-import { getUserLocation, searchNearbyHotPotStore } from '@/utils/map';
+import { getCachedLocation, searchNearbyHotPotStore } from '@/utils/map';
 import type { UserLocation } from '@/utils/map';
 import {
   genderOptions,
@@ -452,8 +452,8 @@ const selectStore = async () => {
   if (storeList.value.length) return;
 
   try {
-    // 1. 使用wx api获取用户当前经纬度
-    const location = await getUserLocation();
+    // 1. 使用带缓存的定位获取用户当前经纬度（优先复用首页缓存，避免重复调用 getLocation 耗电）
+    const location = await getCachedLocation();
     // 测试用，固定位置在位中心84197号
     // location.longitude = 113.24;
     // location.latitude = 23.11;
@@ -576,6 +576,16 @@ const submitRequirement = async () => {
     return;
   }
 
+  // 经纬度为必传项：若尚未定位则从缓存/接口获取，失败则中止发布
+  if (!storeLocation.value) {
+    try {
+      storeLocation.value = await getCachedLocation();
+    } catch {
+      uni.showToast({ title: '定位失败，请开启位置权限后重试', icon: 'none' });
+      return;
+    }
+  }
+
   try {
     uni.showLoading({
       title: '提交中...',
@@ -601,6 +611,7 @@ const submitRequirement = async () => {
         }
       : {};
 
+    const loc = storeLocation.value!;
     const params = {
       gender: String(genderMap[formData.value.gender] ?? 1),
       ageRange: `${formData.value.ageMin},${formData.value.ageMax}`,
@@ -612,6 +623,8 @@ const submitRequirement = async () => {
       meetingTime: formData.value.dateTime,
       // meetingTime: '2026-09-30 15:30',
       payType: String(payTypeMap[formData.value.paymentMethod] ?? ''),
+      lat: loc.latitude,
+      lng: loc.longitude,
     };
 
     const res = await postRequirement(params);
@@ -644,12 +657,15 @@ onMounted(() => {
   const systemInfo = uni.getSystemInfoSync();
   statusBarHeight.value = systemInfo.statusBarHeight || 0;
   
-  // 设置默认日期时间显示
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  formData.value.dateTime = `${year}-${month}-${day} 15:30`;
+  // 设置默认日期时间：当前时间 + 10 分钟
+  const now = new Date();
+  const target = new Date(now.getTime() + 10 * 60 * 1000);
+  const year = target.getFullYear();
+  const month = String(target.getMonth() + 1).padStart(2, '0');
+  const day = String(target.getDate()).padStart(2, '0');
+  const hour = String(target.getHours()).padStart(2, '0');
+  const minute = String(target.getMinutes()).padStart(2, '0');
+  formData.value.dateTime = `${year}-${month}-${day} ${hour}:${minute}`;
 });
 </script>
 

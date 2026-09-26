@@ -68,6 +68,10 @@ export const postRequirement = (data: {
     | Record<string, never>;
   meetingTime: string;
   payType: string;
+  /** 发布时的纬度（必传，否则无法发起匹配） */
+  lat: number;
+  /** 发布时的经度（必传，否则无法发起匹配） */
+  lng: number;
 }) => {
   return request('/mini/demand/publish', 'POST', data);
 };

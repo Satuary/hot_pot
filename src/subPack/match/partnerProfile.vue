@@ -95,6 +95,16 @@
                 </view>
             </view>
         </view>
+
+        <!-- 复制联系方式弹窗 -->
+        <ContactCopyModal
+            :visible="contactModal.visible"
+            :title="contactModal.title"
+            :value="contactModal.value"
+            :icon="contactModal.icon"
+            :button-text="contactModal.buttonText"
+            @close="contactModal.visible = false"
+        />
     </view>
 </template>
 
@@ -119,6 +129,7 @@ import { hotpotTypeText as hotpotTypeTextMap, payTypeCodeText } from '@/config/m
 import { getUserInfo as getLocalUserInfo } from '@/utils/auth';
 import { onWsMessage } from '@/utils/websocket';
 import { WS_EVENT, setPartnerPageVisible, partnerPageVisible } from '@/common/matchSocket';
+import ContactCopyModal from '@/components/ContactCopyModal.vue';
 
 const statusBarHeight = ref(0);
 const recordId = ref('');
@@ -155,6 +166,15 @@ const wechatStatus = ref<'idle' | 'applied' | 'viewed'>('idle');
 // 请求进行中标记，防止重复点击
 const phoneSubmitting = ref(false);
 const wechatSubmitting = ref(false);
+
+// 复制联系方式弹窗状态
+const contactModal = reactive({
+    visible: false,
+    title: '',
+    value: '',
+    icon: '/static/imgs/dh.png',
+    buttonText: '复制',
+});
 
 // 标签类字段：接口返回 1 起始的数字索引，映射为文案
 const tasteText = computed(() => tasteOptions[Number(profile.taste) - 1] || '');
@@ -465,21 +485,19 @@ function handleExchangeWsEvent(data: any) {
     }
 }
 
-// 展示联系方式，支持一键复制
+// 展示联系方式，支持一键复制（自定义弹窗）
 function showContactModal(title: string, value: string) {
     if (!value) {
         uni.showToast({ title: '暂未获取到联系方式', icon: 'none' });
         return;
     }
-    uni.showModal({
-        title,
-        content: `${title}：${value}`,
-        confirmText: '复制',
-        showCancel: false,
-        success: () => {
-            uni.setClipboardData({ data: value });
-        },
-    });
+    const isWechat = title.includes('微信');
+    const nickname = profile.nickname || '对方';
+    contactModal.title = isWechat ? `${nickname}的微信号` : `${nickname}的手机号`;
+    contactModal.value = value;
+    // contactModal.icon = isWechat ? '/static/imgs/wx.png' : '/static/imgs/dh.png';
+    contactModal.buttonText = isWechat ? '复制微信号' : '复制手机号';
+    contactModal.visible = true;
 }
 
 // 从接口返回中提取手机号
