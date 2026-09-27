@@ -225,6 +225,8 @@
       @select="onStoreSelect"
       @load-more="loadMoreStores"
     />
+    <!-- 匹配次数不足提示弹窗 -->
+    <RechargeTipModal :visible="showRechargeTip" @close="showRechargeTip = false" />
   </view>
 </template>
 
@@ -235,6 +237,7 @@ import { mockStores } from '@/utils/store';
 import type { Store } from '@/utils/store';
 import { getCachedLocation, searchNearbyHotPotStore } from '@/utils/map';
 import type { UserLocation } from '@/utils/map';
+import RechargeTipModal from '@/components/RechargeTipModal.vue';
 import {
   genderOptions,
   hotpotTypes,
@@ -252,6 +255,8 @@ const statusBarHeight = ref(0);
 
 // 店铺选择弹框
 const storePopupVisible = ref(false);
+// 匹配次数不足提示弹窗
+const showRechargeTip = ref(false);
 const storeList = ref<Store[]>([]);
 const storeLoading = ref(false);
 const storeLoadingMore = ref(false);
@@ -646,10 +651,16 @@ const submitRequirement = async () => {
     }, 1500);
   } catch (error: any) {
     uni.hideLoading();
-    uni.showToast({
-      title: error.msg || '发布失败',
-      icon: 'none',
-    });
+    // 匹配次数不足：弹出充值提示弹窗，而不是普通 toast
+    const msg = error?.msg || error?.message || '';
+    if (msg.includes('次数') || msg.includes('充值')) {
+      showRechargeTip.value = true;
+    } else {
+      uni.showToast({
+        title: msg || '发布失败',
+        icon: 'none',
+      });
+    }
   }
 };
 

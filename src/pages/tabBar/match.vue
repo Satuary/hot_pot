@@ -84,6 +84,8 @@
         @update:visible="showLocationPicker = $event"
         @select="handleLocationSelect"
     />
+    <!-- 匹配次数不足提示弹窗 -->
+    <RechargeTipModal :visible="showRechargeTip" @close="showRechargeTip = false" />
 </template>
 
 <script setup lang="ts">
@@ -101,6 +103,8 @@ import MatchIntroModal from '@/components/MatchIntroModal.vue';
 import MatchConfirmModal from '@/components/MatchConfirmModal.vue';
 // 定位选择弹窗
 import LocationPickerPopup from '@/components/LocationPickerPopup.vue';
+// 匹配次数不足提示弹窗
+import RechargeTipModal from '@/components/RechargeTipModal.vue';
 // 定位选择弹窗
 import type { LocationItem } from '@/components/LocationPickerPopup.vue';
 import { postRequirement, saveAutoMatch, createMatch, cancelDemand } from '@/api/api';
@@ -171,6 +175,7 @@ const capsuleRightMargin = ref(0); // 右侧避开胶囊的边距
 const topOffset = ref(0);
 const location = ref('正在定位...');
 const showLocationPicker = ref(false);
+const showRechargeTip = ref(false);
 const isToggleOn = ref(true);
 
 // 点击头像解锁：关闭匹配成功弹窗，带出 createMatch 参数与双方头像，延迟弹出确认匹配弹窗
@@ -462,10 +467,16 @@ const goToBlindMatch = async () => {
         });
     } catch (error: any) {
         uni.hideLoading();
-        uni.showToast({
-            title: error?.msg || '发起匹配失败',
-            icon: 'none',
-        });
+        // 匹配次数不足：弹出充值提示弹窗，而不是普通 toast
+        const msg = error?.msg || error?.message || '';
+        if (msg.includes('次数') || msg.includes('充值')) {
+            showRechargeTip.value = true;
+        } else {
+            uni.showToast({
+                title: msg || '发起匹配失败',
+                icon: 'none',
+            });
+        }
     }
 };
 </script>
