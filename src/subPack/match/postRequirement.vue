@@ -238,6 +238,7 @@ import type { Store } from '@/utils/store';
 import { getCachedLocation, searchNearbyHotPotStore } from '@/utils/map';
 import type { UserLocation } from '@/utils/map';
 import RechargeTipModal from '@/components/RechargeTipModal.vue';
+import { guideSubscribeOnce } from '@/utils/subscribe';
 import {
   genderOptions,
   hotpotTypes,
@@ -592,6 +593,8 @@ const submitRequirement = async () => {
   }
 
   try {
+    // 引导订阅消息（仅首次），离线时也能收到匹配结果通知
+    guideSubscribeOnce();
     uni.showLoading({
       title: '提交中...',
     });
@@ -651,13 +654,12 @@ const submitRequirement = async () => {
     }, 1500);
   } catch (error: any) {
     uni.hideLoading();
-    // 匹配次数不足：弹出充值提示弹窗，而不是普通 toast
-    const msg = error?.msg || error?.message || '';
-    if (msg.includes('次数') || msg.includes('充值')) {
+    // code=601 匹配次数不足：弹出自定义充值提示弹窗（request 层已静默，不弹 toast）
+    if (error?.code === 601) {
       showRechargeTip.value = true;
     } else {
       uni.showToast({
-        title: msg || '发布失败',
+        title: error?.msg || error?.message || '发布失败',
         icon: 'none',
       });
     }

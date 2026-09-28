@@ -8,6 +8,8 @@ interface RequestConfig {
 // 请求选项，noAuth 为 true 时不携带 token（如登录、发送验证码等）
 export interface RequestOptions {
   noAuth?: boolean;
+  /** 业务错误码静默列表：命中时不弹全局 toast，交由业务页面自行处理 */
+  silentCodes?: number[];
 }
 
 const config: RequestConfig = {
@@ -53,10 +55,14 @@ export default function request(
             // 部分接口无 data 字段（如登录接口平铺返回 token/miniUserInfo），此时返回整个响应体
             resolve(result.data !== undefined && result.data !== null ? result.data : result);
           } else {
-            uni.showToast({
-              title: result.msg || result.message || '请求失败',
-              icon: 'none',
-            });
+            // 命中调用方声明的静默码时不弹全局 toast，交由业务页面自行处理
+            const silent = options.silentCodes?.includes(result.code);
+            if (!silent) {
+              uni.showToast({
+                title: result.msg || result.message || '请求失败',
+                icon: 'none',
+              });
+            }
             reject(result);
           }
         } else {

@@ -73,7 +73,8 @@ export const postRequirement = (data: {
   /** 发布时的经度（必传，否则无法发起匹配） */
   lng: number;
 }) => {
-  return request('/mini/demand/publish', 'POST', data);
+  // code=601 匹配次数不足静默全局 toast，由调用页弹自定义充值提示弹窗
+  return request('/mini/demand/publish', 'POST', data, { silentCodes: [601] });
 };
 
 /**

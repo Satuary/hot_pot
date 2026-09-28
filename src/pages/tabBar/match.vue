@@ -110,6 +110,7 @@ import type { LocationItem } from '@/components/LocationPickerPopup.vue';
 import { postRequirement, saveAutoMatch, createMatch, cancelDemand } from '@/api/api';
 import { getUserInfo } from '@/utils/auth';
 import { getUserLocation, reverseGeocode, getCachedLocation } from '@/utils/map';
+import { guideSubscribeOnce } from '@/utils/subscribe';
 // 全局匹配 socket：单例连接 + 消息分发，页面只消费共享状态
 import {
     showFriendRequest,
@@ -444,6 +445,8 @@ const goToPreciseMatch = () => {
 
 // 快速匹配：直接发布需求（matchType=1，其他参数不传），成功后进入匹配页
 const goToBlindMatch = async () => {
+    // 引导订阅消息（仅首次），离线时也能收到匹配结果通知
+    guideSubscribeOnce();
     uni.showLoading({ title: '匹配中...', mask: true });
     try {
         // 经纬度为必传项：优先复用页面进入时缓存的定位，缺失时再获取
@@ -467,13 +470,12 @@ const goToBlindMatch = async () => {
         });
     } catch (error: any) {
         uni.hideLoading();
-        // 匹配次数不足：弹出充值提示弹窗，而不是普通 toast
-        const msg = error?.msg || error?.message || '';
-        if (msg.includes('次数') || msg.includes('充值')) {
+        // code=601 匹配次数不足：弹出自定义充值提示弹窗（request 层已静默，不弹 toast）
+        if (error?.code === 601) {
             showRechargeTip.value = true;
         } else {
             uni.showToast({
-                title: msg || '发起匹配失败',
+                title: error?.msg || error?.message || '发起匹配失败',
                 icon: 'none',
             });
         }
