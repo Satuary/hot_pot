@@ -49,7 +49,7 @@
           >
             <image
               class="store-image"
-              :src="store.image || defaultImage"
+              :src="toHttps(store.image) || defaultImage"
               mode="aspectFill"
             ></image>
             <view class="store-info">
@@ -96,6 +96,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { Store } from '@/utils/store';
+import { toHttps } from '@/utils/system';
 
 interface SortOption {
   label: string;

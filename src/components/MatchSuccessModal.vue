@@ -6,7 +6,7 @@
             <view class="user-list">
                 <view v-for="(user, index) in list" :key="index" class="user-item" @click="handleUserClick(user)">
                     <view class="avatar-wrapper" :class="{ locked: user.status === 'locked' }">
-                        <image :src="user.avatar" mode="aspectFill" class="avatar"></image>
+                        <image :src="toHttps(user.avatar)" mode="aspectFill" class="avatar"></image>
                         <image v-if="user.status === 'locked'" src="/static/imgs/lock-icon.png" mode="aspectFit" class="lock-icon"></image>
                     </view>
 
@@ -21,6 +21,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { getMatchRecommend } from '@/api/api';
+import { toHttps } from '@/utils/system';
 
 const list = ref([{
     id: '9',

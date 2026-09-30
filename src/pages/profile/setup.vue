@@ -15,7 +15,7 @@
           <view class="avatar-upload" @click="chooseAvatar">
             <image
               v-if="formData.avatar"
-              :src="formData.avatar"
+              :src="toHttps(formData.avatar)"
               class="avatar-img"
               mode="aspectFill"
             ></image>
@@ -124,6 +124,7 @@ import { hotpotTypeOptions, tasteOptions, motivationOptions } from '@/utils/stor
 import NavBar from '@/components/NavBar.vue';
 import TagSelector from '@/components/TagSelector.vue';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
+import { toHttps } from '@/utils/system';
 
 const loading = ref(false);
 

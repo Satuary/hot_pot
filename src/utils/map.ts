@@ -327,7 +327,7 @@ export function reverseGeocode(location: UserLocation): Promise<AddressInfo> {
           const rg = data.regeocode;
           const ac = rg.addressComponent;
 
-          console.log("rg", rg, "ac", ac)
+          // console.log("rg", rg, "ac", ac)
 
           // 生成简短描述：优先显示坐标所在的具体地标，如"恒润实验学校"
           const shortDescription = generateShortDescription(ac, rg.pois, rg.aois);

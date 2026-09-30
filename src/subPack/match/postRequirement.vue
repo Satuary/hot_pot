@@ -236,9 +236,11 @@ import { postRequirement } from '@/api/api';
 import { mockStores } from '@/utils/store';
 import type { Store } from '@/utils/store';
 import { getCachedLocation, searchNearbyHotPotStore } from '@/utils/map';
+import { getStatusBarHeight } from '@/utils/system';
 import type { UserLocation } from '@/utils/map';
 import RechargeTipModal from '@/components/RechargeTipModal.vue';
-import { guideSubscribeOnce } from '@/utils/subscribe';
+// 订阅消息：提交需求前请求「匹配结果通知」授权（原生弹窗）
+import { requestSubscribe, SUBSCRIBE_TEMPLATES } from '@/utils/subscribe';
 import {
   genderOptions,
   hotpotTypes,
@@ -582,6 +584,11 @@ const submitRequirement = async () => {
     return;
   }
 
+  // 订阅「匹配结果通知」：所有同步校验通过后、首个 await 之前，在 tap 手势内
+  // 同步调起微信原生授权弹窗；等待用户响应后再提交，避免提交流程与授权弹窗并行；
+  // 用户拒绝/失败均不阻塞提交流程，每次允许积攒 1 条推送额度
+  await requestSubscribe([SUBSCRIBE_TEMPLATES.MATCH_RESULT]).catch(() => {});
+
   // 经纬度为必传项：若尚未定位则从缓存/接口获取，失败则中止发布
   if (!storeLocation.value) {
     try {
@@ -593,8 +600,6 @@ const submitRequirement = async () => {
   }
 
   try {
-    // 引导订阅消息（仅首次），离线时也能收到匹配结果通知
-    guideSubscribeOnce();
     uni.showLoading({
       title: '提交中...',
     });
@@ -667,8 +672,7 @@ const submitRequirement = async () => {
 };
 
 onMounted(() => {
-  const systemInfo = uni.getSystemInfoSync();
-  statusBarHeight.value = systemInfo.statusBarHeight || 0;
+  statusBarHeight.value = getStatusBarHeight();
   
   // 设置默认日期时间：当前时间 + 10 分钟
   const now = new Date();

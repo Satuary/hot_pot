@@ -74,6 +74,7 @@
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getWxPayOrderDetail, wxPayRefund, type WxPayOrderDetail } from '@/api/api';
+import { getStatusBarHeight } from '@/utils/system';
 
 // 获取系统状态栏高度，适配刘海屏
 const statusBarHeight = ref(0);
@@ -166,8 +167,7 @@ async function loadDetail() {
 }
 
 onLoad((options: any) => {
-    const systemInfo = uni.getSystemInfoSync();
-    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    statusBarHeight.value = getStatusBarHeight();
 
     if (options?.id) orderId.value = decodeURIComponent(options.id);
     if (options?.desc) passedDesc.value = decodeURIComponent(options.desc);

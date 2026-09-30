@@ -82,6 +82,7 @@
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { isLogin, isProfileComplete, setToken, setUserInfo, setProfileComplete } from '@/utils/auth';
+import { getStatusBarHeight } from '@/utils/system';
 import { startMatchSocket } from '@/common/matchSocket';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
@@ -96,8 +97,7 @@ const statusBarHeight = ref(0);
 
 // 已登录 -> 未完善资料则去完善页，已完善则去首页
 onLoad(() => {
-  const systemInfo = uni.getSystemInfoSync();
-  statusBarHeight.value = (systemInfo.statusBarHeight / 2) || 0;
+  statusBarHeight.value = (getStatusBarHeight() / 2) || 0;
   if (isLogin()) {
     if (!isProfileComplete()) {
       uni.redirectTo({ url: '/pages/profile/complete' });

@@ -12,7 +12,7 @@
             <!-- 头像区域 -->
             <view class="avatar-section">
                 <view class="avatar-wrapper" @click="handleChangeAvatar">
-                    <image class="avatar-img" :src="form.avatar || defaultAvatar" mode="aspectFill"></image>
+                    <image class="avatar-img" :src="toHttps(form.avatar) || defaultAvatar" mode="aspectFill"></image>
                     <view class="camera-btn">
                         <uni-icons type="camera-filled" size="16" color="#000000"></uni-icons>
                     </view>
@@ -289,6 +289,7 @@ import { ref, computed, reactive, onMounted } from 'vue';
 import { hotpotTypeOptions, tasteOptions, motivationOptions, appState } from '@/utils/store';
 import { setProfileComplete, getUserInfo as getAuthUserInfo, setUserInfo as setAuthUserInfo } from '@/utils/auth';
 import { completeUserInfo, getUserInfo, uploadImage } from '@/api/api';
+import { getStatusBarHeight, toHttps } from '@/utils/system';
 
 const defaultAvatar = '/static/imgs/default-avatar.jpeg';
 
@@ -810,8 +811,7 @@ const menuHeight = ref(0);
 const statusBarHeight = ref(0);
 
 onMounted(() => {
-    const systemInfo = uni.getSystemInfoSync();
-    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    statusBarHeight.value = getStatusBarHeight();
     try {
         // #ifdef MP-WEIXIN
         const rect = uni.getMenuButtonBoundingClientRect();

@@ -93,6 +93,7 @@ import { ref, watch, onMounted } from 'vue';
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app';
 // 登录和完善资料检查
 import { isLogin, isProfileComplete } from '@/utils/auth';
+import { getStatusBarHeight } from '@/utils/system';
 // 匹配到的三个用户，适配快速匹配和精准匹配
 import MatchSuccessModal from '@/components/MatchSuccessModal.vue';
 // 盲盒弹窗vs两个
@@ -110,7 +111,8 @@ import type { LocationItem } from '@/components/LocationPickerPopup.vue';
 import { postRequirement, saveAutoMatch, createMatch, cancelDemand } from '@/api/api';
 import { getUserInfo } from '@/utils/auth';
 import { getUserLocation, reverseGeocode, getCachedLocation } from '@/utils/map';
-import { guideSubscribeOnce } from '@/utils/subscribe';
+// 订阅消息：快速匹配前请求「匹配结果通知」授权（原生弹窗）
+import { requestSubscribe, SUBSCRIBE_TEMPLATES } from '@/utils/subscribe';
 // 全局匹配 socket：单例连接 + 消息分发，页面只消费共享状态
 import {
     showFriendRequest,
@@ -295,8 +297,7 @@ const handleCloseIntroModal = () => {
 };
 
 onMounted(() => {
-    const systemInfo = uni.getSystemInfoSync();
-    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    statusBarHeight.value = getStatusBarHeight();
 
     // 获取胶囊按钮信息，导航栏内容与胶囊按钮同一水平线
     // #ifdef MP-WEIXIN
@@ -399,7 +400,7 @@ const autoLocate = async () => {
     // 使用带缓存的定位：首次获取后写入缓存，发布需求时直接复用，避免频繁调用 getLocation 耗电
     const loc = await getCachedLocation();
     const addr = await reverseGeocode(loc);
-    console.log("loc,",loc, "addr",addr);
+    // console.log("loc,",loc, "addr",addr);
     const desc = addr.shortDescription || addr.formattedAddress;
     location.value = desc;
     uni.setStorageSync('user_location_name', desc);
@@ -445,8 +446,10 @@ const goToPreciseMatch = () => {
 
 // 快速匹配：直接发布需求（matchType=1，其他参数不传），成功后进入匹配页
 const goToBlindMatch = async () => {
-    // 引导订阅消息（仅首次），离线时也能收到匹配结果通知
-    guideSubscribeOnce();
+    // 订阅「匹配结果通知」：必须在 tap 手势内同步调起微信原生授权弹窗，
+    // 等待用户响应（允许/拒绝/关闭）后再进入匹配，避免匹配流程与授权弹窗并行；
+    // 用户拒绝/失败均不阻塞匹配，每次允许为后端积攒 1 条推送额度
+    await requestSubscribe([SUBSCRIBE_TEMPLATES.MATCH_RESULT]).catch(() => {});
     uni.showLoading({ title: '匹配中...', mask: true });
     try {
         // 经纬度为必传项：优先复用页面进入时缓存的定位，缺失时再获取

@@ -16,6 +16,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
+import { getStatusBarHeight } from '@/utils/system';
 
 // 状态栏高度
 const statusBarHeight = ref(0);
@@ -278,8 +279,7 @@ const rechargeAgreement = `
 `;
 
 onLoad((options) => {
-  const systemInfo = uni.getSystemInfoSync();
-  statusBarHeight.value = systemInfo.statusBarHeight || 0;
+  statusBarHeight.value = getStatusBarHeight();
 
   const type = (options?.type as AgreementType) || 'user';
   const meta: Record<AgreementType, { title: string; html: string }> = {

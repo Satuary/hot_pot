@@ -14,7 +14,7 @@
       <!-- 左侧头像 -->
       <view class="avatar-box left-avatar">
         <image
-          :src="myAvatar"
+          :src="toHttps(myAvatar)"
           mode="aspectFill"
           class="avatar-img"
         ></image>
@@ -29,7 +29,7 @@
       <view class="right-wrapper" @click="goToPartnerProfile">
         <view class="avatar-box right-avatar">
           <image
-            :src="otherAvatar"
+            :src="toHttps(otherAvatar)"
             mode="aspectFill"
             class="avatar-img"
           ></image>
@@ -107,6 +107,7 @@ import { hotpotTypeText as hotpotTypeTextMap, payTypeCodeText } from '@/config/m
 import type { MatchDetailItem } from '@/api/api';
 import { onWsMessage } from '@/utils/websocket';
 import { WS_EVENT } from '@/common/matchSocket';
+import { toHttps } from '@/utils/system';
 
 const showWaitingPopup = ref(false);
 const remainingSeconds = ref(10 * 60); // 默认 10 分钟倒计时

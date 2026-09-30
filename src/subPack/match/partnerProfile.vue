@@ -16,7 +16,7 @@
         <view class="profile-card">
             <view class="profile-main">
                 <view class="avatar-wrap">
-                    <image class="avatar" :src="profile.avatar || '/static/imgs/default-avatar.jpeg'" mode="aspectFill"></image>
+                    <image class="avatar" :src="toHttps(profile.avatar) || '/static/imgs/default-avatar.jpeg'" mode="aspectFill"></image>
                 </view>
                 <view class="profile-info">
                     <view class="name-row">
@@ -125,6 +125,7 @@ import {
 } from '@/api/api';
 import type { MatchDetailItem } from '@/api/api';
 import { hotpotTypeOptions, tasteOptions, motivationOptions } from '@/utils/store';
+import { getStatusBarHeight, toHttps } from '@/utils/system';
 import { hotpotTypeText as hotpotTypeTextMap, payTypeCodeText } from '@/config/matchOptions';
 import { getUserInfo as getLocalUserInfo } from '@/utils/auth';
 import { onWsMessage } from '@/utils/websocket';
@@ -261,8 +262,7 @@ const wechatText = computed(() => {
 });
 
 // 获取状态栏高度
-const systemInfo = uni.getSystemInfoSync();
-statusBarHeight.value = systemInfo.statusBarHeight || 30;
+statusBarHeight.value = getStatusBarHeight() || 30;
 
 // 全局 socket 消息退订函数
 let unsubscribeWs: (() => void) | null = null;

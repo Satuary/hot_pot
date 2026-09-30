@@ -22,6 +22,7 @@ export default {
             uni.reLaunch({
                 url: '/pages/profile/complete',
             });
+            return;
         }
     },
     onShow() {

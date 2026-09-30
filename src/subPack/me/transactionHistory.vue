@@ -91,6 +91,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { appState } from '@/utils/store';
 import { getWxPayOrderList, getMatchUsageList, type WxPayOrderItem, type MatchUsageItem } from '@/api/api';
+import { getStatusBarHeight } from '@/utils/system';
 
 const statusBarHeight = ref(0);
 const activeTab = ref<'usage' | 'transaction'>('transaction');
@@ -232,8 +233,7 @@ function goToDetail(item: any) {
 }
 
 onMounted(() => {
-    const systemInfo = uni.getSystemInfoSync();
-    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    statusBarHeight.value = getStatusBarHeight();
     loadUsage();
     loadOrders();
 });

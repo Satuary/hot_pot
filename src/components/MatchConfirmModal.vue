@@ -2,7 +2,7 @@
     <view class="overlay" v-if="visible">
         <view class="modal-container">
             <view class="avatar-wrapper" @click.stop="goPartnerProfile">
-                <image :src="avatar" mode="aspectFill" class="avatar"></image>
+                <image :src="toHttps(avatar)" mode="aspectFill" class="avatar"></image>
                 <view class="view-btn">点击查看</view>
             </view>
 
@@ -17,6 +17,7 @@
 </template>
 
 <script setup>
+import { toHttps } from '@/utils/system';
 const props = defineProps({
     visible: {
         type: Boolean,

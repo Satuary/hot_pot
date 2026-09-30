@@ -85,6 +85,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { appState } from '@/utils/store';
 import { getPackageList, getRemainingTimes, wxUnifiedOrder, type PackageItem } from '@/api/api';
+import { getStatusBarHeight } from '@/utils/system';
 
 // 状态栏高度
 const statusBarHeight = ref(0);
@@ -256,8 +257,7 @@ async function handleRecharge() {
 }
 
 onMounted(() => {
-    const systemInfo = uni.getSystemInfoSync();
-    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    statusBarHeight.value = getStatusBarHeight();
     loadRemainingTimes();
     loadPackages();
 });

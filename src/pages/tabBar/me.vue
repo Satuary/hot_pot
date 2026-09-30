@@ -15,7 +15,7 @@
         <view class="profile-section" :style="{ paddingTop: statusBarHeight + 20 + 'px' }">
             <view class="profile-row">
                 <view class="avatar-wrap" @click="goEditProfile">
-                    <image :src="userInfo.avatar || defaultAvatar" class="profile-avatar" mode="aspectFill"></image>
+                    <image :src="toHttps(userInfo.avatar) || defaultAvatar" class="profile-avatar" mode="aspectFill"></image>
                     <view class="edit-badge">
                         <uni-icons type="compose" size="14" color="#333333"></uni-icons>
                     </view>
@@ -87,6 +87,7 @@ import { ref, onMounted, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { hotpotTypeOptions, tasteOptions, motivationOptions } from '@/utils/store';
 import { isLogin, isProfileComplete, getUserInfo, setUserInfo } from '@/utils/auth';
+import { getStatusBarHeight, toHttps } from '@/utils/system';
 import { getUserInfo as fetchUserInfo } from '@/api/api';
 
 const statusBarHeight = ref(0);
@@ -141,8 +142,7 @@ const loadUserInfo = async () => {
 };
 
 onMounted(() => {
-    const systemInfo = uni.getSystemInfoSync();
-    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    statusBarHeight.value = getStatusBarHeight();
     // 用户信息由 onShow 统一加载（首次显示与每次返回都会触发）
 });
 

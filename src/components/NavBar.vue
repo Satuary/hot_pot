@@ -14,6 +14,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { getStatusBarHeight } from '@/utils/system';
 
 interface Props {
   title?: string;
@@ -34,8 +35,7 @@ const emit = defineEmits<{
 const statusBarHeight = ref(0);
 
 onMounted(() => {
-  const systemInfo = uni.getSystemInfoSync();
-  statusBarHeight.value = systemInfo.statusBarHeight || 0;
+  statusBarHeight.value = getStatusBarHeight();
 });
 
 const handleBack = () => {

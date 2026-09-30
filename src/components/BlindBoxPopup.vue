@@ -13,7 +13,7 @@
                 <view class="user-item">
                     <view class="avatar-area">
                         <image class="flame-bg flame-left" src="/static/imgs/flame2.png" mode="widthFix"></image>
-                        <image class="avatar" :src="myAvatar" mode="aspectFill"></image>
+                        <image class="avatar" :src="toHttps(myAvatar)" mode="aspectFill"></image>
                     </view>
                 </view>
 
@@ -22,7 +22,7 @@
                     <view class="avatar-area">
                         <image class="flame-bg flame-right" src="/static/imgs/flame.png" mode="widthFix"></image>
                         <view class="avatar-wrapper" @click="handleViewProfile">
-                            <image class="avatar" :src="otherAvatar" mode="aspectFill"></image>
+                            <image class="avatar" :src="toHttps(otherAvatar)" mode="aspectFill"></image>
                             <view class="view-btn">点击查看</view>
                         </view>
                     </view>
@@ -39,6 +39,7 @@
 </template>
 
 <script setup>
+import { toHttps } from '@/utils/system';
 // 与其他弹窗一致：visible 控制显隐，操作通过事件通知父组件
 const props = defineProps({
     visible: {

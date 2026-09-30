@@ -40,7 +40,7 @@
                     class="item user-avatar"
                     :style="getAvatarStyle(index, recommendUsers.length)"
                 >
-                    <image :src="user.avatar" mode="aspectFill" class="avatar"></image>
+                    <image :src="toHttps(user.avatar)" mode="aspectFill" class="avatar"></image>
                 </view>
 
                 <!-- 元素 4: 装饰球 (左下) -->
@@ -63,6 +63,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getMatchRecommend, cancelDemand } from '@/api/api';
+import { getStatusBarHeight, toHttps } from '@/utils/system';
 
 // 状态栏高度
 const statusBarHeight = ref(0);
@@ -168,8 +169,7 @@ onMounted(() => {
         timeoutTimer = setTimeout(handleMatchTimeout, 30 * 1000);
     }
 
-    const systemInfo = uni.getSystemInfoSync();
-    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    statusBarHeight.value = getStatusBarHeight();
 });
 
 onUnmounted(() => {
