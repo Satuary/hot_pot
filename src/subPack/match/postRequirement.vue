@@ -36,15 +36,15 @@
       <view class="age-selector" @click="showAgePicker">
         <view class="age-item">
           <view class="age-text-wrap">
-            <div class="age-num">{{ formData.ageMin }}</div>
-            <div class="age-unit">岁</div>
+            <div class="age-num">{{ formData.ageMin || '请选择' }}</div>
+            <div class="age-unit" v-if="formData.ageMin">岁</div>
           </view>
         </view>
         <view class="age-separator">—</view>
         <view class="age-item">
           <view class="age-text-wrap">
-            <div class="age-num">{{ formData.ageMax }}</div>
-            <div class="age-unit">岁</div>
+            <div class="age-num">{{ formData.ageMax || '请选择' }}</div>
+            <div class="age-unit" v-if="formData.ageMax">岁</div>
           </view>
         </view>
         <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
@@ -114,7 +114,7 @@
     <view class="section">
       <view class="section-title">选择时间</view>
       <view class="selector-item" @click="showDateTimePicker">
-        <text class="selector-text">{{ formattedDateTime }}</text>
+        <text class="selector-text" :class="{ placeholder: !formData.dateTime }">{{ formattedDateTime }}</text>
         <uni-icons type="right" size="20" color="#ffffff"></uni-icons>
       </view>
     </view>
@@ -275,16 +275,16 @@ const selectedStore = ref<Store | null>(null);
 
 // 表单数据
 const formData = ref({
-  gender: 'male',
-  ageMin: 18,
-  ageMax: 38,
-  hotpotType: '重庆火锅',
-  flavor: '麻辣',
-  motivation: '尝鲜打卡',
+  gender: '',
+  ageMin: 0,
+  ageMax: 0,
+  hotpotType: '',
+  flavor: '',
+  motivation: '',
   storeId: '',
   storeName: '',
   dateTime: '',
-  paymentMethod: 'me',
+  paymentMethod: '',
 });
 
 // 口味枚举数组（用于标签渲染）—— 配置文件中 flavors 是 1 起的数组，此处取有效项
@@ -313,10 +313,35 @@ const dateOptions = [
   { value: 'afterTomorrow', label: '后天' },
 ];
 
-// 小时选项
-const hourOptions = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
-// 分钟选项
-const minuteOptions = ['00', '10', '20', '30', '40', '50'];
+// 分钟全部选项
+const allMinuteOptions = ['00', '10', '20', '30', '40', '50'];
+// 今天可选的起始小时：当前分钟已无可选档位时从下一小时开始
+const getTodayStartHour = (): number => {
+  const n = new Date();
+  const ch = n.getHours();
+  const cm = n.getMinutes();
+  if (!allMinuteOptions.some(m => parseInt(m) > cm)) {
+    return Math.min(ch + 1, 24);
+  }
+  return ch;
+};
+// 小时选项：选择"今天"时只显示当前小时起可选的
+const hourOptions = computed(() => {
+  if (tempDateType.value !== 'today') {
+    return Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+  }
+  const start = getTodayStartHour();
+  if (start >= 24) return [];
+  return Array.from({ length: 24 - start }, (_, i) => String(i + start).padStart(2, '0'));
+});
+// 分钟选项：选择"今天"且当前小时时只显示当前分钟之后的
+const minuteOptions = computed(() => {
+  if (tempDateType.value !== 'today') return allMinuteOptions;
+  const n = new Date();
+  if (tempHour.value !== n.getHours()) return allMinuteOptions;
+  const cm = n.getMinutes();
+  return allMinuteOptions.filter(m => parseInt(m) > cm);
+});
 
 // 日期类型选择器当前值索引
 const dateTypePickerValue = computed(() => {
@@ -324,11 +349,12 @@ const dateTypePickerValue = computed(() => {
   return [idx >= 0 ? idx : 0];
 });
 
-// 时间选择器当前值索引
+// 时间选择器当前值索引（基于动态选项列表的 indexOf）
 const timePickerValue = computed(() => {
-  const hourIdx = tempHour.value;
-  const minIdx = minuteOptions.indexOf(tempMinute.value);
-  return [hourIdx, minIdx >= 0 ? minIdx : 0];
+  const hourStr = String(tempHour.value).padStart(2, '0');
+  const hourIdx = hourOptions.value.indexOf(hourStr);
+  const minIdx = minuteOptions.value.indexOf(tempMinute.value);
+  return [hourIdx >= 0 ? hourIdx : 0, minIdx >= 0 ? minIdx : 0];
 });
 
 // 格式化显示的日期时间：年月日 时:分
@@ -338,12 +364,7 @@ const formattedDateTime = computed(() => {
     const [y, m, d] = datePart.split('-');
     return `${y}年${parseInt(m)}月${parseInt(d)}日 ${timePart}`;
   }
-  // 默认显示
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return `${year}年${month}月${day}日 15:30`;
+  return '请选择时间';
 });
 
 // 返回上一页
@@ -361,8 +382,9 @@ const selectGender = (gender: string) => {
 
 // 显示年龄选择器弹窗
 const showAgePicker = () => {
-  tempAgeMin.value = formData.value.ageMin;
-  tempAgeMax.value = formData.value.ageMax;
+  // 未选过时给 picker 一个合理初始位置
+  tempAgeMin.value = formData.value.ageMin || 18;
+  tempAgeMax.value = formData.value.ageMax || 38;
   agePickerVisible.value = true;
 };
 
@@ -492,30 +514,55 @@ const onStoreSelect = (store: Store) => {
   selectedStore.value = store;
 };
 
+// 修正 tempHour/tempMinute 到当前选项列表中的有效值
+const adjustTimeToValid = () => {
+  const hourStr = String(tempHour.value).padStart(2, '0');
+  if (hourOptions.value.indexOf(hourStr) === -1 && hourOptions.value.length > 0) {
+    tempHour.value = parseInt(hourOptions.value[0]);
+  }
+  if (minuteOptions.value.indexOf(tempMinute.value) === -1 && minuteOptions.value.length > 0) {
+    tempMinute.value = minuteOptions.value[0];
+  }
+};
+
 // 显示日期时间选择器弹窗
 const showDateTimePicker = () => {
-  // 从当前 formData.dateTime 解析出日期类型和时分
+  // 确保有未过期的 dateTime，过期或不存在则重置为当前时间 + 10 分钟
+  let baseDateStr = '';
+  let baseTimeStr = '';
   if (formData.value.dateTime) {
-    const [dateStr, timeStr] = formData.value.dateTime.split(' ');
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const [h, min] = timeStr.split(':');
-    
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
-    const targetStr = `${y}-${m}-${d}`;
-    const diffDays = Math.floor((new Date(targetStr).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) tempDateType.value = 'today';
-    else if (diffDays === 1) tempDateType.value = 'tomorrow';
-    else tempDateType.value = 'afterTomorrow';
-    
-    tempHour.value = parseInt(h);
-    tempMinute.value = min;
-  } else {
-    tempDateType.value = 'today';
-    tempHour.value = 15;
-    tempMinute.value = '30';
+    const [ds, ts] = formData.value.dateTime.split(' ');
+    const [y, m, d] = ds.split('-').map(Number);
+    const [h, min] = ts.split(':').map(Number);
+    const target = new Date(y, m - 1, d, h, min);
+    if (target.getTime() > Date.now()) {
+      baseDateStr = ds;
+      baseTimeStr = ts;
+    }
   }
+  if (!baseDateStr) {
+    const future = new Date(Date.now() + 10 * 60 * 1000);
+    baseDateStr = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
+    baseTimeStr = `${String(future.getHours()).padStart(2, '0')}:${String(future.getMinutes()).padStart(2, '0')}`;
+  }
+
+  const [y, m, d] = baseDateStr.split('-').map(Number);
+  const [h, min] = baseTimeStr.split(':');
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+  const targetStr = `${y}-${m}-${d}`;
+  const diffDays = Math.floor((new Date(targetStr).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) tempDateType.value = 'today';
+  else if (diffDays === 1) tempDateType.value = 'tomorrow';
+  else tempDateType.value = 'afterTomorrow';
+
+  tempHour.value = parseInt(h);
+  tempMinute.value = min;
+  // 修正到当前动态选项中的有效值（今天可能过滤掉已过小时/分钟）
+  adjustTimeToValid();
+
   dateTimePickerVisible.value = true;
 };
 
@@ -528,13 +575,25 @@ const closeDateTimePicker = () => {
 const onDateTypeChange = (e: any) => {
   const idx = e.detail.value[0];
   tempDateType.value = dateOptions[idx].value;
+  // 今天已无可选时间（深夜）时自动切到明天
+  if (tempDateType.value === 'today' && getTodayStartHour() >= 24) {
+    tempDateType.value = 'tomorrow';
+    tempHour.value = 0;
+    tempMinute.value = '00';
+    uni.showToast({ title: '今天已无可选时间', icon: 'none' });
+    return;
+  }
+  // 切换日期后，修正到当前动态选项中的有效值
+  adjustTimeToValid();
 };
 
 // 时间选择器滚动变化
 const onTimePickerChange = (e: any) => {
   const [hourIdx, minIdx] = e.detail.value;
-  tempHour.value = hourIdx;
-  tempMinute.value = minuteOptions[minIdx];
+  const hourStr = hourOptions.value[hourIdx];
+  if (hourStr) tempHour.value = parseInt(hourStr);
+  const minStr = minuteOptions.value[minIdx];
+  if (minStr) tempMinute.value = minStr;
 };
 
 // 确认日期时间
@@ -542,33 +601,64 @@ const confirmDateTime = () => {
   const date = new Date();
   if (tempDateType.value === 'tomorrow') date.setDate(date.getDate() + 1);
   if (tempDateType.value === 'afterTomorrow') date.setDate(date.getDate() + 2);
-  
+
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const hour = String(tempHour.value).padStart(2, '0');
   const minute = tempMinute.value;
-  
+
+  // 保护：用户在弹窗停留过久导致所选时间已过期时提示
+  const meetingTs = new Date(year, date.getMonth(), date.getDate(), tempHour.value, parseInt(minute)).getTime();
+  if (meetingTs <= Date.now()) {
+    uni.showToast({ title: '该时间已过，请重新选择', icon: 'none' });
+    return;
+  }
+
   formData.value.dateTime = `${year}-${month}-${day} ${hour}:${minute}`;
   dateTimePickerVisible.value = false;
 };
 
 // 提交需求
 const submitRequirement = async () => {
-  // 火锅店必选
-  if (!formData.value.storeName) {
-    uni.showToast({
-      title: '请选择火锅店',
-      icon: 'none',
-    });
+  // 性别必选
+  if (!formData.value.gender) {
+    uni.showToast({ title: '请选择性别', icon: 'none' });
     return;
   }
-
+  // 年龄范围必选
+  if (!formData.value.ageMin || !formData.value.ageMax) {
+    uni.showToast({ title: '请选择年龄范围', icon: 'none' });
+    return;
+  }
+  // 火锅类型必选
+  if (!formData.value.hotpotType) {
+    uni.showToast({ title: '请选择火锅类型', icon: 'none' });
+    return;
+  }
+  // 口味必选
+  if (!formData.value.flavor) {
+    uni.showToast({ title: '请选择口味', icon: 'none' });
+    return;
+  }
+  // 动力必选
+  if (!formData.value.motivation) {
+    uni.showToast({ title: '请选择动力', icon: 'none' });
+    return;
+  }
+  // 火锅店必选
+  if (!formData.value.storeName) {
+    uni.showToast({ title: '请选择火锅店', icon: 'none' });
+    return;
+  }
+  // 时间必选
   if (!formData.value.dateTime) {
-    uni.showToast({
-      title: '请选择时间',
-      icon: 'none',
-    });
+    uni.showToast({ title: '请选择时间', icon: 'none' });
+    return;
+  }
+  // 付费方式必选
+  if (!formData.value.paymentMethod) {
+    uni.showToast({ title: '请选择付费方式', icon: 'none' });
     return;
   }
 
@@ -673,16 +763,6 @@ const submitRequirement = async () => {
 
 onMounted(() => {
   statusBarHeight.value = getStatusBarHeight();
-  
-  // 设置默认日期时间：当前时间 + 10 分钟
-  const now = new Date();
-  const target = new Date(now.getTime() + 10 * 60 * 1000);
-  const year = target.getFullYear();
-  const month = String(target.getMonth() + 1).padStart(2, '0');
-  const day = String(target.getDate()).padStart(2, '0');
-  const hour = String(target.getHours()).padStart(2, '0');
-  const minute = String(target.getMinutes()).padStart(2, '0');
-  formData.value.dateTime = `${year}-${month}-${day} ${hour}:${minute}`;
 });
 </script>
 
