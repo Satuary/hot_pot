@@ -242,7 +242,7 @@ const form = reactive({
     hotpotType: hotpotTypeOptions[0],
     taste: tasteOptions[0],
     motivation: motivationOptions[0],
-    phone: '',
+    phone: getUserInfo()?.phone || '',
     nickname: randomNickname(),
 });
 

@@ -8,9 +8,19 @@
     
     <!-- 登录按钮 -->
     <view class="login-btn-wrapper">
-      <view class="login-btn" @click="handleWechatLogin">
-        <text class="btn-text">快捷登录</text>
-      </view>
+      <!-- 未勾选协议：普通按钮仅提示，不能触发微信手机号授权弹窗 -->
+      <button v-if="!agreed" class="login-btn" @click="handleAgreementFirst">
+        <text class="btn-text">手机号快捷登录</text>
+      </button>
+      <!-- 勾选协议后：微信手机号授权按钮（open-type 必须由用户点击直接触发） -->
+      <button
+        v-else
+        class="login-btn"
+        open-type="getPhoneNumber"
+        @getphonenumber="onGetPhoneNumber"
+      >
+        <text class="btn-text">手机号快捷登录</text>
+      </button>
       <!-- <text class="register-hint" @click="goToPhoneLogin">使用验证码登录</text> -->
 
       <!-- 用户协议 -->
@@ -35,7 +45,7 @@ import { onLoad } from '@dcloudio/uni-app';
 import logoImg from '@/static/imgs/logo.png';
 import { isLogin, isProfileComplete, setToken, setUserInfo, setProfileComplete } from '@/utils/auth';
 import { startMatchSocket } from '@/common/matchSocket';
-import { wechatLogin } from '@/api/api';
+import { wechatLogin, bindPhoneByCode } from '@/api/api';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 const loading = ref(false);
@@ -67,20 +77,27 @@ onLoad(() => {
   }
 });
 
-// 微信快捷登录
-const handleWechatLogin = async () => {
-  if (!agreed.value) {
-    uni.showToast({
-      title: '请先同意用户协议和隐私政策',
-      icon: 'none',
-    });
+// 未勾选协议时点击登录：只做提示，不触发微信授权（open-type 按钮此时根本不渲染）
+const handleAgreementFirst = () => {
+  uni.showToast({
+    title: '请先同意用户协议和隐私政策',
+    icon: 'none',
+  });
+};
+
+// 微信手机号授权回调（errMsg 是判断同意/拒绝的唯一可信依据）
+const onGetPhoneNumber = async (e: any) => {
+  // 用户拒绝授权或获取失败：中止流程，停留登录页，不调任何后端接口
+  if (e?.detail?.errMsg !== 'getPhoneNumber:ok' || !e.detail.code) {
+    uni.showToast({ title: '已取消授权，需手机号授权才能登录', icon: 'none' });
     return;
   }
+  const phoneCode = e.detail.code;
 
   loading.value = true;
 
   try {
-    // 1. 调用微信登录接口获取 code
+    // 1. uni.login 获取登录 code（后端换 openid），在授权回调内调用保证 code 新鲜
     const loginRes = await uni.login({
       provider: 'weixin',
     });
@@ -89,14 +106,21 @@ const handleWechatLogin = async () => {
       throw new Error('获取微信授权失败');
     }
 
-    // 2. 用 code 换取 token 和用户信息
+    // 2. 调用现有微信登录接口，用 loginCode 换 token 和用户信息
     const result = await wechatLogin({ code: loginRes.code });
-
-    // 3. 保存认证信息
     setToken(result.token);
     setUserInfo(result.miniUserInfo);
-    // 后端 isNew 表示是否为新用户：新用户需完善资料，老用户资料已完善
     const isNewUser = !!result.isNew;
+
+    // 3. 调用完善资料接口，只传手机号授权凭证（后端解密 phoneCode 后入库）
+    const phoneResult = await bindPhoneByCode({ phoneCode });
+    if (phoneResult?.miniUserInfo) {
+      setUserInfo(phoneResult.miniUserInfo);
+    } else if (phoneResult?.phone) {
+      setUserInfo({ ...result.miniUserInfo, phone: phoneResult.phone });
+    }
+
+    // 新用户需继续完善资料，老用户资料已完善
     setProfileComplete(!isNewUser);
     // 登录成功后启动全局 WebSocket 单例
     startMatchSocket();
@@ -183,7 +207,15 @@ const goToPhoneLogin = () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    
+    // 去除小程序 button 默认样式
+    margin: 0;
+    padding: 0;
+    line-height: normal;
+
+    &::after {
+      border: none;
+    }
+
     &:active {
       opacity: 0.9;
     }

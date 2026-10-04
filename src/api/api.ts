@@ -31,6 +31,15 @@ export const wechatLogin = (data: { code: string }) => {
 };
 
 /**
+ * 登录后绑定手机号（复用完善用户信息接口，仅传手机号授权凭证）
+ * phoneCode: button(open-type=getPhoneNumber) 的 @getphonenumber 回调中 e.detail.code，
+ *            后端凭此调用微信 phonenumber/getPhoneNumber 换取真实手机号后入库
+ */
+export const bindPhoneByCode = (data: { phoneCode: string }) => {
+  return request('/mini/user/completeUserInfo', 'POST', data);
+};
+
+/**
  * 手机号登录
  */
 export const phoneLogin = (data: { phone: string; code: string }) => {
