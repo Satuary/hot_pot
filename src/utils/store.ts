@@ -102,7 +102,7 @@ export const hotpotTypeOptions = ['重庆火锅', '成都火锅', '潮汕牛肉'
 export const tasteOptions = ['麻辣', '微辣', '清汤', '番茄', '酸辣', '藤椒', '菌汤', '骨汤'];
 
 // Motivation options
-export const motivationOptions = ['想找人一起吃', '体验新店', '吃货交友', '庆祝', '解馋'];
+export const motivationOptions = ['尝鲜打卡', '解馋吃货', '轻松社交', '治愈心情'];
 
 // Payment options
 export const paymentOptions = ['AA', '我请客', '对方请客'];
