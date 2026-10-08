@@ -113,7 +113,7 @@ const onGetPhoneNumber = async (e: any) => {
     const isNewUser = !!result.isNew;
 
     // 3. 调用完善资料接口，只传手机号授权凭证（后端解密 phoneCode 后入库）
-    const phoneResult = await bindPhoneByCode({ phoneCode });
+    const phoneResult = await bindPhoneByCode({ code: phoneCode });
     if (phoneResult?.miniUserInfo) {
       setUserInfo(phoneResult.miniUserInfo);
     } else if (phoneResult?.phone) {

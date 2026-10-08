@@ -49,10 +49,10 @@
                 </view>
 
                 <!-- 所在地 -->
-                <view class="list-item" @click="handleChooseLocation">
+                <view class="list-item" @click="openModal('location')">
                     <text class="label">所在地</text>
                     <view class="value-row">
-                        <text class="value-text">{{ form.address || '未设置' }}</text>
+                        <text class="value-text">{{ form.location || '未设置' }}</text>
                         <uni-icons type="right" size="16" color="#666666" class="arrow-icon"></uni-icons>
                     </view>
                 </view>
@@ -264,6 +264,36 @@
             </view>
         </view>
 
+        <!-- ========== 所在地选择弹窗（三级联动 picker-view） ========== -->
+        <view v-if="modalType === 'location'" class="mask location-mask" @click="closeModal">
+            <view class="modal-content location-modal" @click.stop>
+                <view class="modal-title">选择所在地</view>
+                <view class="picker-body">
+                    <picker-view
+                        class="picker-view"
+                        :value="[locationProvinceIndex, locationCityIndex, locationDistrictIndex]"
+                        indicator-style="height: 88rpx;"
+                        mask-style="background-image: linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.5)), linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.5)); background-position: top, bottom;"
+                        @change="onLocationColChange"
+                    >
+                        <picker-view-column>
+                            <view v-for="p in regionOptions" :key="p.name" class="picker-item">{{ p.name }}</view>
+                        </picker-view-column>
+                        <picker-view-column>
+                            <view v-for="c in currentCityOptions" :key="c" class="picker-item">{{ c }}</view>
+                        </picker-view-column>
+                        <picker-view-column>
+                            <view v-for="d in currentDistrictOptions" :key="d" class="picker-item">{{ d }}</view>
+                        </picker-view-column>
+                    </picker-view>
+                </view>
+                <view class="modal-actions">
+                    <view class="modal-btn cancel" @click="closeModal">取消</view>
+                    <view class="modal-btn confirm" @click="confirmModal('location')">确认</view>
+                </view>
+            </view>
+        </view>
+
         <!-- ========== 文本输入弹窗（昵称/微信） ========== -->
         <view v-if="textModalTypes.includes(modalType)" class="mask" @click="closeModal">
             <view class="modal-content text-modal" @click.stop>
@@ -285,8 +315,10 @@
 </template>
 
 <script setup lang="ts">
+import { regionData, findRegionIndexes } from '@/subPack/me/utils/region-data';
 import { ref, computed, reactive, onMounted } from 'vue';
-import { hotpotTypeOptions, tasteOptions, motivationOptions, appState } from '@/utils/store';
+import { appState } from '@/utils/store';
+import { hotpotTypes as hotpotTypeOptions, flavorOptions as tasteOptions, motivations as motivationOptions } from '@/config/matchOptions';
 import { setProfileComplete, getUserInfo as getAuthUserInfo, setUserInfo as setAuthUserInfo } from '@/utils/auth';
 import { completeUserInfo, getUserInfo, uploadImage } from '@/api/api';
 import { getStatusBarHeight, toHttps } from '@/utils/system';
@@ -407,7 +439,7 @@ const birthdayLabel = computed(() => {
 });
 
 // ========== 弹窗管理 ==========
-type ModalType = 'nickname' | 'gender' | 'birthday' | 'hw' | 'hotpotType' | 'taste' | 'motivation' | 'wechat' | 'phone' | null;
+type ModalType = 'nickname' | 'gender' | 'birthday' | 'hw' | 'hotpotType' | 'taste' | 'motivation' | 'wechat' | 'phone' | 'location' | null;
 
 const modalType = ref<ModalType>(null);
 const tagModalTypes: ModalType[] = ['hotpotType', 'taste', 'motivation'];
@@ -426,6 +458,24 @@ const textModalTitle = computed(() => {
 const textModalPlaceholder = computed(() => {
     const map: Record<string, string> = { nickname: '取一个好听的名字', wechat: '方便联系', phone: '请输入手机号' };
     return map[modalType.value || ''] || '';
+});
+
+// 所在地三级联动数据
+const regionOptions = regionData;
+const locationProvinceIndex = ref(0);
+const locationCityIndex = ref(0);
+const locationDistrictIndex = ref(0);
+
+const currentCityOptions = computed(() => {
+    const p = regionOptions[locationProvinceIndex.value];
+    return p ? p.cities.map((c) => c.name) : [];
+});
+
+const currentDistrictOptions = computed(() => {
+    const p = regionOptions[locationProvinceIndex.value];
+    if (!p) return [];
+    const c = p.cities[locationCityIndex.value];
+    return c ? c.districts : [];
 });
 
 const currentTagOptions = computed(() => {
@@ -477,6 +527,21 @@ function openModal(type: ModalType) {
         const maxDay = new Date(year, month, 0).getDate();
         tempDay.value = Math.min(day, maxDay);
     }
+    if (type === 'location') {
+        const indexes = findRegionIndexes(form.location);
+        if (indexes) {
+            locationProvinceIndex.value = indexes.pi;
+            // 重新设置 city index 可能超出 range，做保护
+            const cityCount = regionOptions[indexes.pi]?.cities.length || 0;
+            locationCityIndex.value = indexes.ci < cityCount ? indexes.ci : 0;
+            const districtCount = regionOptions[indexes.pi]?.cities[locationCityIndex.value]?.districts.length || 0;
+            locationDistrictIndex.value = indexes.di < districtCount ? indexes.di : 0;
+        } else {
+            locationProvinceIndex.value = 0;
+            locationCityIndex.value = 0;
+            locationDistrictIndex.value = 0;
+        }
+    }
     if (type === 'hw') {
         tempForm.height = form.height;
         tempForm.weight = form.weight;
@@ -497,6 +562,15 @@ function confirmModal(type: ModalType) {
     if (type === 'gender') form.gender = tempForm.gender;
     if (type === 'birthday') {
         form.birthday = `${tempYear.value}-${String(tempMonth.value).padStart(2, '0')}-${String(tempDay.value).padStart(2, '0')}`;
+    }
+    if (type === 'location') {
+        const pi = locationProvinceIndex.value;
+        const ci = locationCityIndex.value;
+        const di = locationDistrictIndex.value;
+        const province = regionOptions[pi]?.name || '';
+        const city = regionOptions[pi]?.cities[ci]?.name || '';
+        const district = regionOptions[pi]?.cities[ci]?.districts[di] || '';
+        form.location = [province, city, district].filter(Boolean).join(' ');
     }
     if (type === 'hw') {
         form.height = tempForm.height;
@@ -580,6 +654,25 @@ function onBirthdayColChange(e: any) {
     tempMonth.value = monthRange[mi];
     const maxDay = dayRange.value.length;
     tempDay.value = Math.min(di + 1, maxDay);
+}
+
+function onLocationColChange(e: any) {
+    const [pi, ci, di] = e.detail.value;
+    // 省份切换时，重置城市和区为 0
+    if (pi !== locationProvinceIndex.value) {
+        locationProvinceIndex.value = pi;
+        locationCityIndex.value = 0;
+        locationDistrictIndex.value = 0;
+        return;
+    }
+    // 城市切换时，重置区为 0
+    if (ci !== locationCityIndex.value) {
+        locationCityIndex.value = ci;
+        locationDistrictIndex.value = 0;
+        return;
+    }
+    // 仅区切换
+    locationDistrictIndex.value = di;
 }
 
 // ========== 身高体重刻度尺逻辑 ==========
@@ -702,7 +795,7 @@ async function onSave() {
         uni.showToast({ title: '头像上传中，请稍候', icon: 'none' });
         return;
     }
-
+    const locationParts = (form.location || '').split(' ').filter(Boolean);
     // 表单数据映射为接口参数
     const params = {
         nickname: form.nickname,
@@ -717,10 +810,10 @@ async function onSave() {
         // wechat: form.wechat || '',
         phone: form.phone || '',
         stageName: form.nickname,
-        province: form.province,
-        city: form.city,
-        district: form.district,
-        address: form.address,
+        province: locationParts[0] || '',
+        city: locationParts[1] || '',
+        district: locationParts[2] || '',
+        address: '',
     };
 
     try {

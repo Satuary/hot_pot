@@ -95,17 +95,6 @@ export const appState = reactive({
     orders: [] as MatchOrder[],
 });
 
-// Hot pot type options
-export const hotpotTypeOptions = ['重庆火锅', '成都火锅', '潮汕牛肉', '老北京涮肉', '云南菌汤', '贵州酸汤', '海鲜火锅', '串串香', '椰子鸡'];
-
-// Taste options
-export const tasteOptions = ['麻辣', '微辣', '清汤', '番茄', '酸辣', '藤椒', '菌汤', '骨汤'];
-
-// Motivation options
-export const motivationOptions = ['尝鲜打卡', '解馋吃货', '轻松社交', '治愈心情'];
-
-// Payment options
-export const paymentOptions = ['AA', '我请客', '对方请客'];
 
 // Mock stores
 export const mockStores: Store[] = [
@@ -116,9 +105,6 @@ export const mockStores: Store[] = [
     { id: '5', name: '左庭右院鲜牛肉火锅', address: '闵行区虹桥天地4楼', distance: '5.2km', rating: 4.7, image: '', tags: ['现切牛肉', '新鲜'] },
     { id: '6', name: '捞王锅物料理', address: '闵行区万象城3楼', distance: '4.0km', rating: 4.6, image: '', tags: ['猪肚鸡', '养生'] },
 ];
-
-// Gender options
-export const genderOptions = ['男', '女', '不限'];
 
 // Age picker helpers
 export function generateAgeRange(start: number, end: number): string[] {

@@ -85,7 +85,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { hotpotTypeOptions, tasteOptions, motivationOptions } from '@/utils/store';
+import { hotpotTypes as hotpotTypeOptions, flavorOptions as tasteOptions, motivations as motivationOptions } from '@/config/matchOptions';
 import { isLogin, isProfileComplete, getUserInfo, setUserInfo } from '@/utils/auth';
 import { getStatusBarHeight, toHttps } from '@/utils/system';
 import { getUserInfo as fetchUserInfo } from '@/api/api';

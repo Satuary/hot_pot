@@ -124,9 +124,7 @@ import {
     getMatchDetail,
 } from '@/api/api';
 import type { MatchDetailItem } from '@/api/api';
-import { hotpotTypeOptions, tasteOptions, motivationOptions } from '@/utils/store';
-import { getStatusBarHeight, toHttps } from '@/utils/system';
-import { hotpotTypeText as hotpotTypeTextMap, payTypeCodeText } from '@/config/matchOptions';
+import { hotpotTypes as hotpotTypeOptions, flavorOptions as tasteOptions, motivations as motivationOptions, hotpotTypeText as hotpotTypeTextMap, payTypeCodeText } from '@/config/matchOptions';
 import { getUserInfo as getLocalUserInfo } from '@/utils/auth';
 import { onWsMessage } from '@/utils/websocket';
 import { WS_EVENT, setPartnerPageVisible, partnerPageVisible } from '@/common/matchSocket';

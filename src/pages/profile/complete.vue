@@ -212,7 +212,8 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue';
-import { hotpotTypeOptions, tasteOptions, motivationOptions, appState } from '@/utils/store';
+import { appState } from '@/utils/store';
+import { hotpotTypes as hotpotTypeOptions, flavorOptions as tasteOptions, motivations as motivationOptions } from '@/config/matchOptions';
 import { completeUserInfo } from '@/api/api';
 import { setProfileComplete, isProfileComplete, setUserInfo, getUserInfo } from '@/utils/auth';
 

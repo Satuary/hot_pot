@@ -17,14 +17,6 @@
             }
         },
         {
-            "path": "pages/profile/setup",
-            "style": {
-                "navigationBarTitleText": "",
-                "navigationStyle": "custom",
-                "navigationBarTextStyle": "white"
-            }
-        },
-        {
             "path": "pages/profile/complete",
             "style": {
                 "navigationBarTitleText": "",
@@ -72,28 +64,7 @@
                     }
                 },
                 {
-                    "path": "storeSelection",
-                    "style": {
-                        "navigationBarTitleText": "选择店铺",
-                        "navigationStyle": "custom"
-                    }
-                },
-                {
-                    "path": "matching",
-                    "style": {
-                        "navigationBarTitleText": "",
-                        "navigationStyle": "custom"
-                    }
-                },
-                {
                     "path": "matchSuccess",
-                    "style": {
-                        "navigationBarTitleText": "",
-                        "navigationStyle": "custom"
-                    }
-                },
-                {
-                    "path": "profileView",
                     "style": {
                         "navigationBarTitleText": "",
                         "navigationStyle": "custom"
@@ -140,45 +111,12 @@
                     }
                 },
                 {
-                    "path": "refund",
-                    "style": {
-                        "navigationBarTitleText": "退款",
-                        "navigationStyle": "custom"
-                    }
-                },
-                {
-                    "path": "settings",
-                    "style": {
-                        "navigationBarTitleText": "设置",
-                        "navigationStyle": "custom"
-                    }
-                },
-                {
-                    "path": "about",
-                    "style": {
-                        "navigationBarTitleText": "关于我们",
-                        "navigationStyle": "custom"
-                    }
-                },
-                {
                     "path": "agreement",
                     "style": {
                         "navigationStyle": "custom",
                         "navigationBarTitleText": "用户协议",
                         "navigationBarBackgroundColor": "#FFFFFF",
                         "navigationBarTextStyle": "black"
-                    }
-                }
-            ]
-        },
-        {
-            "root": "subPack/view",
-            "pages": [
-                {
-                    "path": "orderList",
-                    "style": {
-                        "navigationBarTitleText": "查看订单",
-                        "navigationStyle": "custom"
                     }
                 }
             ]
@@ -220,7 +158,7 @@
     "preloadRule": {
         "pages/tabBar/match": {
             "network": "all",
-            "packages": ["subPack/match/", "subPack/me/", "subPack/view/"]
+            "packages": ["subPack/match/", "subPack/me/"]
         }
     },
     "easycom": {
