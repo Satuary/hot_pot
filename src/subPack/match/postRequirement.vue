@@ -233,7 +233,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { postRequirement } from '@/api/api';
-import { mockStores } from '@/utils/store';
 import type { Store } from '@/utils/store';
 import { getCachedLocation, searchNearbyHotPotStore } from '@/utils/map';
 import { getStatusBarHeight } from '@/utils/system';

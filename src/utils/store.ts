@@ -42,21 +42,6 @@ export interface Store {
     tags: string[];
 }
 
-export interface MatchOrder {
-    id: string;
-    status: string;
-    createTime: string;
-    requirement: MatchRequirement;
-    currentUser?: {
-        id: string;
-        nickname: string;
-        avatar: string;
-    };
-    matchedUser?: UserProfile;
-    amount: number;
-    refundStatus?: string;
-}
-
 export const appState = reactive({
     isLoggedIn: false,
     token: '',
@@ -94,27 +79,3 @@ export const appState = reactive({
     transactions: [] as any[],
     orders: [] as MatchOrder[],
 });
-
-
-// Mock stores
-export const mockStores: Store[] = [
-    { id: '1', name: '海底捞火锅(闵行店)', address: '闵行区都市路5001号', distance: '1.2km', rating: 4.8, image: '', tags: ['服务好', '环境佳'] },
-    { id: '2', name: '哥老官重庆美蛙鱼头', address: '闵行区莘庄龙之梦5楼', distance: '2.5km', rating: 4.6, image: '', tags: ['牛蛙', '麻辣'] },
-    { id: '3', name: '小龙坎老火锅', address: '闵行区七宝万科广场B1', distance: '3.1km', rating: 4.5, image: '', tags: ['正宗川味'] },
-    { id: '4', name: '呷哺呷哺(莘庄店)', address: '闵行区莘朱路200号', distance: '1.8km', rating: 4.3, image: '', tags: ['性价比高', '一人食'] },
-    { id: '5', name: '左庭右院鲜牛肉火锅', address: '闵行区虹桥天地4楼', distance: '5.2km', rating: 4.7, image: '', tags: ['现切牛肉', '新鲜'] },
-    { id: '6', name: '捞王锅物料理', address: '闵行区万象城3楼', distance: '4.0km', rating: 4.6, image: '', tags: ['猪肚鸡', '养生'] },
-];
-
-// Age picker helpers
-export function generateAgeRange(start: number, end: number): string[] {
-    return Array.from({ length: end - start + 1 }, (_, i) => String(start + i));
-}
-
-export function generateHeightRange(): string[] {
-    return Array.from({ length: 81 }, (_, i) => String(140 + i));
-}
-
-export function generateWeightRange(): string[] {
-    return Array.from({ length: 121 }, (_, i) => String(30 + i));
-}
