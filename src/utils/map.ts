@@ -106,7 +106,7 @@ interface AmapRegeoResponse {
  *
  * 微信小程序注意：
  * 1. manifest.json 需声明 requiredPrivateInfos: ["getFuzzyLocation"]
- * 2. permission 中需配置 scope.userFuzzyLocation 的描述
+ * 2. permission 中需配置 scope.userLocation 的描述
  * 3. 首次调用会弹授权弹窗，用户拒绝后需引导至设置页开启
  * 4. 此接口无需用户开启「精确定位」开关，模糊定位即可
  */
@@ -118,7 +118,7 @@ export function getUserLocation(): Promise<UserLocation> {
       success(settingRes) {
         const authSetting = settingRes.authSetting || {};
         // 用户已明确拒绝过授权
-        if (authSetting['scope.userFuzzyLocation'] === false) {
+        if (authSetting['scope.userLocation'] === false) {
           uni.showModal({
             title: '需要位置权限',
             content: '请在设置中允许使用位置信息，以便搜索附近火锅店',
@@ -133,9 +133,10 @@ export function getUserLocation(): Promise<UserLocation> {
           return;
         }
 
-        // 发起模糊定位请求
+        // 发起定位请求
         uni.getLocation({
           type: 'gcj02',
+          isHighAccuracy: true,
           success(res) {
             resolve({
               longitude: res.longitude,
@@ -181,6 +182,7 @@ export function getUserLocation(): Promise<UserLocation> {
         // getSetting 失败，直接尝试定位
         uni.getLocation({
           type: 'gcj02',
+          isHighAccuracy: true,
           success(res) {
             resolve({
               longitude: res.longitude,
@@ -317,23 +319,26 @@ export function reverseGeocode(location: UserLocation): Promise<AddressInfo> {
       data: {
         key: AMAP_KEY,
         location: `${location.longitude},${location.latitude}`,
+        // 必须为 all 才会返回 aois/pois 等扩展数据，base（默认）只返回基本地址，
+        // 否则 generateShortDescription 永远拿不到建筑名，所有位置都会降级为街道名
         extensions: 'all',
         radius: 1000,
-        poitype: '商务住宅|购物服务|生活服务|餐饮服务|地名地址信息',
+        poitype: '120000|060000|070000|100000|150500|150600|150700',
       },
-      success(res) {
+      async success(res) {
         const data = res.data as AmapRegeoResponse;
         if (data.status === '1' && data.regeocode) {
           const rg = data.regeocode;
           const ac = rg.addressComponent;
 
-          // console.log("rg", rg, "ac", ac)
+          // console.log("rg", rg)
+          // console.log("rg-aois", rg.aois)
 
           // 生成简短描述：优先显示坐标所在的具体地标，如"恒润实验学校"
-          const shortDescription = generateShortDescription(ac, rg.pois, rg.aois);
+          let shortDescription = generateShortDescription(ac, rg.pois, rg.aois);
 
           // 转换附近 POI
-          const landmarks: NearbyPoi[] = (rg.pois || []).map((p) => ({
+          let landmarks: NearbyPoi[] = (rg.pois || []).map((p) => ({
             id: p.id,
             name: p.name,
             address: p.address || '',
@@ -341,6 +346,18 @@ export function reverseGeocode(location: UserLocation): Promise<AddressInfo> {
             distance: p.distance,
             direction: p.direction || '',
           }));
+
+          console.log("rg.aois", rg.aois, "landmarks", landmarks)
+          // 兜底：AOI 和 POI 均为空时（城中村/郊区高德数据稀疏），
+          // 调周边搜索接口补充最近地标，避免位置描述只显示街道名
+          if ((!rg.aois || rg.aois.length === 0) && landmarks.length === 0) {
+            const around = await searchNearbyLandmarks(location);
+            console.log("around", around)
+            if (around.length > 0) {
+              shortDescription = `${around[0].name}附近`;
+              landmarks = around;
+            }
+          }
 
           resolve({
             formattedAddress: rg.formatted_address,
@@ -402,7 +419,7 @@ export function searchNearbyLandmarks(
       data: {
         key: AMAP_KEY,
         location: `${location.longitude},${location.latitude}`,
-        types: '120000|060000|070000|100000',
+        types: '120000|060000|070000|100000|150500|150600|150700',
         radius: 3000,
         offset: 10,
         page: 1,
@@ -438,21 +455,20 @@ function generateShortDescription(
   pois: AmapRegeoResponse['regeocode']['pois'],
   aois: AmapRegeoResponse['regeocode']['aois'],
 ): string {
-  // 优先级：AOI 地标（坐标所在区域）> 街道 > 知名POI > 区
+  // 优先级：AOI 地标（坐标所在区域）> 附近知名POI > 街道 > 区
   const aoiName = aois?.[0]?.name;
   if (aoiName) {
     return aoiName;
   }
 
+  // 附近 POI 按权重排序，第一条最具辨识度（如"夏良(地铁站)"），优于街道名
+  if (pois && pois.length > 0) {
+    return pois[0].name.replace(/[(（]地铁站[)）]/, '地铁站');
+  }
+
   const street = ac.streetNumber?.street;
   if (street) {
     return street;
-  }
-
-  // 取最近的地标 POI
-  if (pois && pois.length > 0) {
-    const nearest = pois[0];
-    return `${nearest.name}附近`;
   }
 
   // 降级：区

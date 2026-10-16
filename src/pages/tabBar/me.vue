@@ -29,7 +29,7 @@
                         </view>
                     </view>
                     <view class="desc-row">
-                        <text class="desc-text">ID:{{ userInfo.id}}</text>
+                        <text class="desc-text">ID:{{ userInfo.userSn || userInfo.id }}</text>
                         <view class="copy-btn" @click="copyId">
                             <image class="copy-icon" src="/static/imgs/file-copy-line.png" mode="aspectFit"></image>
                         </view>
@@ -102,7 +102,7 @@ const motivationText = computed(() => motivationOptions[Number(userInfo.value.mo
 
 // gender：1=男 2=女
 const genderText = computed(() => (userInfo.value.gender === 1 ? '男' : userInfo.value.gender === 2 ? '女' : ''));
-console.log(userInfo.value.gender);
+console.log(userInfo.value);
 // 身高体重文本
 const bodyText = computed(() => {
     const parts: string[] = [];
@@ -112,9 +112,15 @@ const bodyText = computed(() => {
 });
 // 年龄文本
 const ageText = computed(() => (userInfo.value.age ? `${userInfo.value.age}岁` : ''));
-// 地址文本
-const addressText = computed(
-    () => userInfo.value.address || [userInfo.value.province, userInfo.value.city, userInfo.value.district].filter(Boolean).join(''),
+// 地址文本：仅展示到区/县级，截取到首个"区/县"为止（"自治区/特别行政区"中的"区"不参与截断）
+const toDistrictLevel = (addr: string) => {
+    if (!addr) return '';
+    const masked = addr.replace(/自治区|特别行政区/g, (m) => '〇'.repeat(m.length));
+    const idx = masked.search(/[区县]/);
+    return idx === -1 ? addr : addr.slice(0, idx + 1);
+};
+const addressText = computed(() =>
+    toDistrictLevel(userInfo.value.address || [userInfo.value.province, userInfo.value.city, userInfo.value.district].filter(Boolean).join('')),
 );
 
 // 读取用户信息：先展示本地缓存，再请求接口刷新（onMounted 与 onShow 复用）
@@ -162,7 +168,7 @@ onShow(() => {
 
 // 复制 ID
 const copyId = () => {
-    const id = userInfo.value.id + '';
+    const id = (userInfo.value.userSn || userInfo.value.id || '') + '';
     uni.setClipboardData({
         data: id,
         success: () => {
@@ -198,7 +204,6 @@ const clearCache = () => {
     uni.removeStorageSync('pendingMatchSuccess');
     uni.removeStorageSync('pendingBlindBox');
     uni.removeStorageSync('hasSeenMatchIntro');
-    uni.removeStorageSync('user_location_name');
     uni.showToast({ title: '缓存已清除', icon: 'success', duration: 1500 });
 };
 </script>

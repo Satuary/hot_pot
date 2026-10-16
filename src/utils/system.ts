@@ -11,22 +11,25 @@
  * 使用 uni.getWindowInfo() 替代已废弃的 uni.getSystemInfoSync()
  */
 export function getStatusBarHeight(): number {
-  // #ifdef MP-WEIXIN
   try {
     const info = uni.getWindowInfo();
     return info.statusBarHeight || 0;
   } catch {
     return 0;
   }
-  // #endif
-  // #ifndef MP-WEIXIN
+}
+
+/**
+ * 获取窗口宽度（px）
+ * 使用 uni.getWindowInfo() 替代已废弃的 uni.getSystemInfoSync()
+ */
+export function getWindowWidth(): number {
   try {
     const info = uni.getWindowInfo();
-    return info.statusBarHeight || 0;
+    return info.windowWidth || 0;
   } catch {
     return 0;
   }
-  // #endif
 }
 
 /**

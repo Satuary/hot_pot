@@ -95,6 +95,9 @@
       <text class="empty-text">还没有进行中的匹配</text>
       <view class="empty-btn" @click="goToMatch">快去发起匹配吧</view>
     </view>
+
+    <!-- 底部安全提示 -->
+    <view class="page-tips">* 平台仅提供搭子匹配服务，社交过程请注意人身与财产安全</view>
   </view>
 </template>
 
@@ -102,7 +105,8 @@
 import { ref, computed, onUnmounted } from 'vue';
 import { onShow, onHide } from '@dcloudio/uni-app';
 import { isLogin, isProfileComplete, getUserInfo } from '@/utils/auth';
-import { getMatchDetail, cancelMatchRecord } from '@/api/api';
+import { getActiveMatch, cancelMatchRecord } from '@/api/api';
+// import { getMatchDetail } from '@/api/api';
 import { hotpotTypeText as hotpotTypeTextMap, payTypeCodeText } from '@/config/matchOptions';
 import type { MatchDetailItem } from '@/api/api';
 import { onWsMessage } from '@/utils/websocket';
@@ -194,22 +198,30 @@ function closeWaitingPopup() {
 // 取消匹配：调用取消接口后关闭等待弹窗
 async function handleCancelMatch() {
   console.log('handleCancelMatch', recordId.value);
-  if (recordId.value) {
-    try {
-      await cancelMatchRecord({ recordId: recordId.value });
-      // 取消成功进入终态，清掉缓存与内存中的 recordId、等待弹窗与倒计时标记
-      uni.removeStorageSync('recordId');
-      uni.removeStorageSync('showWaitingPopup');
-      uni.removeStorageSync(WAITING_DEADLINE_KEY);
-      recordId.value = '';
-      // 刷新页面数据：清空旧匹配详情，页面回落到空状态
-      matchDetail.value = null;
-      uni.showToast({ title: '已取消匹配', icon: 'none', duration: 1500 });
-    } catch {
-      // 取消失败不阻塞关闭弹窗，错误提示已由 request 统一处理
-    }
-  }
+  // 等待阶段可能还没通过 /mini/match/active 拿到 recordId，回退用 match.vue 发起匹配时写入缓存的 recordId
+  const rid = recordId.value || String(uni.getStorageSync('recordId') || '');
+  // 先无条件清掉等待弹窗与倒计时标记：用户已主动取消，无论是否有 recordId、
+  // 取消接口是否成功，离开本页再回来都不应再恢复"等待对方同意"弹窗
+  uni.removeStorageSync('showWaitingPopup');
+  uni.removeStorageSync(WAITING_DEADLINE_KEY);
   closeWaitingPopup();
+
+  if (!rid) {
+    // 无有效匹配记录：清掉缓存中的 recordId 即可
+    uni.removeStorageSync('recordId');
+    return;
+  }
+  try {
+    await cancelMatchRecord({ recordId: rid });
+    // 取消成功进入终态，清掉缓存与内存中的 recordId
+    uni.removeStorageSync('recordId');
+    recordId.value = '';
+    // 刷新页面数据：清空旧匹配详情，页面回落到空状态
+    matchDetail.value = null;
+    uni.showToast({ title: '已取消匹配', icon: 'none', duration: 1500 });
+  } catch {
+    // 取消失败不阻塞关闭弹窗，错误提示已由 request 统一处理
+  }
 }
 
 // 匹配详情：一次只有一条有效匹配，进入页面用 recordId 拉取详情渲染
@@ -265,18 +277,27 @@ const payTypeText = computed(() => {
   return t != null ? payTypeCodeText[t] || '' : '';
 });
 
-// 请求匹配详情，用返回的店铺/时间/火锅类型/付费方式/头像等渲染卡片
-const fetchMatchDetail = async () => {
-  if (!recordId.value) {
-    return;
-  }
+// 调 /mini/match/active 拿最新一条已成功匹配的记录，直接渲染卡片
+const fetchActiveMatch = async () => {
   detailLoading.value = true;
   try {
-    const detail = await getMatchDetail({ recordId: recordId.value });
-    matchDetail.value = detail || null;
+    // 获取最新已成功匹配记录，recordId 供取消匹配、跳转对方资料页使用
+    const active = await getActiveMatch();
+    if (!active || active.recordId == null) {
+      // 无有效匹配：回落空状态
+      matchDetail.value = null;
+      recordId.value = '';
+      return;
+    }
+    recordId.value = String(active.recordId);
+    // 暂时不调 getMatchDetail 详情接口，直接用 /mini/match/active 返回的数据渲染
+    // const detail = await getMatchDetail({ recordId: recordId.value });
+    // matchDetail.value = detail || null;
+    matchDetail.value = active;
   } catch {
     // 请求失败按无有效匹配处理，回落空状态
     matchDetail.value = null;
+    recordId.value = '';
   } finally {
     detailLoading.value = false;
   }
@@ -292,10 +313,7 @@ const handleMatchWsEvent = (data: any) => {
     uni.removeStorageSync('showWaitingPopup');
     uni.removeStorageSync(WAITING_DEADLINE_KEY);
     closeWaitingPopup();
-    if (data?.recordId) {
-      recordId.value = String(data.recordId);
-    }
-    fetchMatchDetail();
+    fetchActiveMatch();
   } else if (
     type === WS_EVENT.MATCH_REJECTED ||
     type === WS_EVENT.MATCH_CANCELED ||
@@ -329,16 +347,9 @@ onShow(() => {
     startWaitingCountdown();
   }
 
-  // 读取匹配记录ID：优先内存，其次缓存；不删除缓存，整个匹配周期复用，终态（取消等）才清理
-  const storedRecordId = uni.getStorageSync('recordId');
-  console.log('storedRecordId', storedRecordId);
-  if (storedRecordId) {
-    recordId.value = storedRecordId;
-  }
-  if (recordId.value) {
-    // 每次进入页面用匹配详情接口校验匹配状态，仍有效则显示等待弹窗
-    fetchMatchDetail();
-  }
+  // 每次进入页面调用 /mini/match/active 获取最新一条已成功匹配的记录
+  // 无需依赖本地缓存的 recordId，接口直接返回匹配详情（含 recordId）
+  fetchActiveMatch();
 
   // 订阅全局匹配推送：等待弹窗期间收到对方同意/拒绝/取消/超时事件时自动更新
   if (!unsubscribeWs) {
@@ -755,5 +766,18 @@ onUnmounted(() => {
   background: #ffffff;
   color: #333333;
   font-size: 30rpx;
+}
+
+/* 底部安全提示 */
+.page-tips {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  margin-bottom: 60rpx;
+  padding: 0 60rpx;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 24rpx;
+  line-height: 1.6;
 }
 </style>

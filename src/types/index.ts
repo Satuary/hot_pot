@@ -1,6 +1,7 @@
 // 用户信息类型
 export interface UserInfo {
   id: string;
+  userSn?: string;
   nickname: string;
   avatar: string;
   phone?: string;

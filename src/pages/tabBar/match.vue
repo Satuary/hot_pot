@@ -93,7 +93,7 @@ import { ref, watch, onMounted } from 'vue';
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app';
 // 登录和完善资料检查
 import { isLogin, isProfileComplete } from '@/utils/auth';
-import { getStatusBarHeight } from '@/utils/system';
+import { getStatusBarHeight, getWindowWidth } from '@/utils/system';
 // 匹配到的三个用户，适配快速匹配和精准匹配
 import MatchSuccessModal from '@/components/MatchSuccessModal.vue';
 // 盲盒弹窗vs两个
@@ -108,9 +108,10 @@ import LocationPickerPopup from '@/components/LocationPickerPopup.vue';
 import RechargeTipModal from '@/components/RechargeTipModal.vue';
 // 定位选择弹窗
 import type { LocationItem } from '@/components/LocationPickerPopup.vue';
-import { postRequirement, saveAutoMatch, createMatch, cancelDemand } from '@/api/api';
-import { getUserInfo } from '@/utils/auth';
+import { postRequirement, saveAutoMatch, createMatch, cancelDemand, completeUserInfo } from '@/api/api';
+import { getUserInfo, setUserInfo } from '@/utils/auth';
 import { getUserLocation, reverseGeocode, getCachedLocation } from '@/utils/map';
+import { appState } from '@/utils/store';
 // 订阅消息：快速匹配前请求「匹配结果通知」授权（原生弹窗）
 import { requestSubscribe, SUBSCRIBE_TEMPLATES } from '@/utils/subscribe';
 // 全局匹配 socket：单例连接 + 消息分发，页面只消费共享状态
@@ -312,7 +313,7 @@ onMounted(() => {
     // #endif
     // #ifndef MP-WEIXIN
     navbarPaddingTop.value = statusBarHeight.value;
-    navbarHeight.value = statusBarHeight.value + (88 * systemInfo.windowWidth) / 750;
+    navbarHeight.value = statusBarHeight.value + (88 * getWindowWidth()) / 750;
     // #endif
 
     topOffset.value = navbarHeight.value;
@@ -390,20 +391,39 @@ const chooseLocation = () => {
 
 // 自动定位（页面加载时获取当前地址描述，仅用于导航栏展示）
 const autoLocate = async () => {
-  // 先从缓存恢复上次选择的位置
-  const cached = uni.getStorageSync('user_location_name');
-  if (cached) {
-    location.value = cached;
-  }
+  // 先从全局状态恢复上次选择的位置（不使用 storage）
+//   if (appState.location) {
+//     location.value = appState.location;
+//   }
 
   try {
-    // 使用带缓存的定位：首次获取后写入缓存，发布需求时直接复用，避免频繁调用 getLocation 耗电
-    const loc = await getCachedLocation();
+    // 每次进入页面都重新获取定位（强制刷新），结果写入全局 appState 供发布需求页复用
+    const loc = await getCachedLocation(true);
+    appState.userLocation = loc;
+    // const loc = {
+    //     latitude: 23.276215277777776,
+    //     longitude: 113.32476725260416,
+    // }
     const addr = await reverseGeocode(loc);
     // console.log("loc,",loc, "addr",addr);
     const desc = addr.shortDescription || addr.formattedAddress;
     location.value = desc;
-    uni.setStorageSync('user_location_name', desc);
+    appState.location = desc;
+
+    // 同步经纬度到用户信息（仅传 lat/lng，其他字段由后端保持不变；仅在经纬度变化 ≥0.0001° 时调用）
+    const userInfo: any = getUserInfo() || {};
+    const latChanged = Math.abs((userInfo.lat || 0) - loc.latitude) >= 0.0001;
+    const lngChanged = Math.abs((userInfo.lng || 0) - loc.longitude) >= 0.0001;
+    console.log("user-lng:", userInfo.lat, userInfo.lng, "loc-lng:", loc.latitude, loc.longitude, "latChanged",latChanged, "lngChanged",lngChanged);
+    if (latChanged || lngChanged) {
+      try {
+        await completeUserInfo({ lat: loc.latitude, lng: loc.longitude } as any);
+        // 同步回本地缓存，保证其他页面读取到最新经纬度
+        setUserInfo({ ...userInfo, lat: loc.latitude, lng: loc.longitude });
+      } catch {
+        // 接口失败不影响定位展示
+      }
+    }
   } catch {
     // 定位失败则不更新，保留缓存值或兜底
     if (location.value === '正在定位...') {
@@ -415,7 +435,7 @@ const autoLocate = async () => {
 // 定位弹窗选择回调
 const handleLocationSelect = (item: LocationItem) => {
   location.value = item.name;
-  uni.setStorageSync('user_location_name', item.name);
+  appState.location = item.name;
 };
 
 // 切换匹配开关：仅同步后端自动匹配偏好；socket 为全局单例，不再随开关断开/重连
@@ -452,19 +472,25 @@ const goToBlindMatch = async () => {
     await requestSubscribe([SUBSCRIBE_TEMPLATES.MATCH_RESULT]).catch(() => {});
     uni.showLoading({ title: '匹配中...', mask: true });
     try {
-        // 经纬度为必传项：优先复用页面进入时缓存的定位，缺失时再获取
+        // 经纬度为必传项：优先复用 appState 中的定位，缺失时再获取
         let lat: number;
         let lng: number;
-        try {
-            const loc = await getCachedLocation();
-            lat = loc.latitude;
-            lng = loc.longitude;
-        } catch {
-            uni.hideLoading();
-            uni.showToast({ title: '定位失败，请开启位置权限后重试', icon: 'none' });
-            return;
+        if (appState.userLocation) {
+            lat = appState.userLocation.latitude;
+            lng = appState.userLocation.longitude;
+        } else {
+            try {
+                const loc = await getCachedLocation();
+                appState.userLocation = loc;
+                lat = loc.latitude;
+                lng = loc.longitude;
+            } catch {
+                uni.hideLoading();
+                uni.showToast({ title: '定位失败，请开启位置权限后重试', icon: 'none' });
+                return;
+            }
         }
-        const res: any = await postRequirement({ matchType: '1', lat, lng });
+        const res = await postRequirement({ matchType: '1', lat, lng });
         // demandId 为需求ID，通过 URL 传给匹配页拉推荐/发起匹配；匹配 recordId 由 mini/match/create 返回后再写入缓存
         const demandId = res?.demandId || '';
         uni.hideLoading();

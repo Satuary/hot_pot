@@ -61,7 +61,7 @@
                 <view class="list-item">
                     <text class="label">火锅号</text>
                     <view class="value-row">
-                        <text class="value-text static-text">{{ form.id || '523656' }}</text>
+                        <text class="value-text static-text">{{ form.userSn || form.id || '523656' }}</text>
                     </view>
                 </view>
 
@@ -340,6 +340,7 @@ const form = reactive({
     wechat: '',
     phone: '',
     id: '',
+    userSn: '',
     // 所在地结构化字段（由 chooseLocation 写入）
     province: '',
     city: '',
@@ -365,6 +366,7 @@ onMounted(async () => {
         form.phone = d.phone || '';
         form.avatar = d.avatar || '';
         form.id = d.id || d.userId || '';
+        form.userSn = d.userSn || '';
         // 标签：接口返回数字，通过索引映射回字符串
         const htIdx = Number(d.hotpotType) - 1;
         if (hotpotTypeOptions[htIdx]) form.hotpotType = hotpotTypeOptions[htIdx];
@@ -397,6 +399,7 @@ onMounted(async () => {
             location: form.location,
             avatar: form.avatar,
             id: form.id,
+            userSn: form.userSn,
         });
     } catch {
         // 接口失败则读取本地 appState 缓存（数字格式转回表单格式）
@@ -410,6 +413,7 @@ onMounted(async () => {
         if (profile.phone) form.phone = profile.phone;
         if (profile.avatar) form.avatar = profile.avatar;
         if (profile.id) form.id = profile.id;
+        if (profile.userSn) form.userSn = profile.userSn;
         if (profile.location) form.location = profile.location;
         if (profile.hotpotType) form.hotpotType = hotpotTypeOptions[profile.hotpotType - 1] || '';
         if (profile.taste) form.taste = tasteOptions[profile.taste - 1] || '';
@@ -864,6 +868,7 @@ function syncProfileToStorage() {
         location: form.location,
         avatar: form.avatar || appState.userProfile.avatar,
         id: form.id,
+        userSn: form.userSn,
     });
 }
 

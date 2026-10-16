@@ -233,6 +233,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { postRequirement } from '@/api/api';
+import { appState } from '@/utils/store';
 import type { Store } from '@/utils/store';
 import { getCachedLocation, searchNearbyHotPotStore } from '@/utils/map';
 import { getStatusBarHeight } from '@/utils/system';
@@ -312,17 +313,12 @@ const dateOptions = [
   { value: 'afterTomorrow', label: '后天' },
 ];
 
-// 分钟全部选项
-const allMinuteOptions = ['00', '10', '20', '30', '40', '50'];
-// 今天可选的起始小时：当前分钟已无可选档位时从下一小时开始
+// 分钟全部选项：00-59
+const allMinuteOptions = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+// 今天可选的起始小时：当前小时总有当前分钟可选，直接返回当前小时
 const getTodayStartHour = (): number => {
   const n = new Date();
-  const ch = n.getHours();
-  const cm = n.getMinutes();
-  if (!allMinuteOptions.some(m => parseInt(m) > cm)) {
-    return Math.min(ch + 1, 24);
-  }
-  return ch;
+  return n.getHours();
 };
 // 小时选项：选择"今天"时只显示当前小时起可选的
 const hourOptions = computed(() => {
@@ -333,13 +329,13 @@ const hourOptions = computed(() => {
   if (start >= 24) return [];
   return Array.from({ length: 24 - start }, (_, i) => String(i + start).padStart(2, '0'));
 });
-// 分钟选项：选择"今天"且当前小时时只显示当前分钟之后的
+// 分钟选项：选择"今天"且当前小时时只显示当前分钟及之后的（含当前分钟）
 const minuteOptions = computed(() => {
   if (tempDateType.value !== 'today') return allMinuteOptions;
   const n = new Date();
   if (tempHour.value !== n.getHours()) return allMinuteOptions;
   const cm = n.getMinutes();
-  return allMinuteOptions.filter(m => parseInt(m) > cm);
+  return allMinuteOptions.filter(m => parseInt(m) >= cm);
 });
 
 // 日期类型选择器当前值索引
@@ -462,9 +458,6 @@ const fetchStorePage = async (page: number) => {
     console.error('获取附近火锅店失败:', err);
     if (page === 1) {
       uni.showToast({ title: err.message || '获取附近火锅店失败，使用默认数据', icon: 'none' });
-      // 高德 API 不可用时降级使用 mock 数据
-      storeList.value = mockStores;
-      storeTotal.value = mockStores.length;
       storePage.value = 1;
     } else {
       uni.showToast({ title: '加载更多失败', icon: 'none' });
@@ -481,8 +474,8 @@ const selectStore = async () => {
   if (storeList.value.length) return;
 
   try {
-    // 1. 使用带缓存的定位获取用户当前经纬度（优先复用首页缓存，避免重复调用 getLocation 耗电）
-    const location = await getCachedLocation();
+    // 1. 优先复用 appState 中的定位（首页进入时已获取），缺失时再调用 getCachedLocation
+    const location = appState.userLocation || await getCachedLocation();
     // 测试用，固定位置在位中心84197号
     // location.longitude = 113.24;
     // location.latitude = 23.11;
@@ -493,9 +486,6 @@ const selectStore = async () => {
   } catch (err: any) {
     console.error('定位失败:', err);
     uni.showToast({ title: err.message || '定位失败，使用默认数据', icon: 'none' });
-    // 定位失败时降级使用 mock 数据
-    storeList.value = mockStores;
-    storeTotal.value = mockStores.length;
     storePage.value = 1;
   }
 };
@@ -526,7 +516,7 @@ const adjustTimeToValid = () => {
 
 // 显示日期时间选择器弹窗
 const showDateTimePicker = () => {
-  // 确保有未过期的 dateTime，过期或不存在则重置为当前时间 + 10 分钟
+  // 确保有未过期的 dateTime，过期或不存在则重置为当前时间
   let baseDateStr = '';
   let baseTimeStr = '';
   if (formData.value.dateTime) {
@@ -540,18 +530,20 @@ const showDateTimePicker = () => {
     }
   }
   if (!baseDateStr) {
-    const future = new Date(Date.now() + 10 * 60 * 1000);
-    baseDateStr = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
-    baseTimeStr = `${String(future.getHours()).padStart(2, '0')}:${String(future.getMinutes()).padStart(2, '0')}`;
+    // 默认选中当前时分（不再 +10 分钟）
+    const now = new Date();
+    baseDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    baseTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   }
 
   const [y, m, d] = baseDateStr.split('-').map(Number);
   const [h, min] = baseTimeStr.split(':');
 
+  // 用 Date 构造器计算日期差，避免 new Date('YYYY-M-D') 非 ISO 字符串解析为 Invalid Date
   const now = new Date();
-  const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
-  const targetStr = `${y}-${m}-${d}`;
-  const diffDays = Math.floor((new Date(targetStr).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24));
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(y, m - 1, d);
+  const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) tempDateType.value = 'today';
   else if (diffDays === 1) tempDateType.value = 'tomorrow';
@@ -678,10 +670,15 @@ const submitRequirement = async () => {
   // 用户拒绝/失败均不阻塞提交流程，每次允许积攒 1 条推送额度
   await requestSubscribe([SUBSCRIBE_TEMPLATES.MATCH_RESULT]).catch(() => {});
 
-  // 经纬度为必传项：若尚未定位则从缓存/接口获取，失败则中止发布
+  // 经纬度为必传项：优先复用 appState 中的定位，缺失时再获取，失败则中止发布
+  if (!storeLocation.value) {
+    storeLocation.value = appState.userLocation || null;
+  }
   if (!storeLocation.value) {
     try {
-      storeLocation.value = await getCachedLocation();
+      const loc = await getCachedLocation();
+      appState.userLocation = loc;
+      storeLocation.value = loc;
     } catch {
       uni.showToast({ title: '定位失败，请开启位置权限后重试', icon: 'none' });
       return;

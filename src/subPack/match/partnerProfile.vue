@@ -23,8 +23,8 @@
                         <text class="nickname">{{ profile.nickname}}</text>
                         <view class="taste-tag" v-if="tasteText">{{ tasteText }}</view>
                     </view>
-                    <view class="id-address-row">
-                        <text class="id-text">ID:{{ profile.userId }}</text>
+                        <view class="id-address-row">
+                        <text class="id-text">ID:{{ profile.userSn || profile.userId }}</text>
                         <image class="copy-icon" src="/static/imgs/file-copy-line.png" mode="aspectFit"></image>
                         <text class="address-text" v-if="addressText">地址：{{ addressText }}</text>
                     </view>
@@ -109,6 +109,7 @@
 </template>
 
 <script setup lang="ts">
+import { toHttps, getStatusBarHeight } from '@/utils/system';
 import { ref, reactive, computed } from 'vue';
 import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app';
 import {
@@ -144,6 +145,7 @@ const profile = reactive({
     avatar: '',
     nickname: '',
     userId: '' as number | string,
+    userSn: '',
     gender: 0,
     age: 0,
     height: 0,
@@ -188,8 +190,15 @@ const bodyText = computed(() => {
     return parts.join(' ');
 });
 const ageText = computed(() => (profile.age ? `${profile.age}岁` : ''));
-const addressText = computed(
-    () => profile.address || [profile.province, profile.city, profile.district].filter(Boolean).join(''),
+// 地址仅展示到区/县级：截取到首个"区/县"为止（"自治区/特别行政区"中的"区"不参与截断）
+const toDistrictLevel = (addr: string) => {
+    if (!addr) return '';
+    const masked = addr.replace(/自治区|特别行政区/g, (m) => '〇'.repeat(m.length));
+    const idx = masked.search(/[区县]/);
+    return idx === -1 ? addr : addr.slice(0, idx + 1);
+};
+const addressText = computed(() =>
+    toDistrictLevel(profile.address || [profile.province, profile.city, profile.district].filter(Boolean).join('')),
 );
 
 // 当前登录用户 id（本地缓存，字段兼容 id/userId）
@@ -352,6 +361,7 @@ async function loadPartnerProfile() {
         profile.avatar = d.avatar || '';
         profile.nickname = d.nickname || '';
         profile.userId = d.userId ?? '';
+        profile.userSn = d.userSn ?? '';
         profile.gender = Number(d.gender) || 0;
         profile.age = Number(d.age) || 0;
         profile.height = Number(d.height) || 0;

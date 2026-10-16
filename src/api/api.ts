@@ -59,13 +59,13 @@ export const sendSmsCode = (data: { phone: string }) => {
  * 发布匹配需求
  */
 export const postRequirement = (data: {
-  gender: string;
-  ageRange: string;
+  gender?: string;
+  ageRange?: string;
   matchType: string;
-  hotpotType: string;
-  taste: string;
-  motivation: string;
-  shop:
+  hotpotType?: string;
+  taste?: string;
+  motivation?: string;
+  shop?:
     | {
         id: string;
         name: string;
@@ -75,8 +75,8 @@ export const postRequirement = (data: {
         rating: string;
       }
     | Record<string, never>;
-  meetingTime: string;
-  payType: string;
+  meetingTime?: string;
+  payType?: string;
   /** 发布时的纬度（必传，否则无法发起匹配） */
   lat: number;
   /** 发布时的经度（必传，否则无法发起匹配） */
@@ -191,6 +191,14 @@ export const getMatchDetail = (data: {
   recordId: number | string;
 }): Promise<MatchDetailItem> => {
   return request('/mini/match/detail', 'GET', data);
+};
+
+/**
+ * 获取当前用户最新一条已成功匹配的记录
+ * 无需参数，返回 MatchDetailItem；无有效匹配时返回 null
+ */
+export const getActiveMatch = (): Promise<MatchDetailItem | null> => {
+  return request('/mini/match/active', 'GET');
 };
 
 /**

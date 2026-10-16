@@ -1,8 +1,10 @@
 import { reactive } from 'vue';
+import type { UserLocation } from './map';
 
 // Global app state
 export interface UserProfile {
     id: string;
+    userSn: string;
     phone: string;
     nickname: string;
     gender: number;
@@ -47,6 +49,7 @@ export const appState = reactive({
     token: '',
     userProfile: {
         id: '',
+        userSn: '',
         phone: '',
         nickname: '',
         gender: 0,
@@ -75,7 +78,7 @@ export const appState = reactive({
         payment: 'AA',
     } as MatchRequirement,
     matchMode: 'precise' as 'precise' | 'blind',
-    location: '上海闵行',
-    transactions: [] as any[],
-    orders: [] as MatchOrder[],
+    location: '',
+    userLocation: null as UserLocation | null,
+    transactions: [] as any[]
 });
