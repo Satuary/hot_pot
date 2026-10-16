@@ -23,19 +23,8 @@ import { ref, watch } from 'vue';
 import { getMatchRecommend } from '@/api/api';
 import { toHttps } from '@/utils/system';
 
-const list = ref([{
-    id: '9',
-    avatar: '/static/imgs/default-avatar.jpeg',
-    nickname: '用户9',
-    stageName: '用户9',
-    sex: '男',
-    age: '25',
-    height: '1.80',
-    weight: '70kg',
-    status: 'locked',
-    statusText: '点击解锁',
-    subStatusText: '等待对方同意',
-}]);
+// 候选人列表：默认空，避免需求失效后恢复弹窗时展示硬编码的假占位"用户9"
+const list = ref([]);
 
 const props = defineProps({
     visible: {
@@ -90,9 +79,15 @@ const fetchRecommend = async () => {
                 status: 'locked',
                 statusText: '点击解锁',
             }));
+        } else {
+            // 空列表：需求已过期/候选人已被选走，清掉"待选人"标记并关闭，不展示僵尸弹窗；
+            // pendingDemand 保留，下次进页面会回旋转页由轮询/超时统一收口
+            uni.removeStorageSync('pendingMatchSuccess');
+            emit('close');
         }
     } catch {
-        // 拉取失败时保留默认/兜底列表
+        // 网络失败：不清标记，关闭后下次进入页面重新拉取重试，避免展示空弹窗
+        emit('close');
     }
 };
 

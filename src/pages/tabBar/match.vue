@@ -198,8 +198,9 @@ const handleUnlock = (payload: any) => {
     blindMatchUserId.value = matchUserId;
     blindMyAvatar.value = myAvatar;
     blindOtherAvatar.value = otherAvatar;
-    // 流程进入"待确认"阶段：清除选人弹窗标记，持久化确认弹窗标记（用户点确认/不合适前一直保留）
+    // 流程进入"待确认"阶段：用户已选择匹配者，清除选人弹窗与"匹配进行中"标记，持久化确认弹窗标记（用户点确认/不合适前一直保留）
     uni.removeStorageSync('pendingMatchSuccess');
+    uni.removeStorageSync('pendingDemand');
     uni.setStorageSync(
         'pendingBlindBox',
         JSON.stringify({ demandId, matchUserId, myAvatar, otherAvatar }),
@@ -218,6 +219,8 @@ const handleBlindBoxCancel = async () => {
     if (!demandId) {
         // 无需求 id（异常兜底）：仅清本地标记关闭
         uni.removeStorageSync('pendingBlindBox');
+        uni.removeStorageSync('pendingDemand');
+        uni.removeStorageSync('pendingMatchSuccess');
         showBlindBox.value = false;
         showMatchModal.value = false;
         showFriendRequest.value = false;
@@ -238,6 +241,8 @@ const handleBlindBoxCancel = async () => {
     blindSubmitting.value = false;
     // 取消成功进入终态，清掉本地弹窗标记，避免离开/刷新后弹窗再次恢复
     uni.removeStorageSync('pendingBlindBox');
+    uni.removeStorageSync('pendingDemand');
+    uni.removeStorageSync('pendingMatchSuccess');
     showBlindBox.value = false;
     showMatchModal.value = false;
     showFriendRequest.value = false;
@@ -359,6 +364,15 @@ onShow(() => {
         if (pendingDemandId) {
             matchedDemandId.value = pendingDemandId;
             showMatchModal.value = true;
+        } else {
+            // 最后恢复"匹配进行中"（旋转匹配页被杀重启）：回旋转页继续轮询，
+            // 拉到候选人后旋转页会写 pendingMatchSuccess 并切回本页弹选人窗
+            const matchingDemandId = uni.getStorageSync('pendingDemand');
+            if (matchingDemandId) {
+                uni.navigateTo({
+                    url: `/subPack/match/matchSuccess?demandId=${encodeURIComponent(String(matchingDemandId))}`,
+                });
+            }
         }
     }
     const hasSeenIntro = uni.getStorageSync('hasSeenMatchIntro');
@@ -491,8 +505,11 @@ const goToBlindMatch = async () => {
             }
         }
         const res = await postRequirement({ matchType: '1', lat, lng });
-        // demandId 为需求ID，通过 URL 传给匹配页拉推荐/发起匹配；匹配 recordId 由 mini/match/create 返回后再写入缓存
+        // demandId 为需求ID，通过 URL 传给匹配页拉推荐/发起匹配；匹配 recordId 由 mini/match/create 返回后再写缓存
         const demandId = res?.demandId || '';
+        // 用户一发起匹配即持久化"匹配进行中"标记：未选择匹配者前（含旋转匹配页被杀重启）一直保留，
+        // 用户点解锁选人后才在 handleUnlock 清除
+        if (demandId) uni.setStorageSync('pendingDemand', String(demandId));
         uni.hideLoading();
         uni.navigateTo({
             url: `/subPack/match/matchSuccess?demandId=${encodeURIComponent(demandId)}`,

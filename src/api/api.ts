@@ -202,6 +202,19 @@ export const getActiveMatch = (): Promise<MatchDetailItem | null> => {
 };
 
 /**
+ * 查询未读通知（离线期间对方同意/拒绝/取消匹配、联系方式交换等事件的补推）
+ * 返回 messages 数组，元素结构与 WebSocket 推送一致：type（小写 snake_case，如 match_confirmed）、
+ * content、recordId、demandId、createTime、page、data.otherUser 等
+ */
+export const getUnreadNotifications = (): Promise<{
+  hasUnread?: boolean;
+  count?: number;
+  messages?: any[];
+}> => {
+  return request('/mini/notification/unread', 'GET');
+};
+
+/**
  * 同意匹配（POST，recordId 拼在地址栏）
  */
 export const confirmMatchRecord = (data: { recordId: string }) => {

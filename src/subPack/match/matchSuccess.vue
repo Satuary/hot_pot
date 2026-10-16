@@ -150,6 +150,9 @@ const handleMatchTimeout = async () => {
             // 取消失败不影响提示与返回
         }
     }
+    // 超时进入终态：清掉"匹配进行中/待选人"标记，避免重启后恢复
+    uni.removeStorageSync('pendingDemand');
+    uni.removeStorageSync('pendingMatchSuccess');
     uni.showToast({
         title: '附近没有匹配的人',
         icon: 'none',
@@ -185,6 +188,9 @@ const handleCancel = async () => {
             const code = res?.code ?? 200;
             if (code === 200) {
                 stopPolling();
+                // 取消成功进入终态：清掉"匹配进行中/待选人"标记，避免重启后恢复
+                uni.removeStorageSync('pendingDemand');
+                uni.removeStorageSync('pendingMatchSuccess');
                 uni.showToast({
                     title: '已取消匹配',
                     icon: 'none',

@@ -730,6 +730,8 @@ const submitRequirement = async () => {
     // demandId 为需求ID，仅用于拉推荐/发起匹配，通过 URL 传给匹配页；
     // 它不是匹配记录id，匹配 recordId 由 mini/match/create 返回，切勿写入 recordId 缓存
     const demandId = res?.demandId || '';
+    // 用户一发起匹配即持久化"匹配进行中"标记：未选择匹配者前（含重启）一直保留，选人后在匹配页清除
+    if (demandId) uni.setStorageSync('pendingDemand', String(demandId));
 
     uni.hideLoading();
     uni.showToast({

@@ -14,6 +14,7 @@ import {
     rejectPhoneExchange,
     rejectMatchRecord,
     confirmMatchRecord,
+    getUnreadNotifications,
 } from '@/api/api';
 import { isLogin } from '@/utils/auth';
 import { connectWebSocket, disconnectWebSocket, onWsMessage } from '@/utils/websocket';
@@ -53,6 +54,8 @@ const matchPageVisible = ref(false);
 export const partnerPageVisible = ref(false);
 
 let initialized = false;
+// 已处理的离线通知去重标记：避免 App 多次 onShow 触发查询时同一条通知重复弹窗
+const processedNotificationKeys = new Set<string>();
 
 /**
  * 启动全局匹配 socket：已登录则注册监听并建立连接（幂等，可重复调用）
@@ -61,6 +64,45 @@ export function startMatchSocket() {
     if (!isLogin()) return;
     initMatchSocket();
     connectWebSocket();
+    // 回到前台/启动/登录时补推离线期间的通知（对方同意/拒绝/取消匹配、交换联系方式等）
+    checkUnreadNotifications();
+}
+
+/**
+ * 查询离线未读通知并复用 WebSocket 的弹窗逻辑逐条处理
+ * 覆盖"离线后任一方同意/拒绝进来应收到通知"的场景；type 与 socket 事件常量一致（仅大小写不同）
+ */
+export async function checkUnreadNotifications() {
+    if (!isLogin()) return;
+    let res: any;
+    try {
+        res = await getUnreadNotifications();
+    } catch (e) {
+        // 查询失败不阻塞启动/回前台，继续使用 WebSocket 在线推送
+        console.warn('[matchSocket] 查询未读通知失败', e);
+        return;
+    }
+    const messages = res?.messages;
+    if (!Array.isArray(messages) || messages.length === 0) return;
+    messages.forEach((m: any) => {
+        if (!m) return;
+        const rawType = m.type || m.eventType || m.event;
+        if (!rawType) return;
+        // 同一条通知去重，避免重复查询造成重复弹窗
+        const key = `${rawType}|${m.recordId ?? ''}|${m.createTime ?? ''}`;
+        if (processedNotificationKeys.has(key)) return;
+        processedNotificationKeys.add(key);
+        // 接口 type 为小写 snake_case（如 match_confirmed）转成与 socket 一致的常量；
+        // 文案字段 content 映射为 message；data/otherUser 结构与推送保持一致
+        handleWsMessage({
+            type: String(rawType).toUpperCase(),
+            message: m.content,
+            recordId: m.recordId,
+            demandId: m.demandId,
+            data: m.data || {},
+            otherUser: m.data?.otherUser,
+        });
+    });
 }
 
 /**
@@ -101,6 +143,7 @@ export function closeAllMatchPopups() {
     resetMatchState();
     uni.removeStorageSync('showWaitingPopup');
     uni.removeStorageSync('pendingMatchSuccess');
+    uni.removeStorageSync('pendingDemand');
     uni.removeStorageSync('pendingBlindBox');
 }
 
