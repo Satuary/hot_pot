@@ -196,12 +196,11 @@ const goEditProfile = () => {
     });
 };
 
-// 清除缓存
+// 清除缓存（pendingMatchSuccess 为内存级标记，不在持久化清理范围内）
 const clearCache = () => {
     uni.removeStorageSync('recordId');
     uni.removeStorageSync('userInfo');
     uni.removeStorageSync('showWaitingPopup');
-    uni.removeStorageSync('pendingMatchSuccess');
     uni.removeStorageSync('pendingBlindBox');
     uni.removeStorageSync('hasSeenMatchIntro');
     uni.showToast({ title: '缓存已清除', icon: 'success', duration: 1500 });

@@ -16,6 +16,7 @@ import {
     confirmMatchRecord,
 } from '@/api/api';
 import { isLogin } from '@/utils/auth';
+import { appState } from '@/utils/store';
 import { connectWebSocket, disconnectWebSocket, onWsMessage } from '@/utils/websocket';
 
 // WebSocket 推送事件类型
@@ -95,12 +96,12 @@ function resetMatchState() {
  * 关闭全部匹配相关弹窗并清理持久化标记
  * 在匹配终态（被对方拒绝 MATCH_REJECTED、对方取消 MATCH_CANCELED）时调用：
  * - 清空内存中的匹配请求队列与自定义请求弹窗
- * - 移除等待弹窗/选人弹窗/盲盒弹窗的本地标记，避免 onShow 时弹窗被恢复
+ * - 移除等待弹窗/选人弹窗/盲盒弹窗的标记，避免 onShow 时弹窗被恢复
  */
 export function closeAllMatchPopups() {
     resetMatchState();
     uni.removeStorageSync('showWaitingPopup');
-    uni.removeStorageSync('pendingMatchSuccess');
+    appState.pendingMatchSuccess = '';
     uni.removeStorageSync('pendingBlindBox');
 }
 
@@ -401,7 +402,7 @@ export async function acceptCurrentRequest() {
     pendingRequests.value = pendingRequests.value.filter((r: any) => String(r.id) !== String(reqId));
     showFriendRequest.value = false;
     // 已匹配成功，旧的匹配成功选人弹窗不再恢复
-    uni.removeStorageSync('pendingMatchSuccess');
+    appState.pendingMatchSuccess = '';
     closeAllMatchPopups();
     // 通知 match.vue 关闭本地 MatchSuccessModal 选人弹窗
     matchRequestHandled.value++;
@@ -437,7 +438,7 @@ export async function rejectCurrentRequest() {
     // 从队列移除已拒绝的请求（同时关闭弹窗），否则 showNextRequest 会再次取到同一条导致弹窗重现；队列还有请求时自动展示下一条
     removePendingRequest(reqId);
     // 拒绝后清除匹配成功选人弹窗的恢复标记，避免回到匹配页 onShow 时旧弹窗再次出现
-    uni.removeStorageSync('pendingMatchSuccess');
+    appState.pendingMatchSuccess = '';
     uni.removeStorageSync('recordId');
     closeAllMatchPopups();
     // 通知 match.vue 关闭本地 MatchSuccessModal 选人弹窗
