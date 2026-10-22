@@ -409,6 +409,63 @@ export const rejectWechatExchange = (data: { recordId: string }) => {
   return request(`/mini/match/wechat/reject?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
 };
 
+// ============= 通知相关 API =============
+
+/**
+ * 未读通知消息项
+ * type 与 WebSocket 推送事件一致（如 match_confirmed），弹窗逻辑复用 matchSocket 处理
+ */
+export interface UnreadNotification {
+  /** 通知类型，同 socket 事件（match_confirmed / wechat_apply 等） */
+  type: string;
+  /** 通知文案 */
+  content?: string;
+  recordId?: number | string;
+  demandId?: number | string;
+  /** 匹配状态：0=待确认 1=已确认 2=已拒绝 3=已取消 */
+  matchStatus?: number;
+  /** 操作类型：确认已读时回传给后端 */
+  operationType?: number;
+  createTime?: number;
+  /** 跳转页面路径，如 pages/match/detail?recordId=5 */
+  page?: string;
+  data?: {
+    otherUser?: {
+      avatarUrl?: string;
+      nickName?: string;
+      userId?: number | string;
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+/**
+ * 查询未读通知（GET /mini/notification/unread）
+ * 响应体无 data 包装，request 层原样返回：{ hasUnread, count, messages }
+ */
+export const getUnreadNotifications = (): Promise<{
+  hasUnread?: boolean;
+  count?: number;
+  messages?: UnreadNotification[];
+  [key: string]: any;
+}> => {
+  return request('/mini/notification/unread', 'GET');
+};
+
+/**
+ * 确认通知已读（POST /mini/notification/read）
+ * 通知弹窗真正展示后再调用，避免下次重复弹出
+ */
+export const markNotificationRead = (data: {
+  recordId: number | string;
+  matchStatus: number;
+  operationType: number;
+}) => {
+  return request('/mini/notification/read', 'POST', data);
+};
+
 // ============= 支付相关 API =============
 
 /**

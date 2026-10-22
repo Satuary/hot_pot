@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { onShow, onHide } from '@dcloudio/uni-app';
 import { isLogin, isProfileComplete, getUserInfo } from '@/utils/auth';
 import { getActiveMatch, cancelMatchRecord } from '@/api/api';
@@ -112,6 +112,7 @@ import type { MatchDetailItem } from '@/api/api';
 import { onWsMessage } from '@/utils/websocket';
 import { WS_EVENT } from '@/common/matchSocket';
 import { toHttps } from '@/utils/system';
+import { appState } from '@/utils/store';
 
 const showWaitingPopup = ref(false);
 const remainingSeconds = ref(10 * 60); // 默认 10 分钟倒计时
@@ -225,7 +226,8 @@ async function handleCancelMatch() {
 }
 
 // 匹配详情：一次只有一条有效匹配，进入页面用 recordId 拉取详情渲染
-const matchDetail = ref<MatchDetailItem | null>(null);
+// 优先使用登录后由 /mini/match/active 恢复的全局状态，再在 onShow 时刷新
+const matchDetail = ref<MatchDetailItem | null>(appState.activeMatch || null);
 // 详情请求中标记：请求期间不显示空状态，避免无数据时闪烁
 const detailLoading = ref(false);
 
@@ -283,6 +285,7 @@ const fetchActiveMatch = async () => {
   try {
     // 获取最新已成功匹配记录，recordId 供取消匹配、跳转对方资料页使用
     const active = await getActiveMatch();
+    appState.activeMatch = active || null;
     if (!active || active.recordId == null) {
       // 无有效匹配：回落空状态
       matchDetail.value = null;
@@ -302,6 +305,21 @@ const fetchActiveMatch = async () => {
     detailLoading.value = false;
   }
 };
+
+// 全局匹配状态变化时联动刷新：如在本页通过原生弹窗同意匹配（接收方无 MATCH_CONFIRMED 推送），
+// matchSocket 同意成功后调 restoreActiveMatch 更新 appState.activeMatch，此处同步渲染新匹配
+watch(
+  () => appState.activeMatch,
+  (active) => {
+    if (active && active.recordId != null) {
+      matchDetail.value = active;
+      recordId.value = String(active.recordId);
+    } else {
+      matchDetail.value = null;
+      recordId.value = '';
+    }
+  },
+);
 
 // 全局 socket 推送的匹配结果事件：关闭等待弹窗并同步页面状态
 // （结果文案/结果弹窗由全局 matchSocket 统一提示，这里只处理本页 UI）

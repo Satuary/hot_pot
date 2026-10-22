@@ -202,6 +202,7 @@ const clearCache = () => {
     uni.removeStorageSync('userInfo');
     uni.removeStorageSync('showWaitingPopup');
     uni.removeStorageSync('pendingBlindBox');
+    uni.removeStorageSync('pendingMatchRequest');
     uni.removeStorageSync('hasSeenMatchIntro');
     uni.showToast({ title: '缓存已清除', icon: 'success', duration: 1500 });
 };

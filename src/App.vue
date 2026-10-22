@@ -13,9 +13,7 @@ export default {
             });
             return;
         }
-        // 已登录：启动全局 WebSocket 单例，全程接收匹配推送
-        startMatchSocket();
-        // 已登录：请求一次最新用户信息更新本地缓存，确保头像等资料是最新的
+        // 已登录：同步最新用户信息，启动全局 WebSocket 与未读通知恢复统一交给 onShow（冷启动时必触发）
         refreshUserInfo();
         // 已登录但未完善资料 -> 完善资料页
         if (!isProfileComplete()) {
