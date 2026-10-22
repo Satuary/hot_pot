@@ -184,7 +184,7 @@ function startWaitingCountdown() {
 function goToPartnerProfile() {
   // otherUserId 供对方资料页 mini/user/getUserInfo 使用
   const uid = matchDetail.value?.otherUserId || '';
-  uni.navigateTo({ url: `/subPack/match/partnerProfile?from=view&userId=${uid}` });
+  uni.navigateTo({ url: `/subPack/match/partnerProfile?recordId=${recordId.value}&from=view&userId=${uid}` });
 }
 
 // 关闭等待弹窗

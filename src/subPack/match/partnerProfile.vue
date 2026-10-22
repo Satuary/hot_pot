@@ -224,6 +224,7 @@ const isMatcher = computed(
 const showContactBar = computed(
     () => pageFrom.value == 'view' && isMatcher.value && Number(matchDetail.value?.matchStatus) === 1,
 );
+
 // 有匹配详情信息就显示匹配信息卡（不再限制角色/状态）
 const showMatchInfoCard = computed(
     () => pageFrom.value == 'MatchConfirmModal' && !!matchDetail.value && Object.keys(matchDetail.value).length > 0,
