@@ -20,7 +20,7 @@ import {
 } from '@/api/api';
 import { isLogin } from '@/utils/auth';
 import { appState } from '@/utils/store';
-import { connectWebSocket, disconnectWebSocket, onWsMessage } from '@/utils/websocket';
+import { connectWebSocket, disconnectWebSocket, onWsMessage, sendMessage } from '@/utils/websocket';
 
 // WebSocket 推送事件类型
 export const WS_EVENT = {
@@ -36,6 +36,15 @@ export const WS_EVENT = {
     PHONE_APPROVED: 'PHONE_APPROVED', // 电话联系方式同意
     PHONE_REJECTED: 'PHONE_REJECTED', // 电话联系方式拒绝
 } as const;
+
+// 通知类推送（与 /mini/notification/unread 返回的类型一致）：收到后需回 ACK 告知服务端已送达
+const NOTIFICATION_TYPES = new Set<string>([
+    WS_EVENT.MATCH_CREATED,
+    WS_EVENT.MATCH_CONFIRMED,
+    WS_EVENT.MATCH_REJECTED,
+    WS_EVENT.MATCH_CANCELED,
+    WS_EVENT.MATCH_TIMEOUT,
+]);
 
 // 待处理的匹配请求队列（同一记录去重）
 export const pendingRequests = ref<any[]>([]);
@@ -214,7 +223,7 @@ export function stopMatchSocket() {
 function initMatchSocket() {
     if (initialized) return;
     initialized = true;
-    onWsMessage(handleWsMessage);
+    onWsMessage((data: any) => handleWsMessage(data, true));
     console.log('[matchSocket] 全局匹配消息监听已注册');
 }
 
@@ -270,7 +279,8 @@ export function setPartnerPageVisible(visible: boolean) {
 }
 
 // 处理 WebSocket 推送的消息
-function handleWsMessage(data: any) {
+// fromSocket 为 true 表示来自 socket 实时推送（需回 ACK），unread 回放时为 false（已通过 read 接口确认）
+function handleWsMessage(data: any, fromSocket = false) {
     if (!data || typeof data !== 'object') return;
     const type = data.type || data.eventType || data.event;
     if (!type) return;
@@ -284,6 +294,16 @@ function handleWsMessage(data: any) {
     const otherNickname = otherUser.nickName || otherUser.nickname || msg.nickname || '';
     const otherAvatar = otherUser.avatarUrl || otherUser.avatar || msg.avatar || '';
     const recordId = msg.recordId ?? body.recordId ?? msg.requestId ?? '';
+
+    // 通知类推送回 ACK：告知服务端已送达，避免重复投递
+    if (fromSocket && recordId !== '' && NOTIFICATION_TYPES.has(type)) {
+        sendMessage({
+            type: 'notification_ack',
+            recordId,
+            matchStatus: body.matchStatus ?? msg.matchStatus,
+            operationType: body.operationType ?? msg.operationType,
+        });
+    }
 
     // 联系方式交换类事件（微信/电话）：对方资料页在前台时由该页自行处理（状态回显+页面内弹窗），全局不重复弹
     const isExchangeEvent =
