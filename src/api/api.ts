@@ -805,6 +805,59 @@ export const getUserInfo = (data?: { otherUserId?: number | string }) => {
 };
 
 /**
+ * 查看页匹配列表项（GET /mini/user/listByUser，仅 status=1 已同意的匹配）
+ * 后端字段可能平铺，也可能把对方信息放在 otherUser 中，页面统一做兼容取值
+ */
+export interface UserMatchListItem {
+  /** 匹配记录 id */
+  recordId?: number | string;
+  /** 我的用户 id */
+  myUserId?: number | string;
+  /** 对方用户 id */
+  otherUserId?: number | string;
+  /** 匹配状态：1=已同意 */
+  matchStatus?: number;
+  /** 见面时间，如 "2026-09-03 15:30" */
+  meetingTime?: string;
+  /** 店铺名称 */
+  shopName?: string;
+  /** 火锅类型（索引：0=重庆火锅 1=潮汕火锅 2=海鲜火锅 3=小火锅） */
+  hotpotType?: number | string;
+  /** 付费方式：0=我请客 1=AA 2=对方请客 */
+  payType?: number;
+  /** 对方头像 */
+  otherAvatar?: string;
+  /** 对方昵称 */
+  otherNickname?: string;
+  /** 对方用户编号 */
+  otherUserSn?: string;
+  /** 对方信息（部分接口以对象返回） */
+  otherUser?: {
+    userId?: number | string;
+    nickName?: string;
+    nickname?: string;
+    avatarUrl?: string;
+    avatar?: string;
+    userSn?: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+/**
+ * 查看匹配列表（GET /mini/match/listByUser）
+ * 固定查询 status=1（已同意）的匹配记录，供查看页列表展示
+ * @param data.page 页码
+ * @param data.pageSize 每页条数
+ */
+export const getUserMatchList = (data?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<UserMatchListItem[]> => {
+  return request('/mini/match/listByUser', 'GET', { status: 1, ...(data || {}) });
+};
+
+/**
  * 完善用户信息
  */
 export const completeUserInfo = (data: {
