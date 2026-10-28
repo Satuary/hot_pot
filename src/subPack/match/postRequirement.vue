@@ -505,6 +505,30 @@ const onStoreSelect = (store: Store) => {
 
 // 修正 tempHour/tempMinute 到当前选项列表中的有效值
 const adjustTimeToValid = () => {
+  // 今天已选时间已过期时（如反复切换日期、停留在当前分钟），顺延到当前时间 +10 分钟
+  if (tempDateType.value === 'today') {
+    const now = new Date();
+    const picked = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      tempHour.value,
+      parseInt(tempMinute.value, 10),
+    );
+    if (picked.getTime() <= Date.now()) {
+      const base = new Date(Date.now() + 10 * 60 * 1000);
+      tempHour.value = base.getHours();
+      tempMinute.value = String(base.getMinutes()).padStart(2, '0');
+      // 顺延后跨天（深夜 23:50 之后）直接切到明天
+      if (
+        base.getFullYear() !== now.getFullYear() ||
+        base.getMonth() !== now.getMonth() ||
+        base.getDate() !== now.getDate()
+      ) {
+        tempDateType.value = 'tomorrow';
+      }
+    }
+  }
   const hourStr = String(tempHour.value).padStart(2, '0');
   if (hourOptions.value.indexOf(hourStr) === -1 && hourOptions.value.length > 0) {
     tempHour.value = parseInt(hourOptions.value[0]);
@@ -530,10 +554,11 @@ const showDateTimePicker = () => {
     }
   }
   if (!baseDateStr) {
-    // 默认选中当前时分（不再 +10 分钟）
-    const now = new Date();
-    baseDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    baseTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // 默认选中当前时间往后顺延 10 分钟，避免打开后稍作停留就提示"该时间已过"
+    // 用 Date 对象叠加毫秒数，自动处理跨小时、跨天（如 23:55 -> 次日 00:05）
+    const base = new Date(Date.now() + 10 * 60 * 1000);
+    baseDateStr = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`;
+    baseTimeStr = `${String(base.getHours()).padStart(2, '0')}:${String(base.getMinutes()).padStart(2, '0')}`;
   }
 
   const [y, m, d] = baseDateStr.split('-').map(Number);
