@@ -15,9 +15,12 @@ import {
     rejectMatchRecord,
     confirmMatchRecord,
     getUnreadNotifications,
+    markNotificationRead,
+    getActiveMatch,
 } from '@/api/api';
 import { isLogin } from '@/utils/auth';
-import { connectWebSocket, disconnectWebSocket, onWsMessage } from '@/utils/websocket';
+import { appState } from '@/utils/store';
+import { connectWebSocket, disconnectWebSocket, onWsMessage, sendMessage } from '@/utils/websocket';
 
 // WebSocket 推送事件类型
 export const WS_EVENT = {
@@ -33,6 +36,15 @@ export const WS_EVENT = {
     PHONE_APPROVED: 'PHONE_APPROVED', // 电话联系方式同意
     PHONE_REJECTED: 'PHONE_REJECTED', // 电话联系方式拒绝
 } as const;
+
+// 通知类推送（与 /mini/notification/unread 返回的类型一致）：收到后需回 ACK 告知服务端已送达
+const NOTIFICATION_TYPES = new Set<string>([
+    WS_EVENT.MATCH_CREATED,
+    WS_EVENT.MATCH_CONFIRMED,
+    WS_EVENT.MATCH_REJECTED,
+    WS_EVENT.MATCH_CANCELED,
+    WS_EVENT.MATCH_TIMEOUT,
+]);
 
 // 待处理的匹配请求队列（同一记录去重）
 export const pendingRequests = ref<any[]>([]);
@@ -53,56 +65,145 @@ const matchPageVisible = ref(false);
 // 对方资料页（partnerProfile）是否在前台：前台时联系方式交换事件由该页处理（状态回显+弹窗）
 export const partnerPageVisible = ref(false);
 
+// 待处理匹配请求的持久化 key：未读通知拉取后服务端即标记已读，
+// 用户未操作弹窗时需在有效期内继续弹出，直到超时/取消/被处理
+const PENDING_REQUEST_KEY = 'pendingMatchRequest';
+// 匹配请求有效期：10 分钟
+const MATCH_REQUEST_TTL = 10 * 60 * 1000;
+
 let initialized = false;
-// 已处理的离线通知去重标记：避免 App 多次 onShow 触发查询时同一条通知重复弹窗
-const processedNotificationKeys = new Set<string>();
+// 初始化恢复进行中标记：防止 onLaunch/onShow、登录页与前台恢复并发重复拉取 unread/active
+let restoring = false;
+// 上次恢复完成时间：短时间内的重复调用（如快速切换前后台）直接复用上次结果
+let lastRestoreAt = 0;
+const RESTORE_INTERVAL = 2000;
+// 初始化时拉取到的未读通知：等首页（匹配页）可见后再展示，避免在登录/完善资料页弹窗
+let pendingUnreadMessages: any[] = [];
 
 /**
  * 启动全局匹配 socket：已登录则注册监听并建立连接（幂等，可重复调用）
+ * 登录后的恢复顺序：
+ * 1. 拉取未读通知，暂存待展示（不在登录/完善资料等页面弹窗）
+ * 2. 拉取有效匹配记录，仅恢复页面状态，不重复弹框
+ * 3. 首页（匹配页）可见后再展示通知弹窗并确认已读
  */
-export function startMatchSocket() {
+export async function startMatchSocket() {
     if (!isLogin()) return;
     initMatchSocket();
     connectWebSocket();
-    // 回到前台/启动/登录时补推离线期间的通知（对方同意/拒绝/取消匹配、交换联系方式等）
-    checkUnreadNotifications();
+    // 并发或短时间内的重复调用（onLaunch/onShow、登录页/前台恢复）不再重复拉取接口
+    if (restoring || Date.now() - lastRestoreAt < RESTORE_INTERVAL) return;
+    restoring = true;
+    try {
+        // 1. 获取需要弹出的未读通知，暂存等待首页展示
+        const messages = await fetchUnreadNotifications();
+        if (messages.length) {
+            pendingUnreadMessages = messages;
+        }
+        // 2. 恢复页面上的匹配状态（只更新页面，不额外弹框）
+        await restoreActiveMatch();
+        // 本地未处理的待处理请求（10 分钟有效期内）一并恢复，与未读通知按记录去重
+        restorePendingRequest();
+        // 3. 匹配页已在前台时直接展示
+        if (matchPageVisible.value) {
+            await flushUnreadNotifications();
+        }
+    } finally {
+        restoring = false;
+        lastRestoreAt = Date.now();
+    }
 }
 
 /**
- * 查询离线未读通知并复用 WebSocket 的弹窗逻辑逐条处理
- * 覆盖"离线后任一方同意/拒绝进来应收到通知"的场景；type 与 socket 事件常量一致（仅大小写不同）
+ * 拉取未读通知（只获取不展示）
  */
-export async function checkUnreadNotifications() {
-    if (!isLogin()) return;
-    let res: any;
+export async function fetchUnreadNotifications(): Promise<any[]> {
+    if (!isLogin()) return [];
     try {
-        res = await getUnreadNotifications();
-    } catch (e) {
-        // 查询失败不阻塞启动/回前台，继续使用 WebSocket 在线推送
-        console.warn('[matchSocket] 查询未读通知失败', e);
-        return;
+        const res: any = await getUnreadNotifications();
+        return Array.isArray(res?.messages) ? res.messages : [];
+    } catch {
+        // 拉取失败静默，不影响 socket 主流程
+        return [];
     }
-    const messages = res?.messages;
-    if (!Array.isArray(messages) || messages.length === 0) return;
-    messages.forEach((m: any) => {
-        if (!m) return;
-        const rawType = m.type || m.eventType || m.event;
-        if (!rawType) return;
-        // 同一条通知去重，避免重复查询造成重复弹窗
-        const key = `${rawType}|${m.recordId ?? ''}|${m.createTime ?? ''}`;
-        if (processedNotificationKeys.has(key)) return;
-        processedNotificationKeys.add(key);
-        // 接口 type 为小写 snake_case（如 match_confirmed）转成与 socket 一致的常量；
-        // 文案字段 content 映射为 message；data/otherUser 结构与推送保持一致
-        handleWsMessage({
-            type: String(rawType).toUpperCase(),
-            message: m.content,
-            recordId: m.recordId,
-            demandId: m.demandId,
-            data: m.data || {},
-            otherUser: m.data?.otherUser,
-        });
-    });
+}
+
+/**
+ * 展示初始化时暂存的未读通知（首页可见时调用）
+ * 展示后清空暂存，避免重复弹窗
+ */
+export async function flushUnreadNotifications() {
+    if (!pendingUnreadMessages.length) return;
+    const messages = pendingUnreadMessages;
+    pendingUnreadMessages = [];
+    await showUnreadNotifications(messages);
+}
+
+/**
+ * 展示未读通知并确认已读
+ * type 与 socket 事件一致（如 match_confirmed），转大写后复用同类型 socket 弹窗；
+ * 弹窗展示后调用 /mini/notification/read 确认，避免下次重复弹出
+ * 未读通知可能包含多条记录：必须按 createTime 正序回放，
+ * 否则旧记录的取消/拒绝/超时事件（会重置全部匹配弹窗状态）会误清新记录的邀请弹窗
+ */
+async function showUnreadNotifications(messages: any[]) {
+    const sorted = [...messages].sort((a: any, b: any) => (a?.createTime || 0) - (b?.createTime || 0));
+    for (const item of sorted) {
+        if (!item || !item.type) continue;
+        // 复用同类型 socket 弹窗，弹窗在 handleWsMessage 内同步展示
+        handleWsMessage({ ...item, type: String(item.type).toUpperCase() });
+        // 无匹配记录的通知无需确认已读
+        if (item.recordId == null) continue;
+        try {
+            await markNotificationRead({
+                recordId: item.recordId,
+                matchStatus: Number(item.matchStatus ?? 0),
+                operationType: Number(item.operationType ?? 0),
+            });
+        } catch {
+            // 已读确认失败不阻塞后续通知展示
+        }
+    }
+}
+
+/**
+ * 恢复页面匹配状态：拉取最新有效匹配记录写入全局状态并同步 recordId 缓存
+ * 只更新页面数据，不弹任何弹窗
+ */
+async function restoreActiveMatch() {
+    try {
+        const active = await getActiveMatch();
+        appState.activeMatch = active || null;
+        if (active && active.recordId != null) {
+            uni.setStorageSync('recordId', String(active.recordId));
+        } else {
+            uni.removeStorageSync('recordId');
+        }
+    } catch {
+        // 恢复失败静默，页面自身 onShow 会再次拉取
+    }
+}
+
+/**
+ * 恢复持久化的待处理匹配请求（10 分钟有效期内）
+ * 用户未操作 MatchConfirmModal 时，重启/回到前台后需继续弹出，直到超时或匹配被取消
+ */
+function restorePendingRequest() {
+    const cached = uni.getStorageSync(PENDING_REQUEST_KEY);
+    if (!cached) return;
+    try {
+        const req = JSON.parse(cached);
+        // 超过 10 分钟有效期：清除标记，等待 MATCH_TIMEOUT 推送兜底
+        if (!req?.id || Date.now() - Number(req.createTime || 0) > MATCH_REQUEST_TTL) {
+            uni.removeStorageSync(PENDING_REQUEST_KEY);
+            return;
+        }
+        if (!pendingRequests.value.some((r: any) => String(r.id) === String(req.id))) {
+            pendingRequests.value.push(req);
+        }
+    } catch {
+        uni.removeStorageSync(PENDING_REQUEST_KEY);
+    }
 }
 
 /**
@@ -110,6 +211,9 @@ export async function checkUnreadNotifications() {
  */
 export function stopMatchSocket() {
     disconnectWebSocket();
+    pendingUnreadMessages = [];
+    // 退出登录后重置恢复节流，保证下次登录立即重新拉取
+    lastRestoreAt = 0;
     resetMatchState();
 }
 
@@ -119,45 +223,50 @@ export function stopMatchSocket() {
 function initMatchSocket() {
     if (initialized) return;
     initialized = true;
-    onWsMessage(handleWsMessage);
+    onWsMessage((data: any) => handleWsMessage(data, true));
     console.log('[matchSocket] 全局匹配消息监听已注册');
 }
 
 /**
- * 清空匹配请求相关状态（退出登录/超时时调用）
+ * 清空匹配请求相关状态（退出登录/匹配终态时调用），同时清除持久化的待处理请求
  */
 function resetMatchState() {
     pendingRequests.value = [];
     showFriendRequest.value = false;
     requestSubmitting.value = false;
     currentRequest.value = { avatar: '', description: '', requestId: '' };
+    uni.removeStorageSync(PENDING_REQUEST_KEY);
 }
 
 /**
  * 关闭全部匹配相关弹窗并清理持久化标记
  * 在匹配终态（被对方拒绝 MATCH_REJECTED、对方取消 MATCH_CANCELED）时调用：
  * - 清空内存中的匹配请求队列与自定义请求弹窗
- * - 移除等待弹窗/选人弹窗/盲盒弹窗的本地标记，避免 onShow 时弹窗被恢复
+ * - 移除等待弹窗/选人弹窗/盲盒弹窗的标记，避免 onShow 时弹窗被恢复
  */
 export function closeAllMatchPopups() {
     resetMatchState();
     uni.removeStorageSync('showWaitingPopup');
-    uni.removeStorageSync('pendingMatchSuccess');
-    uni.removeStorageSync('pendingDemand');
+    appState.pendingMatchSuccess = '';
     uni.removeStorageSync('pendingBlindBox');
 }
 
 /**
  * 匹配页 onShow/onHide 调用：标记匹配页是否在前台
- * 回到前台时若队列中还有未处理请求，继续弹出自定义弹窗
+ * 回到前台时先展示初始化暂存的未读通知，再继续展示队列中未处理的匹配请求
  */
 export function setMatchPageVisible(visible: boolean) {
     matchPageVisible.value = visible;
-    if (visible && !showFriendRequest.value) {
-        console.log("setMatchPageVisible -----")
-        console.log('matchPageVisible', matchPageVisible.value);
-        console.log("setMatchPageVisible -----")
-        showNextRequest();
+    if (visible) {
+        restorePendingRequest();
+        // 首页可见：展示初始化时拉取的通知（弹窗在此页渲染自定义样式）
+        flushUnreadNotifications();
+        if (!showFriendRequest.value) {
+            console.log("setMatchPageVisible -----")
+            console.log('matchPageVisible', matchPageVisible.value);
+            console.log("setMatchPageVisible -----")
+            showNextRequest();
+        }
     }
 }
 
@@ -170,7 +279,8 @@ export function setPartnerPageVisible(visible: boolean) {
 }
 
 // 处理 WebSocket 推送的消息
-function handleWsMessage(data: any) {
+// fromSocket 为 true 表示来自 socket 实时推送（需回 ACK），unread 回放时为 false（已通过 read 接口确认）
+function handleWsMessage(data: any, fromSocket = false) {
     if (!data || typeof data !== 'object') return;
     const type = data.type || data.eventType || data.event;
     if (!type) return;
@@ -184,6 +294,16 @@ function handleWsMessage(data: any) {
     const otherNickname = otherUser.nickName || otherUser.nickname || msg.nickname || '';
     const otherAvatar = otherUser.avatarUrl || otherUser.avatar || msg.avatar || '';
     const recordId = msg.recordId ?? body.recordId ?? msg.requestId ?? '';
+
+    // 通知类推送回 ACK：告知服务端已送达，避免重复投递
+    if (fromSocket && recordId !== '' && NOTIFICATION_TYPES.has(type)) {
+        sendMessage({
+            type: 'notification_ack',
+            recordId,
+            matchStatus: body.matchStatus ?? msg.matchStatus,
+            operationType: body.operationType ?? msg.operationType,
+        });
+    }
 
     // 联系方式交换类事件（微信/电话）：对方资料页在前台时由该页自行处理（状态回显+页面内弹窗），全局不重复弹
     const isExchangeEvent =
@@ -208,6 +328,9 @@ function handleWsMessage(data: any) {
             // 同一匹配记录去重，避免重复推送弹多个窗
             if (pendingRequests.value.some((r: any) => r.id === req.id)) return;
             pendingRequests.value.push(req);
+            // 持久化待处理请求（带时间戳）：用户未操作弹窗时，10 分钟有效期内重启/回到前台仍继续弹出
+            const createTime = Number(msg.createTime ?? body.createTime ?? Date.now());
+            uni.setStorageSync(PENDING_REQUEST_KEY, JSON.stringify({ ...req, createTime }));
 
             if (matchPageVisible.value) {
                 // 匹配页在前台：展示自定义请求弹窗
@@ -366,21 +489,33 @@ function showNativeRequestModal(req: any) {
         confirmText: '同意',
         cancelText: '不合适',
         success: (res) => {
-            const action = res.confirm
-                ? confirmMatchRecord({ recordId: req.id })
-                : rejectMatchRecord({ recordId: req.id });
-            action
-                .then(() => {
-                    removePendingRequest(req.id);
-                    uni.showToast({
-                        title: res.confirm ? '已同意，快去聊聊吧' : '已拒绝',
-                        icon: res.confirm ? 'success' : 'none',
-                        duration: 2000,
+            if (res.confirm) {
+                confirmMatchRecord({ recordId: req.id })
+                    .then(() => {
+                        // 接收方同意后不会收到 MATCH_CONFIRMED 推送（仅推给发起方），
+                        // 需自行同步 recordId 并恢复全局匹配状态，view 页监听 appState.activeMatch 联动刷新
+                        uni.setStorageSync('recordId', String(req.id));
+                        restoreActiveMatch();
+                        removePendingRequest(req.id);
+                        uni.showToast({
+                            title: '已同意，快去聊聊吧',
+                            icon: 'success',
+                            duration: 2000,
+                        });
+                    })
+                    .catch(() => {
+                        // 失败提示已由 request 统一处理，记录保留在队列，回到匹配页可重试
                     });
-                })
-                .catch(() => {
-                    // 失败提示已由 request 统一处理，记录保留在队列，回到匹配页可重试
-                });
+            } else {
+                rejectMatchRecord({ recordId: req.id })
+                    .then(() => {
+                        removePendingRequest(req.id);
+                        uni.showToast({ title: '已拒绝', icon: 'none', duration: 2000 });
+                    })
+                    .catch(() => {
+                        // 失败提示已由 request 统一处理，记录保留在队列，回到匹配页可重试
+                    });
+            }
         },
     });
 }
@@ -408,6 +543,8 @@ function showNextRequest() {
 function removePendingRequest(id: string) {
     if (!id) return;
     pendingRequests.value = pendingRequests.value.filter((r: any) => String(r.id) !== id);
+    // 同一时间只有一个匹配记录，请求被移除即清除持久化标记
+    uni.removeStorageSync(PENDING_REQUEST_KEY);
     if (showFriendRequest.value && String(currentRequest.value.requestId) === id) {
         showFriendRequest.value = false;
         setTimeout(() => {
@@ -444,7 +581,7 @@ export async function acceptCurrentRequest() {
     pendingRequests.value = pendingRequests.value.filter((r: any) => String(r.id) !== String(reqId));
     showFriendRequest.value = false;
     // 已匹配成功，旧的匹配成功选人弹窗不再恢复
-    uni.removeStorageSync('pendingMatchSuccess');
+    appState.pendingMatchSuccess = '';
     closeAllMatchPopups();
     // 通知 match.vue 关闭本地 MatchSuccessModal 选人弹窗
     matchRequestHandled.value++;
@@ -480,7 +617,7 @@ export async function rejectCurrentRequest() {
     // 从队列移除已拒绝的请求（同时关闭弹窗），否则 showNextRequest 会再次取到同一条导致弹窗重现；队列还有请求时自动展示下一条
     removePendingRequest(reqId);
     // 拒绝后清除匹配成功选人弹窗的恢复标记，避免回到匹配页 onShow 时旧弹窗再次出现
-    uni.removeStorageSync('pendingMatchSuccess');
+    appState.pendingMatchSuccess = '';
     uni.removeStorageSync('recordId');
     closeAllMatchPopups();
     // 通知 match.vue 关闭本地 MatchSuccessModal 选人弹窗

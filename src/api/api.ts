@@ -422,6 +422,63 @@ export const rejectWechatExchange = (data: { recordId: string }) => {
   return request(`/mini/match/wechat/reject?recordId=${encodeURIComponent(data.recordId)}`, 'POST');
 };
 
+// ============= 通知相关 API =============
+
+/**
+ * 未读通知消息项
+ * type 与 WebSocket 推送事件一致（如 match_confirmed），弹窗逻辑复用 matchSocket 处理
+ */
+export interface UnreadNotification {
+  /** 通知类型，同 socket 事件（match_confirmed / wechat_apply 等） */
+  type: string;
+  /** 通知文案 */
+  content?: string;
+  recordId?: number | string;
+  demandId?: number | string;
+  /** 匹配状态：0=待确认 1=已确认 2=已拒绝 3=已取消 */
+  matchStatus?: number;
+  /** 操作类型：确认已读时回传给后端 */
+  operationType?: number;
+  createTime?: number;
+  /** 跳转页面路径，如 pages/match/detail?recordId=5 */
+  page?: string;
+  data?: {
+    otherUser?: {
+      avatarUrl?: string;
+      nickName?: string;
+      userId?: number | string;
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+/**
+ * 查询未读通知（GET /mini/notification/unread）
+ * 响应体无 data 包装，request 层原样返回：{ hasUnread, count, messages }
+ */
+export const getUnreadNotifications = (): Promise<{
+  hasUnread?: boolean;
+  count?: number;
+  messages?: UnreadNotification[];
+  [key: string]: any;
+}> => {
+  return request('/mini/notification/unread', 'GET');
+};
+
+/**
+ * 确认通知已读（POST /mini/notification/read）
+ * 通知弹窗真正展示后再调用，避免下次重复弹出
+ */
+export const markNotificationRead = (data: {
+  recordId: number | string;
+  matchStatus: number;
+  operationType: number;
+}) => {
+  return request('/mini/notification/read', 'POST', data);
+};
+
 // ============= 支付相关 API =============
 
 /**
@@ -758,6 +815,59 @@ export const getAppConfig = () => {
  */
 export const getUserInfo = (data?: { otherUserId?: number | string }) => {
   return request('/mini/user/getUserInfo', 'GET', data);
+};
+
+/**
+ * 查看页匹配列表项（GET /mini/user/listByUser，仅 status=1 已同意的匹配）
+ * 后端字段可能平铺，也可能把对方信息放在 otherUser 中，页面统一做兼容取值
+ */
+export interface UserMatchListItem {
+  /** 匹配记录 id */
+  recordId?: number | string;
+  /** 我的用户 id */
+  myUserId?: number | string;
+  /** 对方用户 id */
+  otherUserId?: number | string;
+  /** 匹配状态：1=已同意 */
+  matchStatus?: number;
+  /** 见面时间，如 "2026-09-03 15:30" */
+  meetingTime?: string;
+  /** 店铺名称 */
+  shopName?: string;
+  /** 火锅类型（索引：0=重庆火锅 1=潮汕火锅 2=海鲜火锅 3=小火锅） */
+  hotpotType?: number | string;
+  /** 付费方式：0=我请客 1=AA 2=对方请客 */
+  payType?: number;
+  /** 对方头像 */
+  otherAvatar?: string;
+  /** 对方昵称 */
+  otherNickname?: string;
+  /** 对方用户编号 */
+  otherUserSn?: string;
+  /** 对方信息（部分接口以对象返回） */
+  otherUser?: {
+    userId?: number | string;
+    nickName?: string;
+    nickname?: string;
+    avatarUrl?: string;
+    avatar?: string;
+    userSn?: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+/**
+ * 查看匹配列表（GET /mini/match/listByUser）
+ * 固定查询 status=1（已同意）的匹配记录，供查看页列表展示
+ * @param data.page 页码
+ * @param data.pageSize 每页条数
+ */
+export const getUserMatchList = (data?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<UserMatchListItem[]> => {
+  return request('/mini/match/listByUser', 'GET', { status: 1, ...(data || {}) });
 };
 
 /**

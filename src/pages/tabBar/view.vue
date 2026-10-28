@@ -9,34 +9,10 @@
     <!-- 顶部状态栏占位 -->
     <view class="status-bar"></view>
 
-    <!-- 顶部头像与连接区域 -->
-    <view class="header-section" v-if="matchDetail">
-      <!-- 左侧头像 -->
-      <view class="avatar-box left-avatar">
-        <image
-          :src="toHttps(myAvatar)"
-          mode="aspectFill"
-          class="avatar-img"
-        ></image>
-      </view>
-
-      <!-- 中间连接图标 -->
-      <view class="link-icon-box">
-        <image class="link-icon-text" src="/static/imgs/link.png" mode="aspectFit"></image>
-      </view>
-
-      <!-- 对方 + 右侧头像 + 标签 -->
-      <view class="right-wrapper" @click="goToPartnerProfile">
-        <view class="avatar-box right-avatar">
-          <image
-            :src="toHttps(otherAvatar)"
-            mode="aspectFill"
-            class="avatar-img"
-          ></image>
-        </view>
-        <!-- 点击查看标签 -->
-        <view class="click-tag">点击查看</view>
-      </view>
+    <!-- 页面标题 -->
+    <view class="page-header">
+      <text class="page-title">我的匹配</text>
+      <text class="page-subtitle">热汤翻滚，搭子已就位</text>
     </view>
 
     <!-- 等待对方同意弹窗 -->
@@ -50,49 +26,63 @@
           <view class="countdown-digit">{{ countdownStr[2] }}</view>
           <view class="countdown-digit">{{ countdownStr[3] }}</view>
         </view>
-        <view class="waiting-cancel" @click="handleCancelMatch">取消</view>
+        <view class="waiting-cancel" @click="handleCancelMatch()">取消</view>
       </view>
     </view>
 
-    <!-- 中间信息卡片：渲染当前匹配详情 -->
-    <view class="info-card" v-if="matchDetail">
-      <!-- 左侧时间区 -->
-      <view class="time-section">
-        <text class="date-text">{{ displayDate }}</text>
-        <text class="time-text">{{ displayTime }}</text>
-      </view>
-
-      <!-- 分割线 -->
-      <view class="divider"></view>
-
-      <!-- 右侧详情区 -->
-      <view class="detail-section">
-        <view class="title-row">
-          <view class="icon-pin">
-            <image class="icon-fire" src="/static/imgs/location.png" mode="aspectFit"></image>
+    <!-- 匹配列表：/mini/user/listByUser 查询 status=1（已同意）的记录 -->
+    <view class="match-list" v-if="matchList.length">
+      <view class="match-card" v-for="item in matchList" :key="item.recordId">
+        <!-- 对方头像与昵称，点击进入对方资料页 -->
+        <view class="card-header" @click="goToPartnerProfile(item)">
+          <view class="avatar-box">
+            <image :src="toHttps(item.avatar)" mode="aspectFill" class="avatar-img"></image>
+            <!-- <view class="click-tag">点击查看</view> -->
           </view>
-          <text class="shop-name">{{ shopName }}</text>
+          <text class="partner-name">{{ item.nickname }}</text>
+          <text class="arrow">›</text>
         </view>
 
-        <view class="info-row">
-          <text class="label">火锅类型：</text>
-          <text class="value">{{ hotpotTypeText }}</text>
-        </view>
+        <!-- 匹配详情 -->
+        <view class="card-body">
+          <!-- 左侧时间区 -->
+          <view class="time-section">
+            <text class="date-text">{{ formatDate(item.meetingTime) }}</text>
+            <text class="time-text">{{ formatTime(item.meetingTime) }}</text>
+          </view>
 
-        <view class="info-row">
-          <text class="label">付费方式：</text>
-          <text class="value">{{ payTypeText }}</text>
+          <!-- 右侧详情区 -->
+          <view class="detail-section">
+            <view class="title-row">
+              <view class="icon-pin">
+                <image class="icon-fire" src="/static/imgs/location.png" mode="aspectFit"></image>
+              </view>
+              <text class="shop-name">{{ item.shopName }}</text>
+            </view>
+
+            <view class="info-row">
+              <text class="label">火锅类型：</text>
+              <text class="value">{{ formatHotpotType(item.hotpotType) }}</text>
+            </view>
+
+            <view class="info-row">
+              <text class="label">付费方式：</text>
+              <text class="value">{{ formatPayType(item.payType) }}</text>
+            </view>
+          </view>
         </view>
 
         <!-- 取消按钮 -->
-        <view class="cancel-btn" @click="handleCancelMatch">取消</view>
+        <view class="card-footer">
+          <view class="cancel-btn" @click.stop="handleCancelMatch(item)">取消</view>
+        </view>
       </view>
     </view>
 
     <!-- 无匹配数据时的空状态：加载完成且没有匹配记录才展示 -->
-    <view class="empty-state" v-else-if="!detailLoading">
+    <view class="empty-state" v-else-if="!listLoading">
       <text class="empty-icon">🍲</text>
-      <text class="empty-text">还没有进行中的匹配</text>
+      <text class="empty-text">还没有已同意的匹配</text>
       <view class="empty-btn" @click="goToMatch">快去发起匹配吧</view>
     </view>
 
@@ -102,24 +92,58 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { onShow, onHide } from '@dcloudio/uni-app';
-import { isLogin, isProfileComplete, getUserInfo } from '@/utils/auth';
-import { getActiveMatch, cancelMatchRecord } from '@/api/api';
-// import { getMatchDetail } from '@/api/api';
+import { isLogin, isProfileComplete } from '@/utils/auth';
+import { getUserMatchList, cancelMatchRecord } from '@/api/api';
+import type { UserMatchListItem } from '@/api/api';
 import { hotpotTypeText as hotpotTypeTextMap, payTypeCodeText } from '@/config/matchOptions';
-import type { MatchDetailItem } from '@/api/api';
 import { onWsMessage } from '@/utils/websocket';
 import { WS_EVENT } from '@/common/matchSocket';
 import { toHttps } from '@/utils/system';
+import { appState } from '@/utils/store';
+
+const DEFAULT_AVATAR = '/static/imgs/default-avatar.jpeg';
+
+// 列表卡片展示项：把接口字段统一成页面直接可用的结构，
+// 兼容字段平铺与 otherUser 嵌套两种返回形式
+interface MatchCardItem {
+  recordId: string;
+  otherUserId: string;
+  nickname: string;
+  avatar: string;
+  meetingTime: string;
+  shopName: string;
+  hotpotType: number | string | null;
+  payType: number | null;
+}
+
+const normalizeMatchItem = (raw: UserMatchListItem): MatchCardItem => {
+  const other = raw.otherUser || {};
+  return {
+    recordId: String(raw.recordId ?? raw.id ?? ''),
+    otherUserId: String(raw.otherUserId ?? other.userId ?? other.id ?? ''),
+    nickname:
+      raw.otherNickname || raw.nickname || other.nickName || other.nickname || '火锅搭子',
+    avatar:
+      raw.otherAvatar || raw.avatarUrl || raw.avatar || other.avatarUrl || other.avatar || DEFAULT_AVATAR,
+    meetingTime: raw.meetingTime || '',
+    shopName: raw.shopName || raw.hotpotShop || '',
+    hotpotType: raw.hotpotType ?? null,
+    payType: raw.payType ?? null,
+  };
+};
+
+// 已同意（status=1）的匹配列表，供查看页列表渲染
+const matchList = ref<MatchCardItem[]>([]);
+// 列表请求中标记：请求期间不显示空状态，避免无数据时闪烁
+const listLoading = ref(false);
 
 const showWaitingPopup = ref(false);
 const remainingSeconds = ref(10 * 60); // 默认 10 分钟倒计时
 // 等待倒计时持久化：本地存截止时间戳（毫秒），离开/刷新页面后按它恢复剩余时间，不重置
 const WAITING_DEADLINE_KEY = 'waitingDeadline';
 const WAITING_TOTAL_SECONDS = 10 * 60;
-const recordId = ref('');
-// const demandId = ref('');
 let countdownTimer:any = null;
 // 全局 socket 消息退订函数
 let unsubscribeWs: (() => void) | null = null;
@@ -180,10 +204,11 @@ function startWaitingCountdown() {
 }
 
 // 点击查看对方主页
-function goToPartnerProfile() {
+function goToPartnerProfile(item: MatchCardItem) {
   // otherUserId 供对方资料页 mini/user/getUserInfo 使用
-  const uid = matchDetail.value?.otherUserId || '';
-  uni.navigateTo({ url: `/subPack/match/partnerProfile?from=view&userId=${uid}` });
+  uni.navigateTo({
+    url: `/subPack/match/partnerProfile?recordId=${item.recordId}&from=view&userId=${item.otherUserId}`,
+  });
 }
 
 // 关闭等待弹窗
@@ -195,11 +220,10 @@ function closeWaitingPopup() {
   }
 }
 
-// 取消匹配：调用取消接口后关闭等待弹窗
-async function handleCancelMatch() {
-  console.log('handleCancelMatch', recordId.value);
-  // 等待阶段可能还没通过 /mini/match/active 拿到 recordId，回退用 match.vue 发起匹配时写入缓存的 recordId
-  const rid = recordId.value || String(uni.getStorageSync('recordId') || '');
+// 取消匹配：列表项传 item，等待弹窗（未拿到列表记录）不传，回退本地缓存的 recordId
+async function handleCancelMatch(item?: MatchCardItem) {
+  // 等待阶段匹配记录尚未出现在 status=1 列表中，回退用 match.vue 发起匹配时写入缓存的 recordId
+  const rid = item?.recordId || String(uni.getStorageSync('recordId') || '');
   // 先无条件清掉等待弹窗与倒计时标记：用户已主动取消，无论是否有 recordId、
   // 取消接口是否成功，离开本页再回来都不应再恢复"等待对方同意"弹窗
   uni.removeStorageSync('showWaitingPopup');
@@ -213,118 +237,88 @@ async function handleCancelMatch() {
   }
   try {
     await cancelMatchRecord({ recordId: rid });
-    // 取消成功进入终态，清掉缓存与内存中的 recordId
+    // 取消成功进入终态，清掉缓存的 recordId
     uni.removeStorageSync('recordId');
-    recordId.value = '';
-    // 刷新页面数据：清空旧匹配详情，页面回落到空状态
-    matchDetail.value = null;
+    // 列表本地先移除该条，再以服务端数据刷新
+    if (item) {
+      matchList.value = matchList.value.filter((m) => m.recordId !== item.recordId);
+    }
+    fetchMatchList();
     uni.showToast({ title: '已取消匹配', icon: 'none', duration: 1500 });
   } catch {
     // 取消失败不阻塞关闭弹窗，错误提示已由 request 统一处理
   }
 }
 
-// 匹配详情：一次只有一条有效匹配，进入页面用 recordId 拉取详情渲染
-const matchDetail = ref<MatchDetailItem | null>(null);
-// 详情请求中标记：请求期间不显示空状态，避免无数据时闪烁
-const detailLoading = ref(false);
-
 // 空状态：去发起匹配（跳转到匹配 tab 页）
 function goToMatch() {
   uni.switchTab({ url: '/pages/tabBar/match' });
 }
 
-// 我的头像：从本地缓存的用户信息中获取，缺省回退默认头像
-const myAvatar = computed(() => {
-  return getUserInfo()?.avatar || '/static/imgs/default-avatar.jpeg';
-});
-// 对方头像（缺省回退默认头像）
-const otherAvatar = computed(
-  () => matchDetail.value?.otherAvatar || '/static/imgs/default-avatar.jpeg',
-);
-
-// 店铺名称：详情接口直接返回 shopName
-const shopName = computed(() => matchDetail.value?.shopName || '');
-
-// meetingTime 如 "2026-09-03 15:30"，拆成左侧日期与时间展示
-const displayDate = computed(() => {
-  const t = matchDetail.value?.meetingTime || '';
-  const date = t.split(' ')[0] || '';
+// meetingTime 如 "2026-09-03 15:30"，拆成日期（MM-DD）与时间展示
+const formatDate = (t: string) => {
+  const date = (t || '').split(' ')[0] || '';
   return date.length >= 10 ? date.slice(5) : date;
-});
+};
+const formatTime = (t: string) => (t || '').split(' ')[1] || '';
 
-// 显示时间
-const displayTime = computed(() => {
-  const t = matchDetail.value?.meetingTime || '';
-  return t.split(' ')[1] || '';
-});
-
-// 火锅类型
-// hotpotType 返回单个索引数字（0=重庆火锅 1=潮汕火锅 2=海鲜火锅 3=小火锅），兼容逗号分隔多选
-const hotpotTypeText = computed(() => {
-  const raw = matchDetail.value?.hotpotType;
-  if (raw == null) return '';
+// 火锅类型：hotpotType 为 0 起始索引，兼容逗号分隔多选
+const formatHotpotType = (raw: number | string | null) => {
+  if (raw == null || raw === '') return '';
   return String(raw)
     .split(',')
     .map((idx) => hotpotTypeTextMap[Number(idx)] || '')
     .filter(Boolean)
     .join('、');
-});
+};
 
 // 请客类型
-const payTypeText = computed(() => {
-  const t = matchDetail.value?.payType;
-  return t != null ? payTypeCodeText[t] || '' : '';
-});
+const formatPayType = (t: number | null) => (t != null ? payTypeCodeText[t] || '' : '');
 
-// 调 /mini/match/active 拿最新一条已成功匹配的记录，直接渲染卡片
-const fetchActiveMatch = async () => {
-  detailLoading.value = true;
+// 调 /mini/user/listByUser 查询 status=1（已同意）的匹配列表
+const fetchMatchList = async () => {
+  listLoading.value = true;
   try {
-    // 获取最新已成功匹配记录，recordId 供取消匹配、跳转对方资料页使用
-    const active = await getActiveMatch();
-    if (!active || active.recordId == null) {
-      // 无有效匹配：回落空状态
-      matchDetail.value = null;
-      recordId.value = '';
-      return;
-    }
-    recordId.value = String(active.recordId);
-    // 暂时不调 getMatchDetail 详情接口，直接用 /mini/match/active 返回的数据渲染
-    // const detail = await getMatchDetail({ recordId: recordId.value });
-    // matchDetail.value = detail || null;
-    matchDetail.value = active;
+    const list = await getUserMatchList();
+    matchList.value = (Array.isArray(list) ? list : []).map(normalizeMatchItem);
   } catch {
-    // 请求失败按无有效匹配处理，回落空状态
-    matchDetail.value = null;
-    recordId.value = '';
+    // 请求失败按无数据处理，回落空状态
+    matchList.value = [];
   } finally {
-    detailLoading.value = false;
+    listLoading.value = false;
   }
 };
 
-// 全局 socket 推送的匹配结果事件：关闭等待弹窗并同步页面状态
+// 全局匹配状态变化时联动刷新：如在本页通过原生弹窗同意匹配（接收方无 MATCH_CONFIRMED 推送），
+// matchSocket 同意成功后更新 appState.activeMatch，此处重新拉取列表
+watch(
+  () => appState.activeMatch,
+  () => {
+    fetchMatchList();
+  },
+);
+
+// 全局 socket 推送的匹配结果事件：关闭等待弹窗并刷新列表
 // （结果文案/结果弹窗由全局 matchSocket 统一提示，这里只处理本页 UI）
 const handleMatchWsEvent = (data: any) => {
   const type = data?.type || data?.eventType || data?.event;
   if (!type) return;
   if (type === WS_EVENT.MATCH_CONFIRMED) {
-    // 对方已同意：结束等待，刷新匹配详情卡片
+    // 对方已同意：结束等待，刷新列表
     uni.removeStorageSync('showWaitingPopup');
     uni.removeStorageSync(WAITING_DEADLINE_KEY);
     closeWaitingPopup();
-    fetchActiveMatch();
+    fetchMatchList();
   } else if (
     type === WS_EVENT.MATCH_REJECTED ||
     type === WS_EVENT.MATCH_CANCELED ||
     type === WS_EVENT.MATCH_TIMEOUT
   ) {
-    // 对方拒绝/取消/超时：结束等待并清理本页匹配记录与弹窗标记
+    // 对方拒绝/取消/超时：结束等待并清理弹窗标记，刷新列表
     uni.removeStorageSync('showWaitingPopup');
     uni.removeStorageSync(WAITING_DEADLINE_KEY);
     closeWaitingPopup();
-    recordId.value = '';
-    matchDetail.value = null;
+    fetchMatchList();
   }
 };
 
@@ -347,9 +341,8 @@ onShow(() => {
     startWaitingCountdown();
   }
 
-  // 每次进入页面调用 /mini/match/active 获取最新一条已成功匹配的记录
-  // 无需依赖本地缓存的 recordId，接口直接返回匹配详情（含 recordId）
-  fetchActiveMatch();
+  // 每次进入页面查询已同意（status=1）的匹配列表
+  fetchMatchList();
 
   // 订阅全局匹配推送：等待弹窗期间收到对方同意/拒绝/取消/超时事件时自动更新
   if (!unsubscribeWs) {
@@ -474,20 +467,65 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-/* 顶部头像区域 - 精确间距与层级 */
-.header-section {
-  margin-top: 200rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* 页面标题 */
+.page-header {
   width: 100%;
+  padding: 50rpx 55rpx 0;
+  box-sizing: border-box;
   position: relative;
   z-index: 1;
 }
 
+.page-title {
+  display: block;
+  color: #ffffff;
+  font-size: 44rpx;
+  font-weight: 600;
+}
+
+.page-subtitle {
+  display: block;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 24rpx;
+  margin-top: 10rpx;
+}
+
+/* 匹配列表 */
+.match-list {
+  width: 100%;
+  flex: 1;
+  padding: 40rpx 55rpx 0;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  overflow-y: auto;
+}
+
+/* 单条匹配卡片 - 毛玻璃与阴影 */
+.match-card {
+  width: 100%;
+  background: linear-gradient( 45deg, rgba(92,175,255,0.2) 0%, rgba(198,43,255,0.2) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.5);
+  padding: 28rpx 30rpx;
+  box-sizing: border-box;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.2);
+  margin-bottom: 30rpx;
+}
+
+/* 对方头像与昵称 */
+.card-header {
+  display: flex;
+  align-items: center;
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.15);
+}
+
 .avatar-box {
-  width: 140rpx;
-  height: 140rpx;
+  width: 100rpx;
+  height: 100rpx;
   border-radius: 50%;
   border: 4rpx solid #ffffff;
   overflow: hidden;
@@ -502,66 +540,49 @@ onUnmounted(() => {
   height: 100%;
 }
 
-.left-avatar {
-  margin-right: 60rpx;
-}
-
-.right-avatar {
-}
-
-.right-wrapper {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-left: 60rpx;
-}
-
-/* 点击查看标签 - 精确位置与样式 */
+/* 点击查看标签 */
 .click-tag {
   position: absolute;
-  bottom: 0rpx;
+  bottom: -8rpx;
   left: 50%;
   transform: translateX(-50%);
   background-color: #ffffff;
   color: #333;
-  font-size: 20rpx;
-  padding: 4rpx 12rpx;
+  font-size: 18rpx;
+  padding: 2rpx 10rpx;
   border-radius: 8rpx;
   white-space: nowrap;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
   z-index: 2;
 }
 
-/* 中间连接图标 - 精确尺寸与阴影 */
-.link-icon-box {
-  width: 60rpx;
-  height: 60rpx;
-  background-color: #ffffff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.2);
-  z-index: 3;
+.partner-name {
+  flex: 1;
+  margin-left: 24rpx;
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* 中间信息卡片 - 精确尺寸、毛玻璃与阴影 */
-.info-card {
-  margin-top: 80rpx;
-  width: 640rpx;
-  height: 240rpx;
-  background: linear-gradient( 45deg, rgba(92,175,255,0.2) 0%, rgba(198,43,255,0.2) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 24rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.5);
+.arrow {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 44rpx;
+  line-height: 1;
+}
+
+/* 卡片详情区 */
+.card-body {
   display: flex;
-  padding: 30rpx;
-  box-sizing: border-box;
-  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.2);
-  position: relative;
-  z-index: 1;
+  padding-top: 24rpx;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20rpx;
 }
 
 /* 左侧时间区 - 精确间距与字体 */
@@ -587,18 +608,13 @@ onUnmounted(() => {
   font-weight: bold;
 }
 
-.divider {
-  display: none;
-}
-
 /* 右侧详情区 - 精确布局与字体 */
 .detail-section {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   position: relative;
-  
 }
 
 .title-row {
@@ -639,11 +655,8 @@ onUnmounted(() => {
   font-size: 24rpx;
 }
 
-/* 取消按钮 - 精确位置与样式 */
+/* 取消按钮 */
 .cancel-btn {
-  position: absolute;
-  right: 0;
-  bottom: 0;
   background-color: rgba(255, 255, 255, 0.15);
   color: #ffffff;
   font-size: 24rpx;

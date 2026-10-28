@@ -64,6 +64,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getMatchRecommend, cancelDemand } from '@/api/api';
 import { getStatusBarHeight, toHttps } from '@/utils/system';
+import { appState } from '@/utils/store';
 
 // 状态栏高度
 const statusBarHeight = ref(0);
@@ -120,10 +121,10 @@ const fetchRecommend = async () => {
             matched = true;
             recommendUsers.value = users;
             stopPolling();
-            // 已匹配到人：持久化"待选锅友"状态（值为 demandId，供匹配页拉推荐列表），
-            // 用户未选人发起匹配前该标记一直保留，离开/刷新匹配页后弹窗仍会恢复
+            // 已匹配到人：写入全局缓存"待选锅友"状态（值为 demandId，供匹配页拉推荐列表），
+            // 内存级标记，用户未选人发起匹配前同次运行内一直保留，回到匹配页后弹窗仍会恢复
             statusText.value = '匹配成功！';
-            uni.setStorageSync('pendingMatchSuccess', demandId);
+            appState.pendingMatchSuccess = demandId;
             setTimeout(() => {
                 uni.switchTab({ url: '/pages/tabBar/match' });
             }, 800);

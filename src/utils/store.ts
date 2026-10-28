@@ -80,5 +80,9 @@ export const appState = reactive({
     matchMode: 'precise' as 'precise' | 'blind',
     location: '',
     userLocation: null as UserLocation | null,
+    // 匹配成功待选锅友的 demandId（内存级，不持久化；重启后不再恢复选人弹窗）
+    pendingMatchSuccess: '',
+    // 当前有效匹配记录（登录后由 /mini/match/active 恢复，页面直接消费，不再重复弹窗）
+    activeMatch: null as any,
     transactions: [] as any[]
 });

@@ -57,10 +57,10 @@
                     <text class="contact-text">{{ phoneText }}</text>
                 </view>
                 <view class="contact-divider"></view>
-                <!-- <view class="contact-item" @click="handleWechatClick">
+                <view class="contact-item" @click="handleWechatClick">
                     <image class="contact-icon" src="/static/imgs/wx.png" mode="aspectFit"></image>
                     <text class="contact-text">{{ wechatText }}</text>
-                </view> -->
+                </view>
             </view>
 
             <!-- 当前为被匹配方 即当前userId = otherUserId 并且 匹配状态是待确认即 matchStatus 为 0 时 显示匹配信息 -->
@@ -168,6 +168,14 @@ const wechatStatus = ref<'idle' | 'applied' | 'viewed'>('idle');
 const phoneSubmitting = ref(false);
 const wechatSubmitting = ref(false);
 
+// 本人最近一次发起交换申请的时间：服务端会把申请事件推给双方（含申请人回显），
+// 申请人收到自己触发的 APPLY 推送时不能弹审批弹窗（申请人无权审批，接口会报"状态不符或无权操作"）
+let lastSelfPhoneApplyAt = 0;
+let lastSelfWechatApplyAt = 0;
+// 最近一次已处理的交换推送（type+recordId）：同一动作可能被服务端重复推送，
+// 短窗口内去重，防止 uni.showModal 排队导致弹窗被叠加展示（点掉一个又弹一个）
+let lastExchangePush = { type: '', recordId: '', at: 0 };
+
 // 复制联系方式弹窗状态
 const contactModal = reactive({
     visible: false,
@@ -216,6 +224,7 @@ const isMatcher = computed(
 const showContactBar = computed(
     () => pageFrom.value == 'view' && isMatcher.value && Number(matchDetail.value?.matchStatus) === 1,
 );
+
 // 有匹配详情信息就显示匹配信息卡（不再限制角色/状态）
 const showMatchInfoCard = computed(
     () => pageFrom.value == 'MatchConfirmModal' && !!matchDetail.value && Object.keys(matchDetail.value).length > 0,
@@ -396,9 +405,16 @@ function handleExchangeWsEvent(data: any) {
     if (pushRecordId && recordId.value && pushRecordId !== String(recordId.value)) return;
     const rid = recordId.value || pushRecordId;
 
+    // 重复推送去重：3 秒内同类型同记录的推送只处理一次，防止弹窗叠加
+    const now = Date.now();
+    if (type === lastExchangePush.type && String(rid) === lastExchangePush.recordId && now - lastExchangePush.at < 3000) return;
+    lastExchangePush = { type, recordId: String(rid), at: now };
+
     switch (type) {
         // 有人申请交换微信：弹窗询问是否同意
         case WS_EVENT.WECHAT_APPLY: {
+            // 本人发起的申请回显：申请人无权审批，直接忽略（按钮点击时已 toast 提示）
+            if (Date.now() - lastSelfWechatApplyAt < 10000) break;
             uni.showModal({
                 title: '微信交换申请',
                 content: '对方想与你交换微信，是否同意？',
@@ -442,6 +458,8 @@ function handleExchangeWsEvent(data: any) {
         }
         // 有人申请交换电话：弹窗询问是否同意
         case WS_EVENT.PHONE_APPLY: {
+            // 本人发起的申请回显：申请人无权审批，直接忽略（按钮点击时已 toast 提示）
+            if (Date.now() - lastSelfPhoneApplyAt < 10000) break;
             uni.showModal({
                 title: '电话交换申请',
                 content: '对方想与你交换电话，是否同意？',
@@ -530,6 +548,8 @@ async function handlePhoneClick() {
         if (phoneStatus.value === 'idle') {
             await applyPhoneExchange({ recordId: recordId.value });
             phoneStatus.value = 'applied';
+            // 记录申请时间：用于识别服务端回显给自己的 PHONE_APPLY 推送并跳过审批弹窗
+            lastSelfPhoneApplyAt = Date.now();
             uni.showToast({ title: '已发送电话交换申请', icon: 'success' });
         } else {
             const res = await viewPartnerPhone({ recordId: recordId.value });
@@ -558,6 +578,8 @@ async function handleWechatClick() {
         if (wechatStatus.value === 'idle') {
             await applyWechatExchange({ recordId: recordId.value });
             wechatStatus.value = 'applied';
+            // 记录申请时间：用于识别服务端回显给自己的 WECHAT_APPLY 推送并跳过审批弹窗
+            lastSelfWechatApplyAt = Date.now();
             uni.showToast({ title: '已发送微信交换申请', icon: 'success' });
             // showContactModal('对方微信', extractWechat(res));
         } else {

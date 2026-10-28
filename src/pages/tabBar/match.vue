@@ -198,9 +198,8 @@ const handleUnlock = (payload: any) => {
     blindMatchUserId.value = matchUserId;
     blindMyAvatar.value = myAvatar;
     blindOtherAvatar.value = otherAvatar;
-    // 流程进入"待确认"阶段：用户已选择匹配者，清除选人弹窗与"匹配进行中"标记，持久化确认弹窗标记（用户点确认/不合适前一直保留）
-    uni.removeStorageSync('pendingMatchSuccess');
-    uni.removeStorageSync('pendingDemand');
+    // 流程进入"待确认"阶段：清除选人弹窗标记，持久化确认弹窗标记（用户点确认/不合适前一直保留）
+    appState.pendingMatchSuccess = '';
     uni.setStorageSync(
         'pendingBlindBox',
         JSON.stringify({ demandId, matchUserId, myAvatar, otherAvatar }),
@@ -341,7 +340,8 @@ onShow(() => {
     // 标记匹配页在前台：全局 socket 收到匹配请求时在此页弹出自定义请求弹窗
     setMatchPageVisible(true);
 
-    // 弹窗状态恢复：标记持久化在本地，用户未点按钮操作前一直保留，离开/刷新后回来仍展示
+    // 弹窗状态恢复：盲盒标记持久化在本地，用户未点按钮操作前一直保留，离开/刷新后回来仍展示；
+    // 选人弹窗标记为内存级，仅同次运行内恢复
     // 优先恢复更靠后的"确认匹配"盲盒弹窗（已发起匹配待确认）
     const pendingBlind = uni.getStorageSync('pendingBlindBox');
     if (pendingBlind) {
@@ -359,8 +359,8 @@ onShow(() => {
             uni.removeStorageSync('pendingBlindBox');
         }
     } else {
-        // 其次恢复"匹配成功选人"弹窗（已匹配到人、待选锅友），值为 demandId
-        const pendingDemandId = uni.getStorageSync('pendingMatchSuccess');
+        // 其次恢复"匹配成功选人"弹窗（已匹配到人、待选锅友），值为 demandId（内存级标记）
+        const pendingDemandId = appState.pendingMatchSuccess;
         if (pendingDemandId) {
             matchedDemandId.value = pendingDemandId;
             showMatchModal.value = true;
