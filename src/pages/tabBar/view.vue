@@ -470,7 +470,7 @@ onUnmounted(() => {
 /* 页面标题 */
 .page-header {
   width: 100%;
-  padding: 40rpx 55rpx 0;
+  padding: 50rpx 55rpx 0;
   box-sizing: border-box;
   position: relative;
   z-index: 1;
